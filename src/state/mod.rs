@@ -2,7 +2,7 @@ use crate::{
     database,
     inference,
 
-    request::{ Request, Status },
+    request::{ Status },
     Arc, Mutex
 };
 use std::collections::VecDeque;
@@ -23,6 +23,14 @@ impl AppState {
         }
     }
 
+    pub async fn update_status(s: &Arc<Mutex<AppState>>, id: usize, status: Status) {
+        println!("[Updating {} to {:?}]", id, status);
+        s.lock().await
+            .db
+            .get(id)
+            .expect(format!("Job ID {} Not Found!", id).as_str())
+            .status = status;
+    }
     pub async fn work_queue(s: Arc<Mutex<AppState>>) {
         if s.lock().await.working {
             return;
@@ -35,24 +43,12 @@ impl AppState {
 
             id_option
         } {
-            println!("[Starting On Job {id}]");
-            s.lock().await
-                .db
-                .get(id)
-                .expect("Unreachable")
-                .status = Status::Processing;
+            Self::update_status(&s, id, Status::Processing).await;
 
             let result = inference::run_inference(id).await
-                .unwrap_or(Status::InferenceErr);
+                .unwrap_or_else(|err| Status::InferenceErr(err));
 
-            println!("[Inference Result For Job {}: {:?}]", id, result);
-
-            s.lock().await
-                .db
-                .get(id)
-                .expect("Unreachable")
-                .status = result;
-            println!("[Finished Job {id}]");
+            Self::update_status(&s, id, result).await;
         }
         s.lock().await.working = false;
     }

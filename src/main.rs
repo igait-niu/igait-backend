@@ -3,6 +3,8 @@ mod state;
 mod inference;
 mod request;
 
+use request::{ Status };
+use state::{ AppState };
 use axum::{
     routing::{ get, post },
     extract::{ Path, State },
@@ -11,34 +13,28 @@ use axum::{
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-async fn upload(State(app): State<Arc<Mutex<state::AppState>>>) -> Result<String, String> {
+async fn upload(State(app): State<Arc<Mutex<AppState>>>) -> Result<String, String> {
     // Create ID
     let id = app
         .lock().await
         .db
         .new_entry();
+    
 
     // Save file
     // write_to_file(name: id);
-    app.lock().await
-        .db
-        .get(id).ok_or("ID not found. Request may have been deleted.")?
-        .status = request::Status::Submitted;
+
+    state::AppState::update_status(&app, id, Status::Submitted).await;
 
     // Update queue
     app.lock().await
         .queue
         .push_back(id);
-
-    let mut app_lock = app.lock().await;
-    app_lock.db
-            .get(id).ok_or("ID not found. request::Request may have been deleted.")?
-            .status = request::Status::Queue;
-    drop(app_lock);
+    
+    state::AppState::update_status(&app, id, Status::Queue).await;
 
     tokio::spawn(state::AppState::work_queue(app.clone()));
     
-    println!("[New Entry: ID {id}]");
     Ok(id.to_string())
 }
 async fn status(Path(id): Path<usize>, State(app): State<Arc<Mutex<state::AppState>>>) -> String {

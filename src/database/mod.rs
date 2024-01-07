@@ -22,6 +22,9 @@ impl Database {
                 status: Status::Submitting
             }
         );
+
+        println!("[New Entry: ID {id}]");
+        
         id
     }
     pub fn get(&mut self, index: usize) -> Option<&mut Request> {

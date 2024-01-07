@@ -2,10 +2,10 @@
 pub enum Status {
     Submitting,
     Submitted,
-    SubmissionErr,
+    SubmissionErr(String),
     Queue,
     Processing,
-    InferenceErr,
+    InferenceErr(String),
     Complete(f32)
 }
 #[derive(Debug)]
