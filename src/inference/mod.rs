@@ -1,7 +1,18 @@
 use rand::random;
+use std::process::Command;
 
 pub async fn run_inference(id: usize) -> f32 {
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    let output = Command::new("python")
+        .arg("data/run_inference.py")
+        .output().expect("todo!")
+        .stdout;
+    
+    let output_string = String::from_utf8(output)
+        .expect("todo!");
 
-    random::<f32>()
+    println!(":3 -{}-", output_string);
+        
+    output_string
+        .parse::<f32>()
+        .unwrap()
 }
