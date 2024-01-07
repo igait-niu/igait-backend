@@ -47,6 +47,11 @@ impl Database {
         );
         id
     }
+    fn get(&self, index: usize) -> Option<&Request> {
+        (*self).entries
+            .get(index)
+            .and_then(|e| Some(e))
+    }
 }
 
 #[derive(Debug)]
@@ -69,8 +74,13 @@ async fn upload(State(app): State<Arc<Mutex<AppState>>>) -> Result<String, Strin
     println!("[New Entry: ID {id}]");
     Ok(id.to_string())
 }
-async fn status(Path(id): Path<i32>) -> Result<String, String> {
-    Err(String::from("todo"))
+async fn status(Path(id): Path<usize>, State(app): State<Arc<Mutex<AppState>>>) -> String {
+    app
+        .lock().await
+        .db
+        .get(id)
+        .and_then(|request| Some(format!("{:?}", request.state)))
+        .unwrap_or(String::from("Unable to find ID!"))
 }
 #[tokio::main]
 async fn main() {
