@@ -5,7 +5,7 @@ pub enum Status {
     SubmissionErr,
     Queue,
     Processing,
-    ProcessingErr,
+    InferenceErr,
     Complete(f32)
 }
 #[derive(Debug)]

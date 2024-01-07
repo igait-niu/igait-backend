@@ -44,13 +44,16 @@ impl AppState {
                 .expect("Unreachable")
                 .status = Status::Processing;
 
-            let confidence = inference::run_inference(id).await;
+            let result = inference::run_inference(id).await
+                .unwrap_or(Status::InferenceErr);
+
+            println!("[Inference Result For Job {}: {:?}]", id, result);
 
             s.lock().await
                 .db
                 .get(id)
                 .expect("Unreachable")
-                .status = Status::Complete(confidence);
+                .status = result;
             println!("[Finished {id}]");
         }
         s.lock().await.working = false;
