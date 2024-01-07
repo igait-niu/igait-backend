@@ -1,6 +1,6 @@
 use axum::{
     routing::{ get, post },
-    extract::{ Path },
+    extract::{ Path, State },
     Router,
 };
 use std::sync::Arc;
@@ -56,13 +56,20 @@ struct AppState {
 }
 impl AppState {
     fn new() {
+
     }
 }
 
-async fn upload() {
-
+async fn upload(State(app): State<Arc<Mutex<AppState>>>) -> Result<String, String> {
+    let id = app
+        .lock().await
+        .db
+        .new_entry();
+    
+    println!("[New Entry: ID {id}]");
+    Ok(id.to_string())
 }
-async fn status(Path(job_id): Path<i32>) -> Result<String, String> {
+async fn status(Path(id): Path<i32>) -> Result<String, String> {
     Err(String::from("todo"))
 }
 #[tokio::main]
@@ -78,8 +85,8 @@ async fn main() {
 
     // build our application with a single route
     let api_v1 = Router::new()
-        .route("/status/:job_id", get(status))
-        .route("/upload", post(upload))
+        .route("/status/:id", get(status))
+        .route("/upload", post(upload).get(upload) )// GET IS TEMPORARY
         .with_state(state);
 
     let app = Router::new()
