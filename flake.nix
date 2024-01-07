@@ -10,10 +10,16 @@
         pkgs = import nixpkgs {
           inherit system;
         };
+        
+        python-package-list = p: with p; [
+          pip
+          opencv4
+        ];
+        python = pkgs.python311.withPackages python-package-list;
       in
       {
         devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [ cargo rustc rustfmt rust-analyzer clippy python310 ];
+          buildInputs = with pkgs; [ cargo rustc rustfmt rust-analyzer clippy python opencv ];
           shellHook = 
             ''
             '';

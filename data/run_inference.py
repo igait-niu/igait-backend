@@ -1,9 +1,15 @@
 from time import sleep
 from random import random
 import sys
+from os.path import exists, dirname, realpath
 
 def main():
-    id: float = float(sys.argv[1])
+    id: int = int(sys.argv[1])
+
+    if not exists(f"{dirname(realpath(__file__))}/queue/{id}.mp4"):
+        print(f"File {dirname(realpath(__file__))}/queue/{id}.mp4 does not exist!")
+        return
+
     confidence: float = random() + id
 
     sleep(1)

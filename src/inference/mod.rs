@@ -15,7 +15,7 @@ pub async fn run_inference(id: usize) -> Result<Status, String> {
         
     let confidence = output_string
         .parse::<f32>()
-        .map_err(|_| format!("Could not parse {} to f32!", output_string) )?;
+        .map_err(|_| format!("Could not parse the output to f32! Output: {}", output_string) )?;
 
     Ok(Status::Complete(confidence))
 }
