@@ -29,15 +29,13 @@ impl AppState {
         }
         s.lock().await.working = true;
 
-        loop {
-            if s.lock().await.queue.len() == 0 {
-                break;
-            }
-            let id = s.lock().await.queue
-                .pop_front()
-                .expect("Unreachable");
+        while let Some(id) = {
+            let id_option = s.lock().await.queue
+                .pop_front().clone();
 
-            println!("[Starting on {id}]");
+            id_option
+        } {
+            println!("[Starting On Job {id}]");
             s.lock().await
                 .db
                 .get(id)
@@ -54,7 +52,7 @@ impl AppState {
                 .get(id)
                 .expect("Unreachable")
                 .status = result;
-            println!("[Finished {id}]");
+            println!("[Finished Job {id}]");
         }
         s.lock().await.working = false;
     }
