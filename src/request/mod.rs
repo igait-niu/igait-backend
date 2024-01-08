@@ -1,7 +1,6 @@
 #[derive(Debug)]
 pub enum Status {
     Submitting,
-    Submitted,
     SubmissionErr(String),
     Queue,
     Processing,
