@@ -19,7 +19,7 @@ impl AppState {
         Self {
             queue: VecDeque::new(),
             working: false,
-            db: database::Database::new()
+            db: database::Database::from_path("data/db.json")
         }
     }
 
@@ -30,6 +30,9 @@ impl AppState {
             .get(id)
             .expect(format!("Job ID {} Not Found!", id).as_str())
             .status = status;
+        s.lock().await
+            .db
+            .save();
     }
     pub async fn work_queue(s: Arc<Mutex<AppState>>) {
         if s.lock().await.working {

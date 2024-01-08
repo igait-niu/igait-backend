@@ -1,4 +1,6 @@
-#[derive(Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Status {
     Submitting,
     SubmissionErr(String),
@@ -7,7 +9,7 @@ pub enum Status {
     InferenceErr(String),
     Complete(f32)
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
     pub id: usize,
     pub status: Status
