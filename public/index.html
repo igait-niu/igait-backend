@@ -37,6 +37,13 @@
                 }
                 idTable.innerHTML = final;
             }
+            async function refresh() {
+                while (true) {
+                    updateTable();
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+
             refreshIDButton.addEventListener('click', (_) => {
                 updateTable();
             })
@@ -56,6 +63,8 @@
                     console.error('Error uploading file:', error);
                 });
             });
+
+            refresh();
         </script>
     </body>
 </html>
