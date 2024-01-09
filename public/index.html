@@ -29,11 +29,14 @@
             let ids = [];
 
             async function updateTable() {
-                let final = "<tr><th>ID</th><th>Status</th></tr>";
+                let final = "<tr><th>ID</th><th>Status</th><th>Result</th></tr>";
                 for (id of ids ) {
                     let res = await fetch(`/api/v1/status/${id}`, { method: 'GET' });
                     let data = await res.text();
-                    final += `<tr><td>${id}</td><td>${data}</td></tr>`;
+                    let parsed = JSON.parse(data);
+
+                    let value = parsed["value"] ? `<td>${parsed["value"]}` : "";
+                    final += `<tr><td>${id}</td><td>${parsed["type"]}</td>${value}</tr>`;
                 }
                 idTable.innerHTML = final;
             }
