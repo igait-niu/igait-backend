@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>AI-ASD</title>
+		<link href="public/style.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body>
+        <form id="uploadForm">
+            <input id="fileInput" type="file" name="fileupload" required>
+            <button type="submit">Upload File</button>
+        </form>
+
+        <br>
+        
+        <div>
+            <table id="idTable">
+                No tracked IDs.
+            </table>
+            <button id="refresh">Refresh</button>
+        </div>
+
+        <script>
+            const uploadForm = document.getElementById('uploadForm');
+            const fileInput = document.getElementById('fileInput');
+            const refreshIDButton = document.getElementById('refresh');
+            const idTable = document.getElementById('idTable');
+            
+            let ids = [];
+
+            async function updateTable() {
+                let final = "<tr><th>ID</th><th>Status</th></tr>";
+                for (id of ids ) {
+                    let res = await fetch(`/api/v1/status/${id}`, { method: 'GET' });
+                    let data = await res.text();
+                    final += `<tr><td>${id}</td><td>${data}</td></tr>`;
+                }
+                idTable.innerHTML = final;
+            }
+            refreshIDButton.addEventListener('click', (_) => {
+                updateTable();
+            })
+            uploadForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData();
+                formData.append('fileupload', fileInput.files[0]);
+
+                fetch('/api/v1/upload', { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        ids.push(data);
+                        updateTable();
+                    })
+                .catch(error => {
+                    console.error('Error uploading file:', error);
+                });
+            });
+        </script>
+    </body>
+</html>

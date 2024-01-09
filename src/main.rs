@@ -6,8 +6,11 @@ mod routes;
 
 use axum::{
     routing::{ get, post },
+    response::{ Html },
     Router,
 };
+use tower_http::services::ServeDir;
+use tower_livereload::LiveReloadLayer;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -28,7 +31,10 @@ async fn main() {
 
     // Nest the API into the general app router
     let app = Router::new()
-        .nest("/api/v1", api_v1);
+        .route("/", get(|| async { Html(std::include_str!("../public/index.html")) }))
+        .nest("/api/v1", api_v1)
+        .nest_service("/public", ServeDir::new("public"))
+        .layer(LiveReloadLayer::new());
 
     // Serve the API
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

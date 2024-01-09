@@ -44,7 +44,7 @@ async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, 
         let field_type = field
             .name().unwrap();
         if field_type != "fileupload" {
-            println!("[Invalid Field Type {}]", field_type);
+            println!("[Invalid Field Type '{}']", field_type);
             continue;
         }
 
