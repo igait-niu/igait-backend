@@ -27,7 +27,7 @@ pub async fn status(Path(id): Path<usize>, State(app): State<Arc<Mutex<AppState>
         .lock().await
         .db
         .get(id)
-        .and_then(|request| Some(format!("{:?}", request.status)))
+        .and_then(|request| Some(format!("{}", request.status)))
         .unwrap_or(String::from("Unable to find ID!"))
 }
 
