@@ -5,11 +5,9 @@ use crate::{
     request::{ Status },
     Arc, Mutex
 };
-use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct AppState {
-    pub queue: VecDeque<usize>,
     working: bool,
 
     pub db: database::Database
@@ -17,7 +15,6 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            queue: VecDeque::new(),
             working: false,
             db: database::Database::from_path("data/db.json")
         }
@@ -41,8 +38,9 @@ impl AppState {
         s.lock().await.working = true;
 
         while let Some(id) = {
-            let id_option = s.lock().await.queue
-                .pop_front().clone();
+            let id_option = s.lock().await
+                .db
+                .next_queue();
 
             id_option
         } {

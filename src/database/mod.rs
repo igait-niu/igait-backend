@@ -57,6 +57,12 @@ impl Database {
 
         id
     }
+    pub fn next_queue(&mut self) -> Option<usize> {
+        (*self).entries
+            .iter()
+            .position(|job| job.status == Status::Queue)
+
+    }
     pub fn get(&mut self, index: usize) -> Option<&mut Request> {
         (*self).entries
             .get_mut(index)

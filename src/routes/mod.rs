@@ -80,11 +80,6 @@ async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, 
             .map_err(|_| String::from("Unable to write file!"))?;
     }
 
-    // Update queue
-    app.lock().await
-        .queue
-        .push_back(id);
-
     tokio::spawn(AppState::work_queue(app.clone()));
 
     Ok(Status::Queue)
