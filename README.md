@@ -26,3 +26,11 @@ There are **3** methods of access. (HTML, iOS app, Android app)
 - **Android**
 
   todo! - complete Android boilerplate
+
+
+curl -X PUT -d '{
+  "alanisawesome": {
+    "name": "Alan Turing",
+    "birthday": "June 23, 1912"
+  }
+}' 'https://network-technology-project-default-rtdb.firebaseio.com//fireblog/users.json'

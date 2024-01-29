@@ -1,8 +1,8 @@
 use std::process::Command;
 use std::fs;
-use crate::request::Status;
+use crate::request::StatusCode;
 
-pub async fn run_inference(id: usize) -> Result<Status, String> {
+pub async fn run_inference(id: usize) -> Result<StatusCode, String> {
     // Grab output from inference
     let output = Command::new("python")
         .arg("data/run_inference.py")
@@ -25,5 +25,5 @@ pub async fn run_inference(id: usize) -> Result<Status, String> {
         println!("FAILED TO REMOVE 'data/queue/{}.mp4'!", id);
     };
 
-    Ok(Status::Complete(confidence))
+    Ok(StatusCode::Complete(confidence))
 }

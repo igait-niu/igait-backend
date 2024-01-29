@@ -8,6 +8,8 @@
     <body>
         <form id="uploadForm">
             <input id="fileInput" type="file" name="fileupload" required>
+
+            <input id="fileInput" type="file" name="fileupload" required>
             <button type="submit">Upload File</button>
         </form>
 
@@ -27,7 +29,7 @@
             const idTable = document.getElementById('idTable');
             
             let ids = [];
-
+            
             async function updateTable() {
                 let final = "<tr><th>ID</th><th>Status</th><th>Result</th></tr>";
                 for (id of ids ) {

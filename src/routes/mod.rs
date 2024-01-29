@@ -1,38 +1,26 @@
 use std::fs::{ File };
 use std::io::Write;
 
-use axum::extract::{ Path, State, Multipart };
+use axum::extract::{ State, Multipart };
 use crate::state::{ AppState };
-use crate::request::{ Status };
+use crate::request::{ StatusCode };
 use crate::{
     Arc, Mutex
 };
 
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, multipart: Multipart) -> String {
-    // Generate job ID
-    let id = app.lock().await
+    /*
+    app.lock().await
         .db
-        .new_entry();
+        .new_entry()
+    */
 
-    let result = add_file_to_queue(app.clone(), multipart, id).await
-        .unwrap_or_else(|err| Status::SubmissionErr(err));
-    
-    AppState::update_status(&app, id, result).await;
-    
-    id.to_string()
-}
-pub async fn status(Path(id): Path<usize>, State(app): State<Arc<Mutex<AppState>>>) -> String {
-    app
-        .lock().await
-        .db
-        .get(id)
-        .and_then(|request| Some(format!("{}", request.status)))
-        .unwrap_or(String::from("Unable to find ID!"))
+    todo!()
 }
 
 /* Helper Functions */
-async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, id: usize) -> Result<Status, String> {
+async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, id: usize) -> Result<StatusCode, String> {
     // Iter fields
     while let Some(field) = multipart
         .next_field().await
@@ -91,5 +79,5 @@ async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, 
 
     tokio::spawn(AppState::work_queue(app.clone()));
 
-    Ok(Status::Queue)
+    Ok(StatusCode::Queue)
 }

@@ -19,11 +19,13 @@
       in
       {
         devShell = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [ openssl pkg-config ];
           buildInputs = with pkgs; [ cargo rustc rustfmt rust-analyzer clippy python opencv ];
           shellHook = 
             ''
             '';
           RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+          OPENSSL_LIB_DIR = pkgs.openssl.out + "/lib";
         };
     });
 }

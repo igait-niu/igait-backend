@@ -25,7 +25,6 @@ async fn main() {
 
     // Build the V1 API router
     let api_v1 = Router::new()
-        .route("/status/:id", get(routes::status))
         .route("/upload", post(routes::upload) )
         .with_state(state);
 
