@@ -25,5 +25,5 @@ impl std::fmt::Display for StatusCode {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
     pub id: usize,
-    pub StatusCode: StatusCode
+    pub status: StatusCode
 }

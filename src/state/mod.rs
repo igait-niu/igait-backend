@@ -1,5 +1,5 @@
 use crate::{ 
-    database::Database,
+    database::{ Database, Status, Job },
     inference,
 
     request::{ StatusCode },
@@ -12,10 +12,26 @@ pub struct AppState {
     db: Database
 }
 impl AppState {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let db = Database::init().await;
+        db.new_job(
+            String::from("fakeemaildeletelater@gmail.com"),
+            Job {
+                id: 80,
+                age: 227,
+                ethnicity: String::from("caucasian"),
+                gender: 'm',
+                height: String::from("5'11"),
+                status: Status {
+                    code: String::from("hiya"),
+                    value: String::from(":3-"),
+                },
+                weight: 135
+            }
+        ).await;
         Self {
             working: false,
-            db: Database::init()
+            db,
         }
     }
 

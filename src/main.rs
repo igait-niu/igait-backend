@@ -19,7 +19,7 @@ async fn main() {
     // Build the general app state
     let state: Arc<Mutex<state::AppState>> = Arc::new(
         Mutex::new(
-            state::AppState::new()
+            state::AppState::new().await
         )
     );
 
