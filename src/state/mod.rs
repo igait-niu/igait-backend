@@ -5,6 +5,7 @@ use crate::{
     request::{ StatusCode },
     Arc, Mutex
 };
+use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct AppState {
@@ -17,7 +18,6 @@ impl AppState {
         db.new_job(
             String::from("fakeemaildeletelater@gmail.com"),
             Job {
-                id: 80,
                 age: 227,
                 ethnicity: String::from("caucasian"),
                 gender: 'm',
@@ -26,6 +26,7 @@ impl AppState {
                     code: String::from("hiya"),
                     value: String::from(":3-"),
                 },
+                timestamp: SystemTime::now(),
                 weight: 135
             }
         ).await;
