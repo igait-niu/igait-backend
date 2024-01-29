@@ -6,6 +6,7 @@ use crate::{
 use serde::{ Serialize, Deserialize};
 use std::fs::{ OpenOptions, File };
 use std::io::{ Seek, Write, Read };
+use std::time::SystemTime;
 
 #[derive( Serialize, Deserialize, Debug )]
 pub struct User {
@@ -14,12 +15,12 @@ pub struct User {
 }
 #[derive( Serialize, Deserialize, Clone, Debug )]
 pub struct Job {
-    pub id: usize,
     pub age: i16,
     pub ethnicity: String,
     pub gender: char,
     pub height: String,
     pub status: Status,
+    pub timestamp: SystemTime,
     pub weight: i16
 }
 #[derive( Serialize, Deserialize, Clone, Debug )]
@@ -40,7 +41,7 @@ impl Database {
                 .at("users")
         }
     }
-    pub async fn new_job (&self, email: String, job: Job) {
+    pub async fn new_job (&self, email: String, mut job: Job) {
         let encoded_email = digest(email.clone());
         let user_handle = self._state.at(&encoded_email);
 
@@ -48,6 +49,7 @@ impl Database {
             let job_handle = user_handle.at("jobs");
             let mut jobs = job_handle.get::<Vec<Job>>().await
                 .expect("Failed to get jobs!");
+
             jobs.push(job);
             
             user_handle.update(&User {
@@ -57,16 +59,15 @@ impl Database {
 
             println!("{:?}", job_handle.get::<Vec<Job>>().await.unwrap());
         } else {
+            println!("User doesn't exist, creating new user with email '{email}'...");
+
             user_handle.update(&User {
                 email,
                 jobs: vec!(job)
             }).await.expect("Failed to update!");
-            println!("User doesn't exist!");
         }
-
-        todo!();
     }
-    pub fn update_status (&self, status: StatusCode) {
+    pub fn update_status (&self, email: String, job_id: usize, status: StatusCode) {
         todo!();
     }
 }
