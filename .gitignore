@@ -2,3 +2,5 @@
 .envrc
 /.direnv
 test.mp4
+/data/resources/*
+/data/queue/*

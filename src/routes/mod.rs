@@ -71,12 +71,21 @@ async fn add_file_to_queue(app: Arc<Mutex<AppState>>, mut multipart: Multipart, 
             })?;
         
         // Build path ID and file handle
-        let file_path = format!("data/queue/{}.mp4", id);
-        let mut file_handle = File::create(file_path)
+        let queue_file_path = format!("data/queue/{}.mp4", id);
+        let mut queue_file_handle = File::create(queue_file_path)
             .unwrap();
 
         // Write data
-        file_handle.write_all(&data)
+        queue_file_handle.write_all(&data.clone())
+            .map_err(|_| String::from("Unable to write file!"))?;
+
+        // Build path ID and file handle
+        let resources_file_path = format!("data/resources/{}.mp4", id);
+        let mut resources_file_handle = File::create(resources_file_path)
+            .unwrap();
+
+        // Write data
+        resources_file_handle.write_all(&data)
             .map_err(|_| String::from("Unable to write file!"))?;
     }
 
