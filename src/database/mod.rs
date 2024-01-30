@@ -25,7 +25,7 @@ pub struct Job {
 }
 #[derive( Serialize, Deserialize, Clone, Debug )]
 pub struct Status {
-    pub code: String,
+    pub code: StatusCode,
     pub value: String,
 }
 
