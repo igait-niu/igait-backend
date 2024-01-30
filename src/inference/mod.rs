@@ -2,11 +2,11 @@ use std::process::Command;
 use std::fs;
 use crate::request::StatusCode;
 
-pub async fn run_inference(id: usize) -> Result<f32, String> {
+pub async fn run_inference(file_id: String) -> Result<f32, String> {
     // Grab output from inference
     let output = Command::new("python")
         .arg("data/run_inference.py")
-        .arg(id.to_string())
+        .arg(file_id.clone())
         .output()
         .map_err(|_| String::from("Failed to get output from model!") )?
         .stdout;
@@ -21,8 +21,8 @@ pub async fn run_inference(id: usize) -> Result<f32, String> {
         .map_err(|_| format!("Could not parse the output to f32! Output: {}", output_string) )?;
 
     // Remove file
-    if fs::remove_file(format!("data/queue/{}.mp4", id)).is_err() {
-        println!("FAILED TO REMOVE 'data/queue/{}.mp4'!", id);
+    if fs::remove_file(format!("data/queue/{}.mp4", file_id)).is_err() {
+        println!("FAILED TO REMOVE 'data/queue/{}.mp4'!", file_id);
     };
 
     Ok(confidence)
