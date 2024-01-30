@@ -1,5 +1,5 @@
-use std::fs::{ File };
-use std::io::Write;
+use tokio::fs::{ File };
+use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
 
 use sha256::digest;
@@ -88,13 +88,10 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         timestamp: SystemTime::now(),
     };
 
-    //println!("{:?}", built_job);
-
     app.lock().await
         .db.new_job(String::from(email), built_job).await;
 }
 async fn save_file<'a> ( mut field: Field<'a>, file_id: String ) -> Result<StatusCode, String> {
-    println!(":3~");
     let file_name = field
         .file_name()
         .ok_or_else(|| {
@@ -119,20 +116,30 @@ async fn save_file<'a> ( mut field: Field<'a>, file_id: String ) -> Result<Statu
     // Build path ID and file handle
     let queue_file_path = format!("data/queue/{}.mp4", file_id);
     let mut queue_file_handle = File::create(queue_file_path)
-        .unwrap();
+        .await
+        .map_err(|_| String::from("Unable to open queue file!"))?;
 
     // Write data
     queue_file_handle.write_all(&data.clone())
-        .map_err(|_| String::from("Unable to write file!"))?;
+        .await
+        .map_err(|_| String::from("Unable to write queue file!"))?;
+    queue_file_handle.flush()
+        .await
+        .map_err(|_| String::from("Unable to flush queue file!"))?;
 
     // Build path ID and file handle
     let resources_file_path = format!("data/resources/{}.mp4", file_id);
     let mut resources_file_handle = File::create(resources_file_path)
-        .unwrap();
+        .await
+        .map_err(|_| String::from("Unable to open resource file!"))?;
 
     // Write data
     resources_file_handle.write_all(&data)
-        .map_err(|_| String::from("Unable to write file!"))?;
+        .await
+        .map_err(|_| String::from("Unable to write resource file!"))?;
+    resources_file_handle.flush()
+        .await
+        .map_err(|_| String::from("Unable to flush resource file!"))?;
     
     Ok(StatusCode::Queue)
 }
