@@ -47,7 +47,6 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
                     Ok(code) => {
                         status.code = code;
                         status.value = String::from("Currently in queue.");
-                        println!("GOOOOD");
                     },
                     Err(err_msg) => {
                         status.code = StatusCode::SubmissionErr;
