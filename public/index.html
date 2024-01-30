@@ -9,11 +9,11 @@
         <form id="uploadForm">
             <input id="fileInput" type="file" name="fileupload" required>
 
-            <input type="number" name="age" required>
-            <input name="ethnicity" required>
-            <input name="gender" required>
-            <input name="height" required>
-            <input type="number" name="weight" required>
+            <input id="age" type="number" name="age" required>
+            <input id="ethnicity" name="ethnicity" required>
+            <input id="gender" name="gender" required>
+            <input id="height" name="height" required>
+            <input id="weight" type="number" name="weight" required>
             <button type="submit">Upload File</button>
         </form>
         
@@ -61,6 +61,11 @@
 
                 const formData = new FormData();
                 formData.append('fileupload', fileInput.files[0]);
+                formData.append('age', document.getElementById('age').value);
+                formData.append('ethnicity', document.getElementById('ethnicity').value);
+                formData.append('gender', document.getElementById('gender').value);
+                formData.append('height', document.getElementById('height').value);
+                formData.append('weight', document.getElementById('weight').value);
 
                 fetch('/api/v1/upload', { method: 'POST', body: formData })
                     .then(response => response.json())

@@ -10,7 +10,7 @@ use std::time::SystemTime;
 #[derive(Debug)]
 pub struct AppState {
     working: bool,
-    db: Database
+    pub db: Database
 }
 impl AppState {
     pub async fn new() -> Self {
@@ -23,7 +23,7 @@ impl AppState {
                 gender: 'm',
                 height: String::from("5'11"),
                 status: Status {
-                    code: String::from("hiya"),
+                    code: StatusCode::Submitting,
                     value: String::from(":3-"),
                 },
                 timestamp: SystemTime::now(),
