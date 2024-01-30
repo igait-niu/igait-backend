@@ -15,6 +15,7 @@ pub struct AppState {
 impl AppState {
     pub async fn new() -> Self {
         let db = Database::init().await;
+        /*
         db.new_job(
             String::from("fakeemaildeletelater@gmail.com"),
             Job {
@@ -29,7 +30,7 @@ impl AppState {
                 timestamp: SystemTime::now(),
                 weight: 135
             }
-        ).await;
+        ).await;*/
         Self {
             working: false,
             db,

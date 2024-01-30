@@ -41,6 +41,19 @@ impl Database {
                 .at("users")
         }
     }
+    pub async fn count_jobs (&self, email: String ) -> usize {
+        let encoded_email = digest(email.clone());
+        let user_handle = self._state.at(&encoded_email);
+
+        if let Ok(user) = user_handle.get::<User>().await {
+            let job_handle = user_handle.at("jobs");
+
+            if let Ok(jobs) = job_handle.get::<Vec<Job>>().await {
+                return jobs.len();
+            }
+        }
+        return 0;
+    }
     pub async fn new_job (&self, email: String, mut job: Job) {
         let encoded_email = digest(email.clone());
         let user_handle = self._state.at(&encoded_email);
@@ -56,8 +69,6 @@ impl Database {
                 email,
                 jobs
             }).await.expect("Failed to update!");
-
-            println!("{:?}", job_handle.get::<Vec<Job>>().await.unwrap());
         } else {
             println!("User doesn't exist, creating new user with email '{email}'...");
 
