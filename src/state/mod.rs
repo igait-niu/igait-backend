@@ -39,15 +39,45 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                 let job_id = file_name_chunks
                     .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
 
+                println!("Working User {}, Job {}", user_id, job_id);
+                s.lock().await
+                    .db
+                    .update_status(
+                        user_id.to_string(), 
+                        job_id.parse::<usize>().expect("File had invalid job ID!"), 
+                        Status { 
+                            code: StatusCode::Processing, 
+                            value: String::from("Please wait...")
+                        } )
+                    .await;
                 match inference::run_inference(format!("{user_id}_{job_id}")).await {
                     Ok(confidence) => {
-                        println!("{confidence}");
+                        println!("Completed with confidence {}", confidence);
+                        s.lock().await
+                            .db
+                            .update_status(
+                                user_id.to_string(), 
+                                job_id.parse::<usize>().expect("File had invalid job ID!"), 
+                                Status { 
+                                    code: StatusCode::Complete, 
+                                    value: confidence.to_string()
+                                } )
+                            .await;
                     },
                     Err(err_msg) => {
-                        println!("{err_msg}");
+                        println!("Failed with error '{err_msg}'");
+                        s.lock().await
+                            .db
+                            .update_status(
+                                user_id.to_string(), 
+                                job_id.parse::<usize>().expect("File had invalid job ID!"), 
+                                Status { 
+                                    code: StatusCode::InferenceErr, 
+                                    value: err_msg
+                                } )
+                            .await;
                     }
                 }
-                println!("Working User {}, Job {}", user_id, job_id);
             }
         } else {
             panic!("Failed to read from queue director! Please ensure 'data/queue' exists!");
