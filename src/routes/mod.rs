@@ -2,11 +2,16 @@ use tokio::fs::{ File };
 use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
 
+use std::borrow::BorrowMut;
+
 use sha256::digest;
 
-use axum::extract::{ 
-    State, Multipart, Path,
-    multipart::Field
+use axum::{
+    body::{ Bytes },
+    extract::{ 
+        State, Multipart, Path,
+        multipart::Field
+    }
 };
 
 use crate::state::{ AppState };
@@ -18,12 +23,9 @@ use crate::{
 
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) {
-    let email = "todointakeemail@gmail.com";
-    let email_digest = digest(email);
-    let job_id = app.lock().await
-        .db
-        .count_jobs(String::from(email)).await;
-
+    let mut job_id: Option<usize> = None;
+    let mut email: Option<String> = None;
+    let mut email_digest: Option<String> = None;
     let mut age: Option<i16> = None;
     let mut ethnicity: Option<String> = None;
     let mut gender: Option<char> = None;
@@ -34,6 +36,10 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         value: String::from("")
     };
 
+    let mut file_id: Option<String> = None;
+    let mut file_name: Option<String> = None;
+    let mut file_bytes: Result<Bytes, String> = Err(String::from("File download error!"));
+
     while let Some(field) = multipart
         .next_field().await
         .map_err(|_| {
@@ -42,18 +48,19 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     {
         match field.name().unwrap() {
             "fileupload" => {
-                let file_id = format!("{email_digest}_{job_id}");
-                match save_file( field, file_id ).await {
-                    Ok(code) => {
-                        status.code = code;
-                        status.value = String::from("Currently in queue.");
-                    },
-                    Err(err_msg) => {
-                        status.code = StatusCode::SubmissionErr;
-                        status.value = err_msg;
-                    }
-                }
+                file_name = field
+                    .file_name().and_then(|x| Some(String::from(x)));
+                file_bytes = field.bytes()
+                    .await
+                    .map_err(|_| {
+                        String::from("Could not unwrap bytes!")
+                    }).clone();
+
             },
+            "email" => {
+                email = Some(field.text().await.unwrap().to_string());
+                email_digest = Some(digest(email.clone().unwrap()));
+            }
             "age" => {
                 age = Some(field.text().await.unwrap().parse().unwrap());
             },
@@ -77,6 +84,31 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         }
     }
 
+    job_id = Some(app.lock().await
+        .db
+        .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await);
+    
+    file_id = Some(
+        format!("{}_{}",
+            email_digest.expect("Missing email in request!"), 
+            job_id.expect("Missing file in request!")
+        )
+    );
+    
+    match save_file( 
+        file_name.clone(),
+        file_bytes.clone(),
+        file_id.expect("Missing file in request!")).await {
+        Ok(code) => {
+            status.code = code;
+            status.value = String::from("Currently in queue.");
+        },
+        Err(err_msg) => {
+            status.code = StatusCode::SubmissionErr;
+            status.value = err_msg;
+        }
+    }
+
     let built_job = Job {
         age: age.unwrap(),
         ethnicity: ethnicity.unwrap(),
@@ -86,13 +118,13 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         status,
         timestamp: SystemTime::now(),
     };
+    
 
     app.lock().await
-        .db.new_job(String::from(email), built_job).await;
+        .db.new_job(email.unwrap(), built_job).await;
 }
-async fn save_file<'a> ( mut field: Field<'a>, file_id: String ) -> Result<StatusCode, String> {
-    let file_name = field
-        .file_name()
+async fn save_file<'a> ( _file_name: Option<String>, _file_bytes: Result<Bytes, String>, file_id: String ) -> Result<StatusCode, String> {
+    let file_name = _file_name
         .ok_or_else(|| {
             String::from("Must have associated file name in multipart!")
         })?;
@@ -105,13 +137,7 @@ async fn save_file<'a> ( mut field: Field<'a>, file_id: String ) -> Result<Statu
         return Err(String::from("Must be of filetype MP4!"));
     }
 
-    // Grab byte data
-    let data = field.bytes()
-        .await
-        .map_err(|_| {
-            String::from("Could not unwrap bytes!")
-        })?;
-
+    let data = _file_bytes?;
     // Build path ID and file handle
     let queue_file_path = format!("data/queue/{}.mp4", file_id);
     let mut queue_file_handle = File::create(queue_file_path)

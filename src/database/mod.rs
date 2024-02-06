@@ -78,7 +78,24 @@ impl Database {
             }).await.expect("Failed to update!");
         }
     }
-    pub fn update_status (&self, email: String, job_id: usize, status: StatusCode) {
-        todo!();
+    pub async fn update_status (&self, user_id: String, job_id: usize, status: Status) {
+        let user_handle = self._state.at(&user_id);
+
+        if let Ok(user) = user_handle.get::<User>().await {
+            let email = user.email;
+            let job_handle = user_handle.at("jobs");
+            let mut jobs = job_handle.get::<Vec<Job>>().await
+                .expect("Failed to get jobs!");
+                
+
+            jobs[job_id].status = status;
+            
+            user_handle.update(&User {
+                email,
+                jobs
+            }).await.expect("Failed to update!");
+        } else {
+            println!("User doesn't exist!");
+        }
     }
 }
