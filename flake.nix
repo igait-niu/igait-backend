@@ -18,12 +18,24 @@
         python = pkgs.python311.withPackages python-package-list;
       in
       {
+        packages = {
+          default = (pkgs.rustPlatform.buildRustPackage rec {
+            pname = "igait-backend";
+            version = "0.1.0";
+
+            src = ./.;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+          });
+        };
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ openssl pkg-config ];
+          nativeBuildInputs = with pkgs; [ openssl.dev pkg-config ];
           buildInputs = with pkgs; [ cargo rustc rustfmt rust-analyzer clippy python opencv ];
           shellHook = 
             ''
             '';
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
           RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
           OPENSSL_LIB_DIR = pkgs.openssl.out + "/lib";
         };
