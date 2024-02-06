@@ -1,11 +1,10 @@
 use crate::{ 
-    database::{ Database, Status, Job },
+    database::{ Database, Status },
     inference,
 
     request::{ StatusCode },
     Arc, Mutex
 };
-use std::time::SystemTime;
 use tokio::time::{ sleep, Duration };
 use tokio::fs::{ 
     read_dir,

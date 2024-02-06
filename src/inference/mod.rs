@@ -1,6 +1,5 @@
 use std::process::Command;
 use std::fs;
-use crate::request::StatusCode;
 
 pub async fn run_inference(file_id: String) -> Result<f32, String> {
     // Grab output from inference

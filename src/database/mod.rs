@@ -1,11 +1,9 @@
 use firebase_rs::*;
 use sha256::digest;
 use crate::{ 
-    request::{ Request, StatusCode },
+    request::{ StatusCode },
 };
 use serde::{ Serialize, Deserialize};
-use std::fs::{ OpenOptions, File };
-use std::io::{ Seek, Write, Read };
 use std::time::SystemTime;
 
 #[derive( Serialize, Deserialize, Debug )]
@@ -45,7 +43,7 @@ impl Database {
         let encoded_email = digest(email.clone());
         let user_handle = self._state.at(&encoded_email);
 
-        if let Ok(user) = user_handle.get::<User>().await {
+        if let Ok(_user) = user_handle.get::<User>().await {
             let job_handle = user_handle.at("jobs");
 
             if let Ok(jobs) = job_handle.get::<Vec<Job>>().await {
@@ -54,11 +52,11 @@ impl Database {
         }
         return 0;
     }
-    pub async fn new_job (&self, email: String, mut job: Job) {
+    pub async fn new_job (&self, email: String, job: Job) {
         let encoded_email = digest(email.clone());
         let user_handle = self._state.at(&encoded_email);
 
-        if let Ok(user) = user_handle.get::<User>().await {
+        if let Ok(_user) = user_handle.get::<User>().await {
             let job_handle = user_handle.at("jobs");
             let mut jobs = job_handle.get::<Vec<Job>>().await
                 .expect("Failed to get jobs!");

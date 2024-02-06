@@ -2,15 +2,12 @@ use tokio::fs::{ File };
 use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
 
-use std::borrow::BorrowMut;
-
 use sha256::digest;
 
 use axum::{
     body::{ Bytes },
     extract::{ 
-        State, Multipart, Path,
-        multipart::Field
+        State, Multipart
     }
 };
 
@@ -23,7 +20,6 @@ use crate::{
 
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) {
-    let mut job_id: Option<usize> = None;
     let mut email: Option<String> = None;
     let mut email_digest: Option<String> = None;
     let mut age: Option<i16> = None;
@@ -36,7 +32,6 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         value: String::from("")
     };
 
-    let mut file_id: Option<String> = None;
     let mut file_name: Option<String> = None;
     let mut file_bytes: Result<Bytes, String> = Err(String::from("File download error!"));
 
@@ -84,21 +79,21 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         }
     }
 
-    job_id = Some(app.lock().await
+    let job_id = app.lock().await
         .db
-        .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await);
+        .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await;
     
-    file_id = Some(
-        format!("{}_{}",
+    let file_id = format!("{}_{}",
             email_digest.expect("Missing email in request!"), 
-            job_id.expect("Missing file in request!")
-        )
-    );
+            job_id
+        );
     
     match save_file( 
-        file_name.clone(),
-        file_bytes.clone(),
-        file_id.expect("Missing file in request!")).await {
+            file_name.clone(),
+            file_bytes.clone(),
+            file_id
+        ).await
+    {
         Ok(code) => {
             status.code = code;
             status.value = String::from("Currently in queue.");
