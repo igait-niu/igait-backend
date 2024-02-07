@@ -1,0 +1,9 @@
+services:
+  r6econ-bot:
+    image: ghcr.io/hiibolt/igait-hiibolt:latest
+    volumes:
+      - 'data:/data'
+    environment:
+      - FOO='BAR'
+volumes:
+  data:
