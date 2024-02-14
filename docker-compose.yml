@@ -6,7 +6,11 @@ services:
     environment:
       - FOO='BAR'
   backend:
+<<<<<<< HEAD
     image: ghcr.io/igait-niu/igait-backend:latest
+=======
+    image: ghcr.io/hiibolt/igait-backend:latest
+>>>>>>> 0a5953d (Finalized compose file)
     ports:
       - "3000:3000"
     volumes:
@@ -19,7 +23,16 @@ services:
     ports:
       - "4173:4173"
     environment:
+      - FIREBASE_API_KEY='***REMOVED***'
+  frontend:
+    image: ghcr.io/michaelslice/igait-web:latest
+    ports:
+      - "5173:5173"
+    environment:
       - FOO='BAR'
 volumes:
   data:
+<<<<<<< HEAD
   ssh:
+=======
+>>>>>>> 0a5953d (Finalized compose file)
