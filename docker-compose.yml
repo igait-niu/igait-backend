@@ -1,8 +1,22 @@
 services:
-  r6econ-bot:
-    image: ghcr.io/hiibolt/igait-hiibolt:latest
+  socials-test:
+    image: ghcr.io/hiibolt/socials:latest
+    ports:
+      - "4000:4000"
+    environment:
+      - FOO='BAR'
+  backend:
+    image: ghcr.io/hiibolt/igait-backend:latest
+    ports:
+      - "3000:3000"
     volumes:
       - 'data:/data'
+    environment:
+      - FIREBASE_API_KEY='***REMOVED***'
+  frontend:
+    image: ghcr.io/michaelslice/igait-web:latest
+    ports:
+      - "5173:5173"
     environment:
       - FOO='BAR'
 volumes:
