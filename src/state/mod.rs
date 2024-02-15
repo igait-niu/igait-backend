@@ -9,15 +9,23 @@ use tokio::time::{ sleep, Duration };
 use tokio::fs::{ 
     read_dir,
 };
+use s3::Bucket;
+use s3::creds::Credentials;
 
 #[derive(Debug)]
 pub struct AppState {
-    pub db: Database
+    pub db: Database,
+    pub bucket: Bucket
 }
 impl AppState {
     pub async fn new() -> Self {
         Self {
-            db: Database::init().await
+            db: Database::init().await,
+            bucket: Bucket::new(
+                "igait-resources",
+                "us-east-2".parse().expect("Improper region!"),
+                Credentials::default().expect("Couldn't unpack credentials!"),
+            ).expect("Failed to initialize bucket!")
         }
     }
 }

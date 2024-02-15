@@ -89,6 +89,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         );
     
     match save_file( 
+            app.clone(),
             file_name.clone(),
             file_bytes.clone(),
             file_id
@@ -118,7 +119,12 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     app.lock().await
         .db.new_job(email.unwrap(), built_job).await;
 }
-async fn save_file<'a> ( _file_name: Option<String>, _file_bytes: Result<Bytes, String>, file_id: String ) -> Result<StatusCode, String> {
+async fn save_file<'a> (
+    app: Arc<Mutex<AppState>>,
+    _file_name: Option<String>,
+    _file_bytes: Result<Bytes, String>, 
+    file_id: String
+) -> Result<StatusCode, String> {
     let file_name = _file_name
         .ok_or_else(|| {
             String::from("Must have associated file name in multipart!")
@@ -147,19 +153,15 @@ async fn save_file<'a> ( _file_name: Option<String>, _file_bytes: Result<Bytes, 
         .await
         .map_err(|_| String::from("Unable to flush queue file!"))?;
 
-    // Build path ID and file handle
-    let resources_file_path = format!("data/resources/{}.mp4", file_id);
-    let mut resources_file_handle = File::create(resources_file_path)
+    let mut byte_vec: Vec<u8> = Vec::new();
+    byte_vec.write_all(&data).await
+        .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
+    app.lock()
         .await
-        .map_err(|_| String::from("Unable to open resource file!"))?;
-
-    // Write data
-    resources_file_handle.write_all(&data)
+        .bucket
+        .put_object(format!("{file_id}.mp4"), &byte_vec)
         .await
-        .map_err(|_| String::from("Unable to write resource file!"))?;
-    resources_file_handle.flush()
-        .await
-        .map_err(|_| String::from("Unable to flush resource file!"))?;
+        .expect("Failed to put file to S3!");
     
     Ok(StatusCode::Queue)
 }
