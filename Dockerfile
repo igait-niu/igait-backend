@@ -10,5 +10,6 @@ RUN ["cargo", "build"]
 FROM python:3.12-slim 
 COPY --from=build /target/debug/igait-backend /igait-backend
 RUN pip install opencv-python
+VOLUME /data
 CMD ["/igait-backend"]
 EXPOSE 3000
