@@ -1,6 +1,7 @@
 use crate::{ 
     database::{ Database, Status },
     inference,
+    print::*,
 
     request::{ StatusCode },
     Arc, Mutex
@@ -48,7 +49,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                 let job_id = dir_name_chunks
                     .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
 
-                println!("Working User {}, Job {}", user_id, job_id);
+                print_be(&format!("Working User {}, Job {}", user_id, job_id));
 
                 s.lock().await
                     .db
@@ -84,7 +85,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                     }
                 }
 
-                println!("File Extensions: [{:?} {:?}]", front_file_ext, side_file_ext);
+                print_be(&format!("File Extensions: [{:?} {:?}]", front_file_ext, side_file_ext));
 
                 match 
                     inference::run_inference(
@@ -94,7 +95,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                     ).await 
                 {
                     Ok(confidence) => {
-                        println!("Completed with confidence {}", confidence);
+                        print_be(&format!("Completed with confidence {confidence}"));
                         s.lock().await
                             .db
                             .update_status(
@@ -107,7 +108,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                             .await;
                     },
                     Err(err_msg) => {
-                        println!("Failed with error '{err_msg}'");
+                        print_be(&format!("Failed with error '{err_msg}'"));
                         s.lock().await
                             .db
                             .update_status(

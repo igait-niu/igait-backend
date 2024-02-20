@@ -2,6 +2,7 @@ use firebase_rs::*;
 use sha256::digest;
 use crate::{ 
     request::{ StatusCode },
+    print::*
 };
 use serde::{ Serialize, Deserialize};
 use std::time::SystemTime;
@@ -67,8 +68,9 @@ impl Database {
                 email,
                 jobs
             }).await.expect("Failed to update!");
+            print_db("Added new job!");
         } else {
-            println!("User doesn't exist, creating new user with email '{email}'...");
+            print_db(&format!("User doesn't exist, creating new user with email '{email}'..."));
 
             user_handle.update(&User {
                 email,
@@ -86,7 +88,7 @@ impl Database {
                 .expect("Failed to get jobs!");
 
             if let Some(job_ref) = jobs.get_mut(job_id) {
-                (*job_ref).status = status;
+                (*job_ref).status = status.clone();
             } else {
                 println!("----------\nWARNING! FILES OUT OF SYNC!\n\nIF YOU SEE THIS MESSAGE, NETWORKING IS MISCONFIGURED! THIS SHOULD BE ADDRESSED IMMEDIAETLY!\n----------");
             }
@@ -95,6 +97,8 @@ impl Database {
                 email,
                 jobs
             }).await.expect("Failed to update!");
+
+            print_db(&format!("Updated status successfully to {:?} with message {:?}!", status.code, status.value));
         } else {
             println!("User doesn't exist!");
         }

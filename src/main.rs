@@ -3,6 +3,7 @@ mod state;
 mod inference;
 mod request;
 mod routes;
+mod print;
 
 use axum::{
     routing::{ get, post },
