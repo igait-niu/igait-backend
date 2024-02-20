@@ -18,12 +18,15 @@ use tokio::fs::{
 use crate::state::{ AppState };
 use crate::request::{ StatusCode };
 use crate::database::{ Status, Job };
+use crate::print::*;
 use crate::{
     Arc, Mutex
 };
 
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) {
+    print_be("Recieved request!");
+
     let mut email: Option<String> = None;
     let mut email_digest: Option<String> = None;
     let mut age: Option<i16> = None;
@@ -132,7 +135,10 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     }
 
     app.lock().await
-        .db.update_status(email_digest.expect("No email digest, potentially unreachable error. Please contact the developer if you see this message."), job_id, status).await;
+        .db.update_status(
+            email_digest.expect("No email digest, potentially unreachable error. Please contact the developer if you see this message."),
+            job_id,
+            status).await;
 }
 async fn save_files<'a> (
     app: Arc<Mutex<AppState>>,
@@ -213,7 +219,7 @@ async fn save_files<'a> (
         .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
         .await
         .expect("Failed to put front file to S3!");
-    println!("Successfully uploaded front file to S3!");
+    print_s3("Successfully uploaded front file to S3!");
 
     app.lock()
         .await
@@ -221,7 +227,7 @@ async fn save_files<'a> (
         .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
         .await
         .expect("Failed to put side file to S3!");
-    println!("Successfully uploaded side file to S3!");
+    print_s3("Successfully uploaded side file to S3!");
     
     Ok(StatusCode::Queue)
 }
