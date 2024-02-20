@@ -32,47 +32,12 @@
             <br>
             <button type="submit">Upload File</button>
         </form>
-        
-        <br>
-        
-        <div>
-            <table id="idTable">
-                No tracked IDs.
-            </table>
-            <button id="refresh">Refresh</button>
-        </div>
 
         <script>
             const uploadForm = document.getElementById('uploadForm');
             const fileInputFront = document.getElementById('fileInputFront');
             const fileInputSide = document.getElementById('fileInputSide');
-            const refreshIDButton = document.getElementById('refresh');
-            const idTable = document.getElementById('idTable');
-            
-            let ids = [];
-            
-            async function updateTable() {
-                let final = "<tr><th>ID</th><th>Status</th><th>Result</th></tr>";
-                for (id of ids ) {
-                    let res = await fetch(`/api/v1/status/${id}`, { method: 'GET' });
-                    let data = await res.text();
-                    let parsed = JSON.parse(data);
 
-                    let value = parsed["value"] ? `<td>${parsed["value"]}` : "";
-                    final += `<tr><td>${id}</td><td>${parsed["type"]}</td>${value}</tr>`;
-                }
-                idTable.innerHTML = final;
-            }
-            async function refresh() {
-                while (true) {
-                    updateTable();
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-            }
-
-            refreshIDButton.addEventListener('click', (_) => {
-                updateTable();
-            })
             uploadForm.addEventListener('submit', function (e) {
                 e.preventDefault();
 
@@ -86,7 +51,7 @@
                 formData.append('weight', document.getElementById('weight').value);
                 formData.append('email', document.getElementById('email').value);
 
-                fetch('/api/v1/upload', { method: 'POST', body: formData })
+                fetch('https://api.hiibolt.com/api/v1/upload', { method: 'POST', body: formData })
                     .then(response => response.json())
                     .then(data => {
                         ids.push(data);
@@ -96,8 +61,6 @@
                     console.error('Error uploading file:', error);
                 });
             });
-
-            refresh();
         </script>
     </body>
 </html>
