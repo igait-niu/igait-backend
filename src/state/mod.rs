@@ -84,7 +84,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                     }
                 }
 
-                println!("[{:?} {:?}]", front_file_ext, side_file_ext);
+                println!("File Extensions: [{:?} {:?}]", front_file_ext, side_file_ext);
 
                 match 
                     inference::run_inference(
