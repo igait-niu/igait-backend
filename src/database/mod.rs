@@ -84,9 +84,12 @@ impl Database {
             let job_handle = user_handle.at("jobs");
             let mut jobs = job_handle.get::<Vec<Job>>().await
                 .expect("Failed to get jobs!");
-                
 
-            jobs[job_id].status = status;
+            if let Some(job_ref) = jobs.get_mut(job_id) {
+                (*job_ref).status = status;
+            } else {
+                println!("----------\nWARNING! FILES OUT OF SYNC!\n\nIF YOU SEE THIS MESSAGE, NETWORKING IS MISCONFIGURED! THIS SHOULD BE ADDRESSED IMMEDIAETLY!\n----------");
+            }
             
             user_handle.update(&User {
                 email,

@@ -98,18 +98,14 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         .db
         .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await;
     
-    let file_id = format!("{}_{}",
-            email_digest.expect("Missing email in request!"), 
-            job_id
-        );
-    
     match save_files( 
             app.clone(),
             front_file_name.clone(),
             front_file_bytes.clone(),
             side_file_name.clone(),
             side_file_bytes.clone(),
-            file_id
+            email_digest.expect("Missing email in request!"), 
+            job_id.to_string()
         ).await
     {
         Ok(code) => {
@@ -142,7 +138,8 @@ async fn save_files<'a> (
     _front_file_bytes: Result<Bytes, String>, 
     _side_file_name: Option<String>,
     _side_file_bytes: Result<Bytes, String>, 
-    file_id: String
+    user_id: String,
+    job_id: String
 ) -> Result<StatusCode, String> {
     // Unwrap the file names
     let front_file_name = _front_file_name
@@ -171,7 +168,7 @@ async fn save_files<'a> (
     let side_data = _side_file_bytes?;
 
     // Ensure a directory exists for this file ID
-    let dir_path = format!("data/queue/{}", file_id);
+    let dir_path = format!("data/queue/{}_{}", user_id, job_id);
     if read_dir(&dir_path).await.is_err() {
         create_dir(&dir_path).await
             .map_err(|_| String::from("Unable to create directory for queue file!"))?;
@@ -208,13 +205,21 @@ async fn save_files<'a> (
     side_byte_vec.write_all(&side_data).await
         .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
 
-    /*
     app.lock()
         .await
         .bucket
-        .put_object(format!("{file_id}.mp4"), &byte_vec)
+        .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
         .await
-        .expect("Failed to put file to S3!");*/
+        .expect("Failed to put front file to S3!");
+    println!("Successfully uploaded front file to S3!");
+
+    app.lock()
+        .await
+        .bucket
+        .put_object(format!("{}/{}/front.{}", user_id, job_id, side_extension), &side_byte_vec)
+        .await
+        .expect("Failed to put side file to S3!");
+    println!("Successfully uploaded side file to S3!");
     
     Ok(StatusCode::Queue)
 }
