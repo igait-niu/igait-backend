@@ -34,19 +34,22 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
     loop {
         if let Ok(mut dir) = read_dir("data/queue").await {
             while let Ok(Some(entry)) = dir.next_entry().await {
-                let file_name = entry.file_name()
+                // Read dir name to prepare to extract data
+                let dir_name = entry.file_name()
                     .into_string().expect("Path is invalid Unicode!");
-                let mut file_name_chunks = file_name
+                let mut dir_name_chunks = dir_name
                     .split(".")
                     .next().expect("Malformed file name!")
                     .split("_");
 
-                let user_id = file_name_chunks
+                // Extract data from dir name
+                let user_id = dir_name_chunks
                     .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
-                let job_id = file_name_chunks
+                let job_id = dir_name_chunks
                     .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
 
                 println!("Working User {}, Job {}", user_id, job_id);
+
                 s.lock().await
                     .db
                     .update_status(
@@ -57,7 +60,39 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                             value: String::from("Please wait...")
                         } )
                     .await;
-                match inference::run_inference(format!("{user_id}_{job_id}")).await {
+                
+                let mut front_file_ext: Option<String> = None;
+                let mut side_file_ext: Option<String> = None;
+
+                // Try to grab the front and side file extensions
+                if let Ok(mut job_dir) = read_dir(format!("data/queue/{}", dir_name)).await {
+                    while let Ok(Some(entry)) = job_dir.next_entry().await {
+                        let file_name = entry.file_name()
+                            .into_string().expect("Path is invalid Unicode!");
+                        let mut file_name_chunks = file_name
+                            .split(".");
+                        
+                        match
+                            file_name_chunks
+                                .next()
+                                .expect("Must have file name!")
+                        {
+                            "front" => { front_file_ext = Some(file_name_chunks.next().expect("Must have extension!").to_string()); },
+                            "side" => { side_file_ext = Some(file_name_chunks.next().expect("Must have extension!").to_string()); },
+                            _ => { println!("Warning - unusual file presence '{}'", file_name); }
+                        }
+                    }
+                }
+
+                println!("[{:?} {:?}]", front_file_ext, side_file_ext);
+
+                match 
+                    inference::run_inference(
+                        format!("{user_id}_{job_id}"),
+                        front_file_ext.expect("Must have a front file!"),
+                        side_file_ext.expect("Must have a side file!")
+                    ).await 
+                {
                     Ok(confidence) => {
                         println!("Completed with confidence {}", confidence);
                         s.lock().await

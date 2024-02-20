@@ -4,13 +4,17 @@ import sys
 from os.path import exists, dirname, realpath
 
 def main():
-    id = sys.argv[1]
+    front_path = sys.argv[1]
+    side_path = sys.argv[2]
 
-    if not exists(f"{dirname(realpath(__file__))}/queue/{id}.mp4"):
-        print(f"File {dirname(realpath(__file__))}/queue/{id}.mp4 does not exist!")
+    if not exists(f"{dirname(realpath(__file__))}/queue/{front_path}"):
+        print(f"File {dirname(realpath(__file__))}/queue/{front_path} does not exist!")
+        return
+    if not exists(f"{dirname(realpath(__file__))}/queue/{side_path}"):
+        print(f"File {dirname(realpath(__file__))}/queue/{side_path} does not exist!")
         return
 
-    confidence: float = random() + float(id.split('_')[1])
+    confidence: float = random()
 
     sleep(1)
 
