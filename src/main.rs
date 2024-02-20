@@ -5,6 +5,7 @@ mod request;
 mod routes;
 mod print;
 
+use crate::print::*;
 use axum::{
     routing::{ get, post },
     response::{ Html },
@@ -38,6 +39,8 @@ async fn main() {
 
     // Start the queue worker
     tokio::spawn(state::work_queue(state));
+
+    print_be("Started iGait Backend on 3000!");
 
     // Serve the API
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
