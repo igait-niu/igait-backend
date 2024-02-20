@@ -216,7 +216,7 @@ async fn save_files<'a> (
     app.lock()
         .await
         .bucket
-        .put_object(format!("{}/{}/front.{}", user_id, job_id, side_extension), &side_byte_vec)
+        .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
         .await
         .expect("Failed to put side file to S3!");
     println!("Successfully uploaded side file to S3!");
