@@ -7,7 +7,10 @@
     </head>
     <body>
         <form id="uploadForm">
-            <input id="fileInput" type="file" name="fileupload" required>
+            <p>Input the front-facing video here:</p>
+            <input id="fileInputFront" type="file" name="fileupload" required>
+            <p>Input the side facing video here:</p>
+            <input id="fileInputSide" type="file" name="fileupload" required>
             <br>
             Email:
             <input id="email" type="text" name="email" required>
@@ -41,7 +44,8 @@
 
         <script>
             const uploadForm = document.getElementById('uploadForm');
-            const fileInput = document.getElementById('fileInput');
+            const fileInputFront = document.getElementById('fileInputFront');
+            const fileInputSide = document.getElementById('fileInputSide');
             const refreshIDButton = document.getElementById('refresh');
             const idTable = document.getElementById('idTable');
             
@@ -73,7 +77,8 @@
                 e.preventDefault();
 
                 const formData = new FormData();
-                formData.append('fileupload', fileInput.files[0]);
+                formData.append('fileuploadfront', fileInputFront.files[0]);
+                formData.append('fileuploadside', fileInputSide.files[0]);
                 formData.append('age', document.getElementById('age').value);
                 formData.append('ethnicity', document.getElementById('ethnicity').value);
                 formData.append('gender', document.getElementById('gender').value);
