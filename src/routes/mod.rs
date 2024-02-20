@@ -97,14 +97,27 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     let job_id = app.lock().await
         .db
         .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await;
+
+    let built_job = Job {
+        age: age.unwrap(),
+        ethnicity: ethnicity.unwrap(),
+        gender: gender.unwrap(),
+        height: height.unwrap(),
+        weight: weight.unwrap(),
+        status: status.clone(),
+        timestamp: SystemTime::now(),
+    };
     
+    app.lock().await
+        .db.new_job(email.clone().unwrap(), built_job).await;
+
     match save_files( 
             app.clone(),
             front_file_name.clone(),
             front_file_bytes.clone(),
             side_file_name.clone(),
             side_file_bytes.clone(),
-            email_digest.expect("Missing email in request!"), 
+            email_digest.clone().expect("Missing email in request!"), 
             job_id.to_string()
         ).await
     {
@@ -118,19 +131,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         }
     }
 
-    let built_job = Job {
-        age: age.unwrap(),
-        ethnicity: ethnicity.unwrap(),
-        gender: gender.unwrap(),
-        height: height.unwrap(),
-        weight: weight.unwrap(),
-        status,
-        timestamp: SystemTime::now(),
-    };
-    
-
     app.lock().await
-        .db.new_job(email.unwrap(), built_job).await;
+        .db.update_status(email_digest.expect("No email digest, potentially unreachable error. Please contact the developer if you see this message."), job_id, status).await;
 }
 async fn save_files<'a> (
     app: Arc<Mutex<AppState>>,
