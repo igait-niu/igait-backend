@@ -6,11 +6,11 @@
 		<link href="public/style.css" rel="stylesheet" type="text/css" />
     </head>
     <body>
-        <form id="uploadForm">
+        <form action="https://api.hiibolt.com/api/v1/upload" method="post" enctype="multipart/form-data">
             <p>Input the front-facing video here:</p>
-            <input id="fileInputFront" type="file" name="fileupload" required>
+            <input id="fileInputFront" type="file" name="fileuploadfront" required>
             <p>Input the side facing video here:</p>
-            <input id="fileInputSide" type="file" name="fileupload" required>
+            <input id="fileInputSide" type="file" name="fileuploadside" required>
             <br>
             Email:
             <input id="email" type="text" name="email" required>
@@ -33,6 +33,7 @@
             <button type="submit">Upload File</button>
         </form>
 
+        <!--
         <script>
             const uploadForm = document.getElementById('uploadForm');
             const fileInputFront = document.getElementById('fileInputFront');
@@ -51,16 +52,21 @@
                 formData.append('weight', document.getElementById('weight').value);
                 formData.append('email', document.getElementById('email').value);
 
-                fetch('https://api.hiibolt.com/api/v1/upload', { method: 'POST', body: formData })
-                    .then(response => response.json())
-                    .then(data => {
-                        ids.push(data);
-                        updateTable();
+                fetch('https://api.hiibolt.com/api/v1/upload', 
+                    { 
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'multipart/form-data'
+                        },
+                        method: 'POST', 
+                        body: formData 
                     })
                 .catch(error => {
                     console.error('Error uploading file:', error);
                 });
+
+                console.log("Sent.");
             });
-        </script>
+        </script>-->
     </body>
 </html>
