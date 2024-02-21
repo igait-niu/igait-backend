@@ -51,6 +51,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             String::from("Malformed multipart request")
         }).unwrap()
     {
+        print_be(&format!("Field Incoming: {:?} - File Attached: {:?}", field.name(), field.file_name()));
         match field.name().unwrap() {
             "fileuploadfront" => {
                 front_file_name = field
