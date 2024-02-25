@@ -16,7 +16,7 @@ pub struct User {
 pub struct Job {
     pub age: i16,
     pub ethnicity: String,
-    pub gender: char,
+    pub sex: char,
     pub height: String,
     pub status: Status,
     pub timestamp: SystemTime,
