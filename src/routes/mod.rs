@@ -31,7 +31,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     let mut email_digest: Option<String> = None;
     let mut age: Option<i16> = None;
     let mut ethnicity: Option<String> = None;
-    let mut gender: Option<char> = None;
+    let mut sex: Option<char> = None;
     let mut height: Option<String> = None;
     let mut weight: Option<i16> = None;
     let mut status = Status {
@@ -76,13 +76,13 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
                 email_digest = Some(digest(email.clone().unwrap()));
             }
             "age" => {
-                age = Some(field.text().await.unwrap().parse().unwrap());
+                age = Some(field.text().await.unwrap().parse().unwrap_or(0));
             },
             "ethnicity" => {
                 ethnicity = Some(field.text().await.unwrap());
             },
-            "gender" => {
-                gender = Some(field.text().await.unwrap()
+            "sex" => {
+                sex = Some(field.text().await.unwrap()
                     .chars()
                     .nth(0).unwrap());
             },
@@ -91,7 +91,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             },
             "weight" => {
                 weight = Some(field.text().await.unwrap()
-                    .parse().unwrap());
+                    .parse().unwrap_or(0));
             },
             _ => {}
 
@@ -105,7 +105,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     let built_job = Job {
         age: age.unwrap(),
         ethnicity: ethnicity.unwrap(),
-        gender: gender.unwrap(),
+        sex: sex.unwrap(),
         height: height.unwrap(),
         weight: weight.unwrap(),
         status: status.clone(),
