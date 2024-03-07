@@ -23,7 +23,7 @@ impl AppState {
         Self {
             db: Database::init().await,
             bucket: Bucket::new(
-                "igait-resources",
+                "igait-storage",
                 "us-east-2".parse().expect("Improper region!"),
                 Credentials::default().expect("Couldn't unpack credentials!"),
             ).expect("Failed to initialize bucket!")
