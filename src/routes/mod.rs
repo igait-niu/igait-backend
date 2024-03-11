@@ -2,8 +2,6 @@ use tokio::fs::{ File };
 use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
 
-use sha256::digest;
-
 use axum::{
     body::{ Bytes },
     extract::{ 
@@ -27,8 +25,7 @@ use crate::{
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) {
     print_be("Recieved request!");
 
-    let mut email: Option<String> = None;
-    let mut email_digest: Option<String> = None;
+    let mut uid: Option<String> = None;
     let mut age: Option<i16> = None;
     let mut ethnicity: Option<String> = None;
     let mut sex: Option<char> = None;
@@ -70,10 +67,9 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
                     .map_err(|_| {
                         String::from("Could not unwrap bytes!")
                     }).clone();
-            }
-            "email" => {
-                email = Some(field.text().await.unwrap().to_string());
-                email_digest = Some(digest(email.clone().unwrap()));
+            },
+            "uid" => {
+                uid = Some(field.text().await.unwrap().to_string());
             }
             "age" => {
                 age = Some(field.text().await.unwrap().parse().unwrap_or(0));
@@ -100,7 +96,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
 
     let job_id = app.lock().await
         .db
-        .count_jobs(String::from(email.clone().expect("Missing email in request!"))).await;
+        .count_jobs(String::from(uid.clone().expect("Missing UID in request!"))).await;
 
     let built_job = Job {
         age: age.unwrap(),
@@ -113,7 +109,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     };
     
     app.lock().await
-        .db.new_job(email.clone().unwrap(), built_job).await;
+        .db.new_job(uid.clone().unwrap(), built_job).await;
 
     match save_files( 
             app.clone(),
@@ -121,7 +117,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             front_file_bytes.clone(),
             side_file_name.clone(),
             side_file_bytes.clone(),
-            email_digest.clone().expect("Missing email in request!"), 
+            uid.clone().unwrap(), 
             job_id.to_string()
         ).await
     {
@@ -137,7 +133,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
 
     app.lock().await
         .db.update_status(
-            email_digest.expect("No email digest, potentially unreachable error. Please contact the developer if you see this message."),
+            uid.unwrap(),
             job_id,
             status).await;
 }

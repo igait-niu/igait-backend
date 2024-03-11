@@ -6,7 +6,7 @@
 		<link href="public/style.css" rel="stylesheet" type="text/css" />
     </head>
     <body>
-        <form action="https://api.hiibolt.com/api/v1/upload" method="post" enctype="multipart/form-data">
+        <form action="api/v1/upload" method="post" enctype="multipart/form-data">
             <p>Input the front-facing video here:</p>
             <input id="fileInputFront" type="file" name="fileuploadfront" required>
             <p>Input the side facing video here:</p>
@@ -30,6 +30,7 @@
             Weight:
             <input id="weight" type="number" name="weight" required>
             <br>
+            <input id="uid" type="text" name="uid" required>
             <button type="submit">Upload File</button>
         </form>
 

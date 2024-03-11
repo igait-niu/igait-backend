@@ -1,5 +1,4 @@
 use firebase_rs::*;
-use sha256::digest;
 use crate::{ 
     request::{ StatusCode },
     print::*
@@ -9,7 +8,7 @@ use std::time::SystemTime;
 
 #[derive( Serialize, Deserialize, Debug )]
 pub struct User {
-    pub email: String,
+    pub uid: String,
     pub jobs: Vec<Job>
 }
 #[derive( Serialize, Deserialize, Clone, Debug )]
@@ -40,9 +39,8 @@ impl Database {
                 .at("users")
         }
     }
-    pub async fn count_jobs (&self, email: String ) -> usize {
-        let encoded_email = digest(email.clone());
-        let user_handle = self._state.at(&encoded_email);
+    pub async fn count_jobs (&self, uid: String ) -> usize {
+        let user_handle = self._state.at(&uid);
 
         if let Ok(_user) = user_handle.get::<User>().await {
             let job_handle = user_handle.at("jobs");
@@ -53,9 +51,8 @@ impl Database {
         }
         return 0;
     }
-    pub async fn new_job (&self, email: String, job: Job) {
-        let encoded_email = digest(email.clone());
-        let user_handle = self._state.at(&encoded_email);
+    pub async fn new_job (&self, uid: String, job: Job) {
+        let user_handle = self._state.at(&uid);
 
         if let Ok(_user) = user_handle.get::<User>().await {
             let job_handle = user_handle.at("jobs");
@@ -65,24 +62,23 @@ impl Database {
             jobs.push(job);
             
             user_handle.update(&User {
-                email,
+                uid,
                 jobs
             }).await.expect("Failed to update!");
             print_db("Added new job!");
         } else {
-            print_db(&format!("User doesn't exist, creating new user with email '{email}'..."));
+            print_db(&format!("User doesn't exist, creating new user with UID '{uid}'..."));
 
             user_handle.update(&User {
-                email,
+                uid,
                 jobs: vec!(job)
             }).await.expect("Failed to update!");
         }
     }
-    pub async fn update_status (&self, user_id: String, job_id: usize, status: Status) {
-        let user_handle = self._state.at(&user_id);
+    pub async fn update_status (&self, uid: String, job_id: usize, status: Status) {
+        let user_handle = self._state.at(&uid);
 
-        if let Ok(user) = user_handle.get::<User>().await {
-            let email = user.email;
+        if let Ok(_user) = user_handle.get::<User>().await {
             let job_handle = user_handle.at("jobs");
             let mut jobs = job_handle.get::<Vec<Job>>().await
                 .expect("Failed to get jobs!");
@@ -94,7 +90,7 @@ impl Database {
             }
             
             user_handle.update(&User {
-                email,
+                uid,
                 jobs
             }).await.expect("Failed to update!");
 
