@@ -6,7 +6,8 @@ use axum::{
     body::{ Bytes },
     extract::{ 
         State, Multipart
-    }
+    },
+    response::{ IntoResponse }
 };
 use tokio::fs::{
     create_dir,
@@ -22,7 +23,7 @@ use crate::{
 };
 
 /* Primary Routes */
-pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) {
+pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> impl IntoResponse {
     print_be("Recieved request!");
 
     let mut uid: Option<String> = None;
@@ -136,6 +137,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             uid.unwrap(),
             job_id,
             status).await;
+
+    (axum::http::StatusCode::OK, String::from("Success"))
 }
 async fn save_files<'a> (
     app: Arc<Mutex<AppState>>,
