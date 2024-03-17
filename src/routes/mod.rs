@@ -6,8 +6,7 @@ use axum::{
     body::{ Bytes },
     extract::{ 
         State, Multipart
-    },
-    response::{ IntoResponse }
+    }
 };
 use tokio::fs::{
     create_dir,
@@ -23,7 +22,7 @@ use crate::{
 };
 
 /* Primary Routes */
-pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> impl IntoResponse {
+pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
     print_be("Recieved request!");
 
     let mut uid: Option<String> = None;
@@ -46,71 +45,121 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     while let Some(field) = multipart
         .next_field().await
         .map_err(|_| {
-            String::from("Malformed multipart request")
-        }).unwrap()
+            String::from("Malformed multipart request!\nThere's a few reasons why this could happen, but it's probably the length of the file.\nhttps://docs.rs/axum/latest/axum/extract/multipart/struct.MultipartError.html")
+        })?
     {
         print_be(&format!("Field Incoming: {:?} - File Attached: {:?}", field.name(), field.file_name()));
-        match field.name().unwrap() {
-            "fileuploadfront" => {
+        match field.name() {
+            Some("fileuploadfront") => {
                 front_file_name = field
                     .file_name().and_then(|x| Some(String::from(x)));
                 front_file_bytes = field.bytes()
                     .await
                     .map_err(|_| {
-                        String::from("Could not unwrap bytes!")
-                    }).clone();
+                        String::from("Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?")
+                    });
             },
-            "fileuploadside" => {
+            Some("fileuploadside") => {
                 side_file_name = field
                     .file_name().and_then(|x| Some(String::from(x)));
                 side_file_bytes = field.bytes()
                     .await
                     .map_err(|_| {
-                        String::from("Could not unwrap bytes!")
-                    }).clone();
+                        String::from("Could not unpack bytes from field 'fileuploadside'! Was there no file attached?")
+                    });
             },
-            "uid" => {
-                uid = Some(field.text().await.unwrap().to_string());
+            Some("uid") => {
+                uid = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'uid' wasn't readable as text!")
+                            })?
+                            .to_string()
+                    );
             }
-            "age" => {
-                age = Some(field.text().await.unwrap().parse().unwrap_or(0));
+            Some("age") => {
+                age = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'age' wasn't readable as text!")
+                            })?
+                            .parse()
+                            .map_err(|_| {
+                                String::from("Field 'age' wasn't parseable as a number! Was the entry only digits?")
+                            })?
+                    );
             },
-            "ethnicity" => {
-                ethnicity = Some(field.text().await.unwrap());
+            Some("ethnicity") => {
+                ethnicity = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'ethnicity' wasn't readable as text!")
+                            })?
+                    );
             },
-            "sex" => {
-                sex = Some(field.text().await.unwrap()
-                    .chars()
-                    .nth(0).unwrap());
+            Some("sex") => {
+                sex = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'sex' wasn't readable as text!")
+                            })?
+                            .chars()
+                            .nth(0)
+                            .ok_or(String::from("Field 'sex' didn't have a vaild entry! Was it empty?"))?
+                    );
             },
-            "height" => {
-                height = Some(field.text().await.unwrap());
+            Some("height") => {
+                height = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'height' wasn't readable as text!")
+                            })?
+                    );
             },
-            "weight" => {
-                weight = Some(field.text().await.unwrap()
-                    .parse().unwrap_or(0));
+            Some("weight") => {
+                weight = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'weight' wasn't readable as text!")
+                            })?
+                            .parse()
+                            .map_err(|_| {
+                                String::from("Field 'weight' wasn't parseable as a number! Was the entry only digits?")
+                            })?
+                    );
             },
-            _ => {}
-
+            _ => {
+                print_be("Which had an unknown/no field name...");
+            }
         }
     }
 
     let job_id = app.lock().await
         .db
-        .count_jobs(String::from(uid.clone().expect("Missing UID in request!"))).await;
+        .count_jobs(
+            String::from(uid.clone().ok_or("Missing 'uid' in request!")?)
+        ).await;
 
     let built_job = Job {
-        age: age.unwrap(),
-        ethnicity: ethnicity.unwrap(),
-        sex: sex.unwrap(),
-        height: height.unwrap(),
-        weight: weight.unwrap(),
-        status: status.clone(),
-        timestamp: SystemTime::now(),
+        age:        age.ok_or("Missing 'age' in request!")?,
+        ethnicity:  ethnicity.ok_or("Missing 'ethnicity' in request!")?,
+        sex:        sex.ok_or("Missing 'sex' in request!")?,
+        height:     height.ok_or("Missing 'height' in request!")?,
+        weight:     weight.ok_or("Missing 'weight' in request!")?,
+        status:     status.clone(),
+        timestamp:  SystemTime::now(),
     };
     
+    // I'm aware that this .ok_or is
+    // redundant and unreachable.
     app.lock().await
-        .db.new_job(uid.clone().unwrap(), built_job).await;
+        .db.new_job(uid.clone().ok_or("Missing 'uid' in request!")?, built_job).await;
 
     match save_files( 
             app.clone(),
@@ -118,7 +167,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             front_file_bytes.clone(),
             side_file_name.clone(),
             side_file_bytes.clone(),
-            uid.clone().unwrap(), 
+            uid.clone().ok_or("Missing 'uid' in request!")?, 
             job_id.to_string()
         ).await
     {
@@ -132,13 +181,15 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         }
     }
 
+    // I'm aware that this .ok_or is
+    // redundant and unreachable.
     app.lock().await
         .db.update_status(
-            uid.unwrap(),
+            uid.ok_or("Missing 'uid' in request!")?,
             job_id,
             status).await;
 
-    (axum::http::StatusCode::OK, String::from("Success"))
+    Ok(())
 }
 async fn save_files<'a> (
     app: Arc<Mutex<AppState>>,
@@ -149,7 +200,7 @@ async fn save_files<'a> (
     user_id: String,
     job_id: String
 ) -> Result<StatusCode, String> {
-    // Unwrap the file names
+    // Unpack the file names
     let front_file_name = _front_file_name
         .ok_or_else(|| {
             String::from("Must have associated file name in multipart!")
@@ -171,7 +222,7 @@ async fn save_files<'a> (
             String::from("Must have a file extension!")
         })?;
 
-    // Unwrap the data
+    // Unpack the data
     let front_data = _front_file_bytes?;
     let side_data = _side_file_bytes?;
 
@@ -213,21 +264,27 @@ async fn save_files<'a> (
     side_byte_vec.write_all(&side_data).await
         .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
 
-    app.lock()
-        .await
-        .bucket
-        .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
-        .await
-        .expect("Failed to put front file to S3!");
-    print_s3("Successfully uploaded front file to S3!");
+    match 
+        app.lock()
+            .await
+            .bucket
+            .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
+            .await 
+    {
+        Ok(_) => print_s3("Successfully uploaded front file to S3!"),
+        _ => print_s3("Failed to upload front file to S3! Continuing regardless.")
+    }
 
-    app.lock()
-        .await
-        .bucket
-        .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
-        .await
-        .expect("Failed to put side file to S3!");
-    print_s3("Successfully uploaded side file to S3!");
+    match
+        app.lock()
+            .await
+            .bucket
+            .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
+            .await
+    {
+        Ok(_) => print_s3("Successfully uploaded front file to S3!"),
+        _ => print_s3("Failed to upload front file to S3! Continuing regardless.")
+    }
     
     Ok(StatusCode::Queue)
 }
