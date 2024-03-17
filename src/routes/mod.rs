@@ -45,7 +45,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     while let Some(field) = multipart
         .next_field().await
         .map_err(|_| {
-            String::from("Malformed multipart request!\nThere's a few reasons why this could happen, but it's probably the length of the file.\nhttps://docs.rs/axum/latest/axum/extract/multipart/struct.MultipartError.html")
+            String::from("Bad request! Is it possible you submitted a file over the size limit?")
         })?
     {
         print_be(&format!("Field Incoming: {:?} - File Attached: {:?}", field.name(), field.file_name()));
