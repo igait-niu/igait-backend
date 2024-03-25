@@ -36,9 +36,14 @@ async fn main() -> Result<()> {
 
     // Build the V1 API router
     let api_v1 = Router::new()
+<<<<<<< HEAD
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
         .route("/completion", post(crate::routes::completion::completion_entrypoint))
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
+=======
+        .route("/upload", post(routes::upload) )
+        .route("/completion", post(routes::completion))
+>>>>>>> bab1ecb (Implemented completion route)
         .with_state(state.clone());
 
     // Nest the API into the general app router
