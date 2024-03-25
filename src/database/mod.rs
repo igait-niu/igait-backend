@@ -34,7 +34,7 @@ pub struct Database {
 impl Database {
     pub async fn init () -> Self {
         Self {
-            _state: Firebase::auth("https://network-technology-project-default-rtdb.firebaseio.com/", "QGqgZ26VvBSjyLpvNtmrAn0zyaBwVOFFa2V7NCFr")
+            _state: Firebase::auth("https://network-technology-project-default-rtdb.firebaseio.com/", &std::env::var("FIREBASE_ACCESS_KEY").expect("MISSING FIREBASE_ACCESS_KEY!"))
                 .unwrap()
                 .at("users")
         }
@@ -89,6 +89,8 @@ impl Database {
                 println!("----------\nWARNING! FILES OUT OF SYNC!\n\nIF YOU SEE THIS MESSAGE, NETWORKING IS MISCONFIGURED! THIS SHOULD BE ADDRESSED IMMEDIAETLY!\n----------");
             }
             
+            print_db(&format!("Attempting to update to {:?} with message {:?}...", status.code, status.value));
+
             user_handle.update(&User {
                 uid,
                 jobs

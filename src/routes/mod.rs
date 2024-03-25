@@ -22,6 +22,133 @@ use crate::{
 };
 
 /* Primary Routes */
+pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
+    print_be("\nRecieved completion update!");
+
+    let mut uid: Option<String> = None;
+    let mut job_id: Option<usize> = None;
+    let mut status_code: Option<String> = None;
+    let mut status_content: Option<String> = None;
+    let mut igait_access_key: Option<String> = None;
+
+    while let Some(field) = multipart
+        .next_field().await
+        .map_err(|_| {
+            String::from("Bad request! Is it possible you submitted a file over the size limit?")
+        })?
+    {
+        print_be(&format!("Field Incoming: {:?}", field.name()));
+        match field.name() {
+            Some("uid") => {
+                uid = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'uid' wasn't readable as text!")
+                            })?
+                            .to_string()
+                    );
+            },
+            Some("job_id") => {
+                job_id = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'job_id' wasn't readable as text!")
+                            })?
+                            .to_string()
+                            .parse::<usize>()
+                            .map_err(|_| {
+                                String::from("Couldn't parse the incoming 'job_id' field!")
+                            })?
+                    );
+            },
+            Some("status_code") => {
+                status_code = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'status_code' wasn't readable as text!")
+                            })?
+                            .to_string()
+                    );
+            },
+            Some("status_content") => {
+                status_content = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'status_content' wasn't readable as text!")
+                            })?
+                            .to_string()
+                    );
+            },
+            Some("igait_access_key") => {
+                igait_access_key = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'igait_access_key' wasn't readable as text!")
+                            })?
+                            .to_string()
+                    );
+            },
+            _ => {
+                print_be("Which had an unknown/no field name...");
+            }
+        }
+    }
+
+    if 
+        igait_access_key
+            .clone()
+            .and_then(|key| {
+                if key != std::env::var("IGAIT_ACCESS_KEY").expect("MISSING IGAIT_ACCESS_KEY!") {
+                    return None;
+                }
+                Some(())
+            })
+            .is_none() 
+    {
+        print_be("BAD OR MISSING ACCESS KEY! POTENTIAL INTRUDER?");
+        
+        //todo!(); send me an email when this happens!!!!! major security problem 3:
+        return Err(String::from("Error reading IGAIT_ACCCESS_KEY!"));
+    }
+
+    let mut status = Status {
+        code: StatusCode::Submitting,
+        value: status_content.clone().ok_or("Missing 'status_content' in request!")?
+    };
+
+    match 
+        status_code.ok_or("Missing 'status_code' in request!")?.as_str()
+    {
+        "OK" => {
+            print_be("Job successful!");
+            status.code = StatusCode::Complete;
+        },
+        "ERR" => {
+            print_be(&format!("Job unsuccessful - status content: '{}'",status_content.expect("unreachable")));
+            status.code = StatusCode::InferenceErr;
+        },
+        _ => {
+            print_be("Invalid status code!");
+            Err("Invalid status code!")?
+        }
+    }
+
+    print_be("Competion request was well-formed, attempting to edit the user's job status...");
+
+    app.lock().await
+        .db.update_status(
+            uid.ok_or("Missing 'uid' in request!")?,
+            job_id.ok_or("Missing 'job_id' in request!")?,
+            status).await;
+
+    Ok(())
+}
+/* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
     print_be("Recieved request!");
 
