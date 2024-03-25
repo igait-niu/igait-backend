@@ -29,6 +29,7 @@ async fn main() {
     // Build the V1 API router
     let api_v1 = Router::new()
         .route("/upload", post(routes::upload) )
+        .route("/completion", post(routes::completion))
         .with_state(state.clone());
 
     // Nest the API into the general app router
