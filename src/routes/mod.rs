@@ -364,6 +364,11 @@ async fn save_files<'a> (
     let front_data = _front_file_bytes?;
     let side_data = _side_file_bytes?;
 
+    /*
+    -------
+    For now, the queue is no longer file based, and will instead be job/user based.
+
+    -------
     // Ensure a directory exists for this file ID
     let dir_path = format!("data/queue/{}_{}", user_id, job_id);
     if read_dir(&dir_path).await.is_err() {
@@ -394,6 +399,7 @@ async fn save_files<'a> (
     queue_side_file_handle.flush()
         .await
         .map_err(|_| String::from("Unable to flush queue file!"))?;
+    */
 
     let mut front_byte_vec: Vec<u8> = Vec::new();
     front_byte_vec.write_all(&front_data).await
