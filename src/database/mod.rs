@@ -102,4 +102,22 @@ impl Database {
             println!("User doesn't exist!");
         }
     }
+    pub async fn get_status (&self, uid: String, job_id: usize) -> Option<Status> {
+        let user_handle = self._state.at(&uid);
+
+        if let Ok(_user) = user_handle.get::<User>().await {
+            let job_handle = user_handle.at("jobs");
+            let mut jobs = job_handle.get::<Vec<Job>>().await
+                .expect("Failed to get jobs!");
+
+            if let Some(job_ref) = jobs.get_mut(job_id) {
+                return Some(job_ref.status.clone());
+            } else {
+                print_db("\t\tFAILED! Job ID does not exist.");
+            }
+        } else {
+            print_db("User doesn't exist!");
+        }
+        None
+    }
 }

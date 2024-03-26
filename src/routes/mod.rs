@@ -297,7 +297,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     // I'm aware that this .ok_or is
     // redundant and unreachable.
     app.lock().await
-        .db.new_job(uid.clone().ok_or("Missing 'uid' in request!")?, built_job).await;
+        .db.new_job(uid.clone().ok_or("Missing 'uid' in request!")?, built_job.clone()).await;
 
     match save_files( 
             app.clone(),
@@ -306,7 +306,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             side_file_name.clone(),
             side_file_bytes.clone(),
             uid.clone().ok_or("Missing 'uid' in request!")?, 
-            job_id.to_string()
+            job_id.to_string(),
+            built_job
         ).await
     {
         Ok(code) => {
@@ -336,7 +337,8 @@ async fn save_files<'a> (
     _side_file_name: Option<String>,
     _side_file_bytes: Result<Bytes, String>, 
     user_id: String,
-    job_id: String
+    job_id: String,
+    job: Job
 ) -> Result<StatusCode, String> {
     // Unpack the file names
     let front_file_name = _front_file_name
@@ -363,12 +365,7 @@ async fn save_files<'a> (
     // Unpack the data
     let front_data = _front_file_bytes?;
     let side_data = _side_file_bytes?;
-
-    /*
-    -------
-    For now, the queue is no longer file based, and will instead be job/user based.
-
-    -------
+    
     // Ensure a directory exists for this file ID
     let dir_path = format!("data/queue/{}_{}", user_id, job_id);
     if read_dir(&dir_path).await.is_err() {
@@ -377,29 +374,21 @@ async fn save_files<'a> (
     }
 
     // Build path ID and file handle
-    let queue_front_file_path = format!("{}/front.{}", dir_path, front_extension);
-    let queue_side_file_path = format!("{}/side.{}", dir_path, side_extension);
-    let mut queue_front_file_handle = File::create(queue_front_file_path)
-        .await
-        .map_err(|_| String::from("Unable to open queue file!"))?;
-    let mut queue_side_file_handle = File::create(queue_side_file_path)
+    let queue_file_path = format!("{}/data.json", dir_path);
+    let mut queue_side_file_handle = File::create(queue_file_path)
         .await
         .map_err(|_| String::from("Unable to open queue file!"))?;
 
+    let job_data = serde_json::to_string(&job)
+        .map_err(|_| String::from("Unable to serialize data!"))?;
+
     // Write data
-    queue_front_file_handle.write_all(&front_data.clone())
-        .await
-        .map_err(|_| String::from("Unable to write queue file!"))?;
-    queue_front_file_handle.flush()
-        .await
-        .map_err(|_| String::from("Unable to flush queue file!"))?;
-    queue_side_file_handle.write_all(&side_data.clone())
+    queue_side_file_handle.write_all(job_data.as_bytes())
         .await
         .map_err(|_| String::from("Unable to write queue file!"))?;
     queue_side_file_handle.flush()
         .await
         .map_err(|_| String::from("Unable to flush queue file!"))?;
-    */
 
     let mut front_byte_vec: Vec<u8> = Vec::new();
     front_byte_vec.write_all(&front_data).await
