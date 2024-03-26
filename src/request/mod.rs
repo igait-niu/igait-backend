@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use openssh::{Session, KnownHosts};
+use crate::print::print_metis;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum StatusCode {
@@ -20,16 +21,17 @@ pub async fn query_metis (
     user_id: String, job_id: String ,
     aws_access_key_id: String, aws_secret_access_key: String, igait_access_key: String
 ) -> Result<(), String> {
+    println!("\n----- [ Querying METIS ] -----");
     let session = Session::connect_mux("z1994244@metis.niu.edu", KnownHosts::Strict).await
         .map_err(|_| String::from("Couldn't connect to METIS! Are your credentials correct?"))?;
-
+    print_metis("Connected!");
 
     let export_keys = session
         .command(".")
         .arg("/lstr/sahara/zwlab/jw/igait-ml-backend/keys.sh")
         .output().await
         .map_err(|_| String::from("Failed to run keys command!"))?;
-    println!("Keys output - {}", String::from_utf8(export_keys.stdout).expect("server output was not valid UTF-8"));
+    print_metis(&format!("Keys output - {}", String::from_utf8(export_keys.stdout).expect("server output was not valid UTF-8")));
 
     /*
         let ls = session
@@ -49,7 +51,7 @@ pub async fn query_metis (
         .status().await
         .map_err(|err| format!("Err: {err:?}"))?;
     
-    println!("{run_inference}");
+    print_metis(&format!("{run_inference}"));
     //println!("cd - {}", String::from_utf8(run_inference.stdout).expect("server output was not valid UTF-8"));
 
 

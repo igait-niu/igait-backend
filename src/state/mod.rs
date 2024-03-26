@@ -1,6 +1,5 @@
 use crate::{ 
     database::{ Database, Status },
-    inference,
     request::query_metis,
     print::*,
 
@@ -36,7 +35,7 @@ impl AppState {
     }
 }
 
-pub async fn work_queue(s: Arc<Mutex<AppState>>) {
+pub async fn work_queue(app: Arc<Mutex<AppState>>) {
     'main: loop {
         sleep(Duration::from_secs(5)).await;
 
@@ -56,9 +55,7 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                 let job_id = dir_name_chunks
                     .next().expect("Must have valid folder name in format '<id>_<job-id>'!");
 
-                print_be(&format!("Checking User {}, Job {}...", user_id, job_id));
-
-                let try_status = s.lock().await
+                let try_status = app.lock().await
                     .db
                     .get_status(
                         user_id.to_string(), 
@@ -68,20 +65,52 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                 match try_status {
                     Some(status) => {
                         match status.code {
-                            StatusCode::Processing => {
+                            StatusCode::Processing | StatusCode::Submitting => {
                                 continue 'main;
                             },
                             StatusCode::Queue => {
+                                println!("\n----- [ State Update ] -----");
                                 print_be("Top option not processing! Firing inference job request...");
-                                query_metis(
-                                    user_id.to_string(), job_id.to_string(),
-                                    std::env::var("AWS_ACCESS_KEY_ID").expect("MISSING AWS_ACCESS_KEY_ID!"),
-                                    std::env::var("AWS_SECRET_ACCESS_KEY").expect("MISSING AWS_SECREt_ACCESS_KEY!"),
-                                    std::env::var("IGAIT_ACCESS_KEY").expect("MISSING IGAIT_ACCESS_KEY!")
-                                ).await;
+                                
+                                
+                                app.lock().await
+                                    .db.update_status(
+                                        user_id.to_string(),
+                                        job_id.parse::<usize>().expect("File had invalid job ID!"),
+                                        Status {
+                                            code: StatusCode::Processing,
+                                            value: String::from("Querying METIS and awaiting response...")
+                                        }
+                                    ).await;
+                                
+                                if let Err(reason) = 
+                                    query_metis(
+                                        user_id.to_string(), job_id.to_string(),
+                                        std::env::var("AWS_ACCESS_KEY_ID").expect("MISSING AWS_ACCESS_KEY_ID!"),
+                                        std::env::var("AWS_SECRET_ACCESS_KEY").expect("MISSING AWS_SECREt_ACCESS_KEY!"),
+                                        std::env::var("IGAIT_ACCESS_KEY").expect("MISSING IGAIT_ACCESS_KEY!")
+                                    ).await
+                                {
+                                    app.lock().await
+                                    .db.update_status(
+                                        user_id.to_string(),
+                                        job_id.parse::<usize>().expect("File had invalid job ID!"),
+                                        Status {
+                                            code: StatusCode::InferenceErr,
+                                            value: format!("Couldn't query METIS for reason {reason}!")
+                                        }
+                                    ).await;
+                                }
                             },
                             _ => {
-                                println!("Unusual status code detected: {:?}", status.code);
+                                println!("\n----- [ State Update ] -----");
+                                print_be(&format!("Unusual status code detected, purging accordingly: {:?}", status.code));
+
+                                // Purge that directory
+                                if remove_dir_all(format!("data/queue/{}", dir_name)).await.is_err() {
+                                    println!("FAILED TO REMOVE 'data/queue/{}'!", dir_name);
+                                };
+
                                 continue 'main;
                             }
                         }
@@ -94,35 +123,6 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                             println!("FAILED TO REMOVE 'data/queue/{}'!", dir_name);
                         };
                     }
-                }
-                        
-                // Try to grab the front and side file extensions
-                if let Ok(mut job_dir) = read_dir(format!("data/queue/{}", dir_name)).await {
-                    while let Ok(Some(entry)) = job_dir.next_entry().await {
-                        let file_name = entry.file_name()
-                            .into_string().expect("Path is invalid Unicode!");
-                        
-                        if file_name != "data.json" {
-                            print_be(&format!("Warning - Unusual file presence in {user_id} - Job {job_id}"));
-                        }
-                    }
-                }
-
-                if let Err(reason) = 
-                    inference::run_inference(
-                        format!("{user_id}_{job_id}")
-                    ).await
-                { 
-                    s.lock().await
-                        .db
-                        .update_status(
-                            user_id.to_string(), 
-                            job_id.parse::<usize>().expect("File had invalid job ID!"), 
-                            Status { 
-                                code: StatusCode::InferenceErr, 
-                                value: reason
-                            } )
-                        .await;
                 }
             }
         } else {

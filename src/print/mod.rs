@@ -14,3 +14,8 @@ pub fn print_db ( input: &str ) {
 pub fn print_be ( input: &str ) {
     println!("{}", String::from(input).color("green") );
 }
+
+// Backend coloring
+pub fn print_metis ( input: &str ) {
+    println!("{}", String::from(input).color("yellow") );
+}

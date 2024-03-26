@@ -23,7 +23,7 @@ use crate::{
 
 /* Primary Routes */
 pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<String, String> {
-    print_be("\nRecieved completion update!");
+    println!("\n----- [ Recieved completion update ] -----");
 
     let mut uid: Option<String> = None;
     let mut job_id: Option<usize> = None;
@@ -150,7 +150,7 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
 }
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
-    print_be("Recieved request!");
+    println!("\n----- [ Recieved base request ] -----");
 
     let mut uid: Option<String> = None;
     let mut age: Option<i16> = None;
@@ -415,8 +415,8 @@ async fn save_files<'a> (
             .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
             .await
     {
-        Ok(_) => print_s3("Successfully uploaded front file to S3!"),
-        _ => print_s3("Failed to upload front file to S3! Continuing regardless.")
+        Ok(_) => print_s3("Successfully uploaded side file to S3!"),
+        _ => print_s3("Failed to upload front side to S3! Continuing regardless.")
     }
     
     Ok(StatusCode::Queue)
