@@ -6,9 +6,13 @@ use crate::{
     request::{ StatusCode },
     Arc, Mutex
 };
-use tokio::time::{ sleep, Duration };
+use tokio::time::{
+    sleep,
+    Duration
+};
 use tokio::fs::{ 
     read_dir,
+    remove_dir_all
 };
 use s3::Bucket;
 use s3::creds::Credentials;
@@ -32,7 +36,9 @@ impl AppState {
 }
 
 pub async fn work_queue(s: Arc<Mutex<AppState>>) {
-    loop {
+    'main: loop {
+        sleep(Duration::from_secs(5)).await;
+
         if let Ok(mut dir) = read_dir("data/queue").await {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 // Read dir name to prepare to extract data
@@ -45,11 +51,43 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
 
                 // Extract data from dir name
                 let user_id = dir_name_chunks
-                    .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
+                    .next().expect("Must have valid folder name in format '<id>_<job-id>'!");
                 let job_id = dir_name_chunks
-                    .next().expect("Must have valid file name in format '<id>_<job-id>.mp4'!");
+                    .next().expect("Must have valid folder name in format '<id>_<job-id>'!");
 
-                print_be(&format!("Working User {}, Job {}", user_id, job_id));
+                print_be(&format!("Checking User {}, Job {}...", user_id, job_id));
+
+                let try_status = s.lock().await
+                    .db
+                    .get_status(
+                        user_id.to_string(), 
+                        job_id.parse::<usize>().expect("File had invalid job ID!")
+                    ).await; 
+                    
+                match try_status {
+                    Some(status) => {
+                        match status.code {
+                            StatusCode::Processing => {
+                                continue 'main;
+                            },
+                            StatusCode::Queue => {
+                                print_be("Top option not processing! Firing inference job request...")
+                            },
+                            _ => {
+                                println!("Unusual status code detected: {:?}", status.code);
+                                continue 'main;
+                            }
+                        }
+                    },
+                    _ => {
+                        print_be("\t\tJob didn't exist - Purging files accordingly.");
+
+                        // Purge that directory
+                        if remove_dir_all(format!("data/queue/{}", dir_name)).await.is_err() {
+                            println!("FAILED TO REMOVE 'data/queue/{}'!", dir_name);
+                        };
+                    }
+                }
 
                 s.lock().await
                     .db
@@ -61,71 +99,38 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                             value: String::from("Please wait...")
                         } )
                     .await;
-                
-                let mut front_file_ext: Option<String> = None;
-                let mut side_file_ext: Option<String> = None;
-
+                        
                 // Try to grab the front and side file extensions
                 if let Ok(mut job_dir) = read_dir(format!("data/queue/{}", dir_name)).await {
                     while let Ok(Some(entry)) = job_dir.next_entry().await {
                         let file_name = entry.file_name()
                             .into_string().expect("Path is invalid Unicode!");
-                        let mut file_name_chunks = file_name
-                            .split(".");
                         
-                        match
-                            file_name_chunks
-                                .next()
-                                .expect("Must have file name!")
-                        {
-                            "front" => { front_file_ext = Some(file_name_chunks.next().expect("Must have extension!").to_string()); },
-                            "side" => { side_file_ext = Some(file_name_chunks.next().expect("Must have extension!").to_string()); },
-                            _ => { println!("Warning - unusual file presence '{}'", file_name); }
+                        if file_name != "data.json" {
+                            print_be(&format!("Warning - Unusual file presence in {user_id} - Job {job_id}"));
                         }
                     }
                 }
 
-                print_be(&format!("File Extensions: [{:?} {:?}]", front_file_ext, side_file_ext));
-
-                match 
+                if let Err(reason) = 
                     inference::run_inference(
-                        format!("{user_id}_{job_id}"),
-                        front_file_ext.expect("Must have a front file!"),
-                        side_file_ext.expect("Must have a side file!")
-                    ).await 
-                {
-                    Ok(confidence) => {
-                        print_be(&format!("Completed with confidence {confidence}"));
-                        s.lock().await
-                            .db
-                            .update_status(
-                                user_id.to_string(), 
-                                job_id.parse::<usize>().expect("File had invalid job ID!"), 
-                                Status { 
-                                    code: StatusCode::Complete, 
-                                    value: confidence.to_string()
-                                } )
-                            .await;
-                    },
-                    Err(err_msg) => {
-                        print_be(&format!("Failed with error '{err_msg}'"));
-                        s.lock().await
-                            .db
-                            .update_status(
-                                user_id.to_string(), 
-                                job_id.parse::<usize>().expect("File had invalid job ID!"), 
-                                Status { 
-                                    code: StatusCode::InferenceErr, 
-                                    value: err_msg
-                                } )
-                            .await;
-                    }
+                        format!("{user_id}_{job_id}")
+                    ).await
+                { 
+                    s.lock().await
+                        .db
+                        .update_status(
+                            user_id.to_string(), 
+                            job_id.parse::<usize>().expect("File had invalid job ID!"), 
+                            Status { 
+                                code: StatusCode::InferenceErr, 
+                                value: reason
+                            } )
+                        .await;
                 }
             }
         } else {
             panic!("Failed to read from queue director! Please ensure 'data/queue' exists!");
         }
-
-        sleep(Duration::from_secs(5)).await;
     }
 }
