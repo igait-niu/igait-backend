@@ -19,7 +19,8 @@ pub struct Job {
     pub height: String,
     pub status: Status,
     pub timestamp: SystemTime,
-    pub weight: i16
+    pub weight: i16,
+    pub email: String
 }
 #[derive( Serialize, Deserialize, Clone, Debug )]
 pub struct Status {
@@ -86,7 +87,7 @@ impl Database {
             if let Some(job_ref) = jobs.get_mut(job_id) {
                 (*job_ref).status = status.clone();
             } else {
-                println!("----------\nWARNING! FILES OUT OF SYNC!\n\nIF YOU SEE THIS MESSAGE, NETWORKING IS MISCONFIGURED! THIS SHOULD BE ADDRESSED IMMEDIAETLY!\n----------");
+                print_be("\t\tFAILED! Job ID does not exist.");
             }
             
             print_db(&format!("Attempting to update to {:?} with message {:?}...", status.code, status.value));
