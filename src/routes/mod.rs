@@ -158,6 +158,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     let mut sex: Option<char> = None;
     let mut height: Option<String> = None;
     let mut weight: Option<i16> = None;
+    let mut email: Option<String> = None;
     let mut status = Status {
         code: StatusCode::Submitting,
         value: String::from("")
@@ -227,6 +228,15 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
                             })?
                     );
             },
+            Some("email") => {
+                email = Some(
+                        field
+                            .text().await
+                            .map_err(|_| {
+                                String::from("Field 'email' wasn't readable as text!")
+                            })?
+                    );
+            },
             Some("sex") => {
                 sex = Some(
                         field
@@ -280,6 +290,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         height:     height.ok_or("Missing 'height' in request!")?,
         weight:     weight.ok_or("Missing 'weight' in request!")?,
         status:     status.clone(),
+        email:      email.ok_or("Missing 'email' in request!")?,
         timestamp:  SystemTime::now(),
     };
     
