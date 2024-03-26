@@ -1,6 +1,7 @@
 use crate::{ 
     database::{ Database, Status },
     inference,
+    request::query_metis,
     print::*,
 
     request::{ StatusCode },
@@ -71,7 +72,13 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                                 continue 'main;
                             },
                             StatusCode::Queue => {
-                                print_be("Top option not processing! Firing inference job request...")
+                                print_be("Top option not processing! Firing inference job request...");
+                                query_metis(
+                                    user_id.to_string(), job_id.to_string(),
+                                    std::env::var("AWS_ACCESS_KEY_ID").expect("MISSING AWS_ACCESS_KEY_ID!"),
+                                    std::env::var("AWS_SECRET_ACCESS_KEY").expect("MISSING AWS_SECREt_ACCESS_KEY!"),
+                                    std::env::var("IGAIT_ACCESS_KEY").expect("MISSING IGAIT_ACCESS_KEY!")
+                                ).await;
                             },
                             _ => {
                                 println!("Unusual status code detected: {:?}", status.code);
@@ -88,17 +95,6 @@ pub async fn work_queue(s: Arc<Mutex<AppState>>) {
                         };
                     }
                 }
-
-                s.lock().await
-                    .db
-                    .update_status(
-                        user_id.to_string(), 
-                        job_id.parse::<usize>().expect("File had invalid job ID!"), 
-                        Status { 
-                            code: StatusCode::Processing, 
-                            value: String::from("Please wait...")
-                        } )
-                    .await;
                         
                 // Try to grab the front and side file extensions
                 if let Ok(mut job_dir) = read_dir(format!("data/queue/{}", dir_name)).await {
