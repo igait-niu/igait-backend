@@ -22,7 +22,7 @@ use crate::{
 };
 
 /* Primary Routes */
-pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
+pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<String, String> {
     print_be("\nRecieved completion update!");
 
     let mut uid: Option<String> = None;
@@ -39,12 +39,12 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
     {
         print_be(&format!("Field Incoming: {:?}", field.name()));
         match field.name() {
-            Some("uid") => {
+            Some("user_id") => {
                 uid = Some(
                         field
                             .text().await
                             .map_err(|_| {
-                                String::from("Field 'uid' wasn't readable as text!")
+                                String::from("Field 'user_id' wasn't readable as text!")
                             })?
                             .to_string()
                     );
@@ -142,11 +142,11 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
 
     app.lock().await
         .db.update_status(
-            uid.ok_or("Missing 'uid' in request!")?,
+            uid.ok_or("Missing 'user_id' in request!")?,
             job_id.ok_or("Missing 'job_id' in request!")?,
             status).await;
 
-    Ok(())
+    Ok(String::from("OK"))
 }
 /* Primary Routes */
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
