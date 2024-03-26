@@ -1,6 +1,5 @@
 mod database;
 mod state;
-mod inference;
 mod request;
 mod routes;
 mod print;
