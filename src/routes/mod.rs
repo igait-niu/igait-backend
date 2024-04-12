@@ -397,6 +397,11 @@ async fn save_files<'a> (
     side_byte_vec.write_all(&side_data).await
         .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
 
+    let mut extension_data_vec: Vec<u8> = Vec::new();
+    let string_extension_data: String = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
+    extension_data_vec.write_all(string_extension_data.as_bytes()).await
+        .map_err(|_| String::from("Failed to build u8 vector String's Bytes!"))?;
+
     match 
         app.lock()
             .await
@@ -419,5 +424,17 @@ async fn save_files<'a> (
         _ => print_s3("Failed to upload front side to S3! Continuing regardless.")
     }
     
+    match
+        app.lock()
+            .await
+            .bucket
+            .put_object(format!("{}/{}/extensions.json", user_id, job_id), &extension_data_vec)
+            .await
+    {
+        Ok(_) => print_s3("Successfully uploaded extensions JSON datafile to S3!"),
+        _ => print_s3("Failed to upload front extensions JSON data to S3! Continuing regardless.")
+    }
+    
+
     Ok(StatusCode::Queue)
 }
