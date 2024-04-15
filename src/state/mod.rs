@@ -36,7 +36,7 @@ impl AppState {
 }
 
 pub async fn work_queue(app: Arc<Mutex<AppState>>) {
-    'main: loop {
+    loop {
         sleep(Duration::from_secs(5)).await;
 
         if let Ok(mut dir) = read_dir("data/queue").await {
@@ -65,12 +65,10 @@ pub async fn work_queue(app: Arc<Mutex<AppState>>) {
                 match try_status {
                     Some(status) => {
                         match status.code {
-                            StatusCode::Processing | StatusCode::Submitting => {
-                                continue 'main;
-                            },
+                            StatusCode::Processing | StatusCode::Submitting => {},
                             StatusCode::Queue => {
                                 println!("\n----- [ State Update ] -----");
-                                print_be("Top option not processing! Firing inference job request...");
+                                print_be(&format!("Top option (Job {job_id} for '{user_id}') not processing! Firing inference job request..."));
                                 
                                 
                                 app.lock().await
@@ -110,8 +108,6 @@ pub async fn work_queue(app: Arc<Mutex<AppState>>) {
                                 if remove_dir_all(format!("data/queue/{}", dir_name)).await.is_err() {
                                     println!("FAILED TO REMOVE 'data/queue/{}'!", dir_name);
                                 };
-
-                                continue 'main;
                             }
                         }
                     },
