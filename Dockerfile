@@ -11,7 +11,8 @@ FROM rust:1.75-slim as build
 WORKDIR /
 COPY . .
 
-RUN apt-get update & apt-get install -y pkg-config curl libssl-dev openssl
+RUN apt-get update
+RUN apt-get install -y pkg-config curl libssl-dev openssl
 RUN ["cargo", "build"]
 
 
