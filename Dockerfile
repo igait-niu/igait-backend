@@ -15,10 +15,11 @@ RUN ["cargo", "build"]
 FROM ubuntu
 
 RUN apt-get update \
-  && apt-get install -y openssh-client
+  && apt-get install -y openssh-client openssl pkg-config
 
 COPY --from=build /target/debug/igait-backend /igait-backend
 VOLUME /data
+VOLUME /.ssh
 
 CMD ["/igait-backend"]
 EXPOSE 3000
