@@ -13,6 +13,6 @@ RUN pip install opencv-python
 RUN apt update
 RUN apt install -y openssh-client
 VOLUME /data
-VOLUME /.ssh
+VOLUME /root/.ssh
 CMD ["/igait-backend"]
 EXPOSE 3000
