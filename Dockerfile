@@ -12,7 +12,7 @@ RUN ["cargo", "build"]
 
 
 # [ Layer 2 ] Production layer with SSH keys copied
-FROM bookworm
+FROM debian:bookworm
 
 COPY --from=build /target/debug/igait-backend /igait-backend
 
