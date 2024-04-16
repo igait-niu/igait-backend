@@ -15,7 +15,7 @@ RUN ["cargo", "build"]
 FROM ubuntu
 
 RUN apt-get update \
-  && apt-get install openssh-client
+  && apt-get install -y openssh-client
 
 COPY --from=build /target/debug/igait-backend /igait-backend
 VOLUME /data
