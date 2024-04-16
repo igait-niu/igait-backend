@@ -11,7 +11,7 @@ FROM python:3.12-slim
 COPY --from=build /target/debug/igait-backend /igait-backend
 RUN pip install opencv-python
 RUN apt update
-RUN apt install openssh-client
+RUN apt install -y openssh-client
 VOLUME /data
 VOLUME /.ssh
 CMD ["/igait-backend"]
