@@ -12,12 +12,10 @@ RUN ["cargo", "build"]
 
 
 # [ Layer 2 ] Production layer with SSH keys copied
-FROM ubuntu
-
-RUN apt-get update \
-  && apt-get install -y openssh-client openssl pkg-config
+FROM bookworm
 
 COPY --from=build /target/debug/igait-backend /igait-backend
+
 VOLUME /data
 VOLUME /.ssh
 
