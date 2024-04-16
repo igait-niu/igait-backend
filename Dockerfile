@@ -1,10 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# [ Arguments ]
-ARG SSH_KEY
-ENV SSH_KEY=$SSH_KEY
-
-
 # [ Layer 1 ] Build the Rust crate as a layer
 FROM rust:1.75-slim as build
 
