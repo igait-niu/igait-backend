@@ -12,9 +12,10 @@ RUN ["cargo", "build"]
 
 
 # [ Layer 2 ] Production layer with SSH keys copied
-FROM alpine
+FROM ubuntu
 
-RUN apk add --no-cache openssh-client
+RUN apt-get update \
+  && apt-get install openssh-client
 
 COPY --from=build /target/debug/igait-backend /igait-backend
 VOLUME /data
