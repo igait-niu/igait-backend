@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # [ Arguments ]
-ARG ssh_pub_key
-ARG ssh_prv_key
+ARG SSH_KEY
+ENV SSH_KEY=$SSH_KEY
 
 
 # [ Layer 1 ] Build the Rust crate as a layer
@@ -17,7 +17,9 @@ RUN ["cargo", "build"]
 
 
 # [ Layer 2 ] Production layer with SSH keys copied
-FROM ubuntu
+FROM alpine
+
+RUN apk add --no-cache openssh-client
 
 COPY --from=build /target/debug/igait-backend /igait-backend
 VOLUME /data
