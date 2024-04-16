@@ -11,7 +11,7 @@ services:
       - "3000:3000"
     volumes:
       - 'data:/data'
-      - 'ssh:/.ssh'
+      - 'ssh:/root/.ssh'
     environment:
       - FIREBASE_API_KEY='***REMOVED***'
   frontend:
