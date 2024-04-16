@@ -20,6 +20,7 @@ use crate::print::*;
 use crate::{
     Arc, Mutex
 };
+use crate::email::send_email;
 
 /* Primary Routes */
 pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<String, String> {
@@ -121,16 +122,49 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
         value: status_content.clone().ok_or("Missing 'status_content' in request!")?
     };
 
+    let job: Job = app.lock().await
+        .db
+        .get_job(
+            uid.clone().expect("Missing UID!"),
+            job_id.clone().expect("Missing JID!")
+        ).await.expect("Failed to locate job!"); 
+    let to = job.email.clone();
+
     match 
         status_code.ok_or("Missing 'status_code' in request!")?.as_str()
     {
         "OK" => {
             print_be("Job successful!");
             status.code = StatusCode::Complete;
+
+            let subject = format!("Your recent submission to iGait App has completed!");
+            let body = format!("We deteremined a likelyhood score of {}!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+                status.value,
+
+                job.age,
+                job.ethnicity,
+                job.sex,
+                job.height,
+                job.weight,
+
+                uid.clone().expect("Missing UID!"),
+                job_id.clone().expect("Missing JID!")
+            );
+
+            send_email( to, subject, body ).expect("Failed to send email!");
         },
         "ERR" => {
             print_be(&format!("Job unsuccessful - status content: '{}'",status_content.expect("unreachable")));
             status.code = StatusCode::InferenceErr;
+
+            let subject = format!("Your recent submission to iGait App failed!");
+            let body = format!("Something went wrong!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
+                status.code, status.value, 
+                uid.clone().expect("Missing UID!"),
+                job_id.clone().expect("Missing JID!")
+            );
+
+            send_email( to, subject, body ).expect("Failed to send email!");
         },
         _ => {
             print_be("Invalid status code!");

@@ -3,6 +3,7 @@ mod state;
 mod request;
 mod routes;
 mod print;
+mod email;
 
 use crate::print::*;
 use axum::{
