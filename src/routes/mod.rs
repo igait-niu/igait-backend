@@ -21,6 +21,7 @@ use crate::print::*;
 use crate::{
     Arc, Mutex
 };
+use serde_json::Value;
 use crate::email::send_email;
 
 /* Primary Routes */
@@ -150,8 +151,34 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
             print_be("Job successful!");
             status.code = StatusCode::Complete;
 
+            let bytes: Vec<u8> = app.lock()
+                .await
+                .bucket
+                .get_object(
+                    &format!("{}/{}/extensions.json",
+                        uid.clone().expect("Missing UID!"),
+                        job_id.clone().expect("Missing JID!")
+                    )
+                ).await.expect("Failed to get extensions file!")
+                .to_vec();
+            let extensions_string: String = String::from_utf8(bytes).expect("Bad data conversion!");
+            let extensions: Value = serde_json::from_str(&extensions_string).expect("Couldn't convert extension string to JSON!");
+            println!("{}, {}", extensions["front"], extensions["side"]);
+
+            let front_keyframed_url = app.lock()
+                    .await
+                    .bucket
+                    .presign_get(format!("{}/{}/front_keyframed.{}", uid.clone().expect("Missing UID!"), job_id.clone().expect("Missing JID!"), extensions["front"].as_str().expect("Invalid extension type!")), 86400 * 7, None)
+                    .expect("Failed to get the front keyframed URL!");
+
+            let side_keyframed_url = app.lock()
+                    .await
+                    .bucket
+                    .presign_get(format!("{}/{}/side_keyframed.{}", uid.clone().expect("Missing UID!"), job_id.clone().expect("Missing JID!"), extensions["side"].as_str().expect("Invalid extension type!")), 86400 * 7, None)
+                    .expect("Failed to get the side keyframed URL!");
+
             let subject = format!("Your recent submission to iGait App has completed!");
-            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br><br>User ID: {}<br>Job ID: {}", 
                 status.value,
                 dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
@@ -160,6 +187,9 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
                 job.sex,
                 job.height,
                 job.weight,
+
+                front_keyframed_url,
+                side_keyframed_url,
 
                 uid.clone().expect("Missing UID!"),
                 job_id.clone().expect("Missing JID!")
@@ -469,6 +499,8 @@ async fn save_files<'a> (
     let string_extension_data: String = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
     extension_data_vec.write_all(string_extension_data.as_bytes()).await
         .map_err(|_| String::from("Failed to build u8 vector String's Bytes!"))?;
+
+
 
     match 
         app.lock()
