@@ -12,6 +12,7 @@ use tokio::fs::{
     create_dir,
     read_dir
 };
+use chrono::{DateTime, Utc};
 
 use crate::state::{ AppState };
 use crate::request::{ StatusCode };
@@ -111,9 +112,20 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
             })
             .is_none() 
     {
-        print_be("BAD OR MISSING ACCESS KEY! POTENTIAL INTRUDER?");
+        print_be("BAD OR MISSING ACCESS KEY! POTENTIAL ATTACKER?");
         
-        //todo!(); send me an email when this happens!!!!! major security problem 3:
+        send_email( 
+            String::from("me@hiibolt.com"), 
+            String::from("Potential System Intruder"),
+            format!("User ID: {:?}<br>Job ID: {:?}<br>Status Code: {:?}<br>Status Content: {:?}<br>Access Key: {:?}",
+                uid,
+                job_id,
+                status_code,
+                status_content,
+                igait_access_key
+            )
+        ).expect("Couldn't send security email!");
+
         return Err(String::from("Error reading IGAIT_ACCCESS_KEY!"));
     }
 
@@ -129,6 +141,7 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
             job_id.clone().expect("Missing JID!")
         ).await.expect("Failed to locate job!"); 
     let to = job.email.clone();
+    let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
 
     match 
         status_code.ok_or("Missing 'status_code' in request!")?.as_str()
@@ -138,8 +151,9 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
             status.code = StatusCode::Complete;
 
             let subject = format!("Your recent submission to iGait App has completed!");
-            let body = format!("We deteremined a likelyhood score of {}!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
                 status.value,
+                dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
                 job.age,
                 job.ethnicity,
@@ -158,7 +172,9 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
             status.code = StatusCode::InferenceErr;
 
             let subject = format!("Your recent submission to iGait App failed!");
-            let body = format!("Something went wrong!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
+            let body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
+                dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
+
                 status.code, status.value, 
                 uid.clone().expect("Missing UID!"),
                 job_id.clone().expect("Missing JID!")
@@ -341,12 +357,30 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             side_file_bytes.clone(),
             uid.clone().ok_or("Missing 'uid' in request!")?, 
             job_id.to_string(),
-            built_job
+            built_job.clone()
         ).await
     {
         Ok(code) => {
             status.code = code;
             status.value = String::from("Currently in queue.");
+
+            let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+
+            let subject = format!("Welcome to iGait!");
+            let body = format!("Your submitted on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+                dt_now_utc.format("%m/%d/%Y at %H:%M"),
+
+                built_job.age,
+                built_job.ethnicity,
+                built_job.sex,
+                built_job.height,
+                built_job.weight,
+
+                uid.clone().expect("Missing UID!"),
+                job_id.to_string()
+            );
+
+            send_email( built_job.email.clone(), subject, body ).expect("Failed to send email!");
         },
         Err(err_msg) => {
             status.code = StatusCode::SubmissionErr;
