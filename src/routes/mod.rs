@@ -163,7 +163,6 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
                 .to_vec();
             let extensions_string: String = String::from_utf8(bytes).expect("Bad data conversion!");
             let extensions: Value = serde_json::from_str(&extensions_string).expect("Couldn't convert extension string to JSON!");
-            println!("{}, {}", extensions["front"], extensions["side"]);
 
             let front_keyframed_url = app.lock()
                     .await
@@ -178,7 +177,7 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
                     .expect("Failed to get the side keyframed URL!");
 
             let subject = format!("Your recent submission to iGait App has completed!");
-            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br><br>User ID: {}<br>Job ID: {}", 
+            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br>If you recieve an error message viewing these videos, please use a different browser such as Chrome.<br><br>User ID: {}<br>Job ID: {}", 
                 status.value,
                 dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
