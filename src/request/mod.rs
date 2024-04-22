@@ -22,7 +22,7 @@ pub async fn query_metis (
     _aws_access_key_id: String, _aws_secret_access_key: String, _igait_access_key: String
 ) -> Result<(), String> {
     println!("\n----- [ Querying METIS ] -----");
-    let session = Session::connect_mux("z1994244@metis.niu.edu", KnownHosts::Strict).await
+    let session = Session::connect_mux("igait@metis.niu.edu", KnownHosts::Strict).await
         .map_err(|_| String::from("Couldn't connect to METIS! Are your credentials correct?"))?;
     print_metis("Connected!");
 
