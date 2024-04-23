@@ -13,7 +13,7 @@ services:
       - 'data:/data'
       - 'ssh:/root/.ssh'
     env_file:
-      - .env)
+      - .env
     environment:
       - FIREBASE_API_KEY='***REMOVED***'
   frontend:
