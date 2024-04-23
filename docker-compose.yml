@@ -12,13 +12,16 @@ services:
     volumes:
       - 'data:/data'
       - 'ssh:/root/.ssh'
+    env_file:
+      - .env)
     environment:
       - FIREBASE_API_KEY='QGqgZ26VvBSjyLpvNtmrAn0zyaBwVOFFa2V7NCFr'
   frontend:
     image: ghcr.io/michaelslice/igait-web:latest
     ports:
-      - "5173:5173"
+      - "4173:4173"
     environment:
       - FOO='BAR'
 volumes:
   data:
+  ssh:
