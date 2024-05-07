@@ -3,9 +3,9 @@ This is the primary 'brain' behind everything in the iGait app. There are a vari
 
 ## Tech Stack
 Languages:
-- Rust
+- **Rust** - 
   Arguably one of the best languages for writing a fault-tolerant backend is Rust. It's not error prone, and forces you to handle most edge cases in advance. The borrow checker system ensures there are very few surprises, and the speed is comparable *only* to native C.
-- Docker
+- **Docker** - 
   We frequently moved around our server infastructure. To ensure that no matter where we did anything, stuff would work the first time, with zero config, we used Docker. There's no system-level installs, just starting the Docker container and watching the magic happen.
 
 ## Backend Request Handling and Operations
@@ -104,4 +104,9 @@ docker ps # find the name of the Docker container
 docker kill <the name of the container>
 ```
 
-Any changes to the `master` branch will set the GitHub worker to automagically built a private Docker container. To update the container on the AWS container: 
+Any changes to the `master` branch will set the GitHub worker to automagically built a private Docker container. To update the container on the AWS container (from the `/igait-openpose` root directory): 
+```bash
+docker compose down
+docker pull ghcr.io/igait-niu/igait-backend:latest
+docker compose up -d
+```
