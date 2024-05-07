@@ -6,7 +6,7 @@ services:
     environment:
       - FOO='BAR'
   backend:
-    image: ghcr.io/hiibolt/igait-backend:latest
+    image: ghcr.io/igait-niu/igait-backend:latest
     ports:
       - "3000:3000"
     volumes:
