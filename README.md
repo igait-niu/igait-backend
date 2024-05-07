@@ -48,7 +48,7 @@ The codebase is split up into multiple modules.
   There is a (now pointless) proof-of-concept frontend. You may safely pretend this folder doesn't exist, it's for debugging purposes, however it would now require some modification to be useful, as our fields have changed. 
 
   Regardless, this website is served on `localhost:3000`. Our NGINX configuration intentionally doesn't let this page face the public - it shouldn't, as it allows manual, unfiltered data submission.
-- **src/database**
+- **src/database/\***
   Handles everything related to Firebase Realtime DB.
 - **src/email/\***
   Handles everything related to sending emails via Cloudflare Workers.
@@ -100,14 +100,14 @@ docker built -t testing .
 docker run testing
 ```
 
-Looks good? Kill the docker, comment your code, and commit it to the GitHub repository.
+Looks good? Kill the Docker container, comment your code, and commit it to the GitHub repository.
 ```bash
 docker ps # find the name of the Docker container
 docker kill <the name of the container>
 ```
 
 Any changes to the `master` branch will set the GitHub worker to automatically build a private Docker container. Please note this process takes some time (5~ minutes), but you can view it from [the home page](https://www.github.com/igait-niu/igait-backend).
-Once complete, to update the container on the AWS container (from the `/igait-openpose` root directory): 
+Once complete, to update the container on the AWS EC2 instance (from the `/igait-openpose` root directory): 
 ```bash
 docker compose down
 docker pull ghcr.io/igait-niu/igait-backend:latest
