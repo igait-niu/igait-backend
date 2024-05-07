@@ -17,7 +17,7 @@ services:
     environment:
       - FIREBASE_API_KEY='***REMOVED***'
   frontend:
-    image: ghcr.io/michaelslice/igait-web:latest
+    image: ghcr.io/igait-niu/igait-web:latest
     ports:
       - "4173:4173"
     environment:
