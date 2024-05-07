@@ -1,6 +1,8 @@
 # iGait ASD - Backend
 This is the primary 'brain' behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles this.
 
+*Under no circumstances should this repository ever be made public. To make it public could compromise sensitive client data. All code is property of the Dr. Ziteng Wang, the iGait Project, and Northern Illinois University.*
+
 ## Tech Stack
 Languages:
 - **Rust** - 
@@ -104,9 +106,11 @@ docker ps # find the name of the Docker container
 docker kill <the name of the container>
 ```
 
-Any changes to the `master` branch will set the GitHub worker to automagically built a private Docker container. To update the container on the AWS container (from the `/igait-openpose` root directory): 
+Any changes to the `master` branch will set the GitHub worker to automatically build a private Docker container. Please note this process takes some time (5~ minutes), but you can view it from [the home page](https://www.github.com/igait-niu/igait-backend).
+Once complete, to update the container on the AWS container (from the `/igait-openpose` root directory): 
 ```bash
 docker compose down
 docker pull ghcr.io/igait-niu/igait-backend:latest
 docker compose up -d
 ```
+*Note: You will need to be logged into Docker with your GitHub. Since this is a private repository, you need to prove to GHCR that you have access! There are many guides online. You may need to issue yourself an authentication secret or key.*
