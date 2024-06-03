@@ -7,19 +7,16 @@ mod email;
 
 use crate::print::*;
 use axum::{
-    routing::{ get, post },
-    response::Html,
+    routing::{ post },
     extract::DefaultBodyLimit,
     Router
 };
-use tower_http::services::ServeDir;
-use tower_livereload::LiveReloadLayer;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
-    // Build the general app state
+    // Create a thread-safe mutex lock to hold the app state
     let state: Arc<Mutex<state::AppState>> = Arc::new(
         Mutex::new(
             state::AppState::new().await
@@ -34,10 +31,7 @@ async fn main() {
 
     // Nest the API into the general app router
     let app = Router::new()
-        .route("/", get(|| async { Html(std::include_str!("../public/index.html")) }))
         .nest("/api/v1", api_v1)
-        .nest_service("/public", ServeDir::new("public"))
-        .layer(LiveReloadLayer::new())
         .layer(DefaultBodyLimit::max(500000000));
 
     // Start the queue worker
