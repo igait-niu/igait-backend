@@ -1,9 +1,9 @@
-use tokio::fs::{ File };
+use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
 
 use axum::{
-    body::{ Bytes },
+    body::Bytes,
     extract::{ 
         State, Multipart
     }
@@ -14,8 +14,8 @@ use tokio::fs::{
 };
 use chrono::{DateTime, Utc};
 
-use crate::state::{ AppState };
-use crate::request::{ StatusCode };
+use crate::state::AppState;
+use crate::request::StatusCode;
 use crate::database::{ Status, Job };
 use crate::print::*;
 use crate::{
@@ -464,7 +464,7 @@ async fn save_files<'a> (
     let side_data = _side_file_bytes?;
     
     // Ensure a directory exists for this file ID
-    let dir_path = format!("data/queue/{}_{}", user_id, job_id);
+    let dir_path = format!("queue/{}_{}", user_id, job_id);
     if read_dir(&dir_path).await.is_err() {
         create_dir(&dir_path).await
             .map_err(|_| String::from("Unable to create directory for queue file!"))?;
