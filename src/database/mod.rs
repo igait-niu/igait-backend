@@ -1,6 +1,6 @@
 use firebase_rs::*;
 use crate::{ 
-    request::{ StatusCode },
+    request::StatusCode,
     print::*
 };
 use serde::{ Serialize, Deserialize};

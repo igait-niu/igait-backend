@@ -5,9 +5,10 @@ mod routes;
 mod print;
 mod email;
 
+use anyhow::{ Context, Result };
 use crate::print::*;
 use axum::{
-    routing::{ post },
+    routing::post,
     extract::DefaultBodyLimit,
     Router
 };
@@ -15,13 +16,11 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // Create a thread-safe mutex lock to hold the app state
-    let state: Arc<Mutex<state::AppState>> = Arc::new(
-        Mutex::new(
-            state::AppState::new().await
-        )
-    );
+    let state: Arc<Mutex<state::AppState>> = Arc::new(Mutex::new(
+        state::AppState::new().await.context("Couldn't set up app state!")?
+    ));
 
     // Build the V1 API router
     let api_v1 = Router::new()
@@ -37,9 +36,12 @@ async fn main() {
     // Start the queue worker
     tokio::spawn(state::work_queue(state));
 
-    print_be("Started iGait Backend on 3000!");
-
     // Serve the API
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    print_be("Starting iGait Backend on 3000...");
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await
+        .context("Couldn't start up listener!")?;
+    axum::serve(listener, app).await
+        .context("Could't serve the API!")?;
+
+    Ok(())
 }
