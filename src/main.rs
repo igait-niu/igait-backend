@@ -8,12 +8,11 @@ mod email;
 use anyhow::{ Context, Result };
 use crate::print::*;
 use axum::{
-    routing::post,
-    extract::DefaultBodyLimit,
-    Router
+    extract::DefaultBodyLimit, routing::post, Router
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
 
 #[tokio::main]
 async fn main() -> Result<()> {

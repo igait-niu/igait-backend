@@ -1,100 +1,102 @@
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use std::time::SystemTime;
+use anyhow::{ Result, Context, anyhow };
 
 use axum::{
-    body::Bytes,
-    extract::{ 
-        State, Multipart
-    }
+    body::{Body, Bytes},
+    extract::{ Multipart, State}, response::{IntoResponse, Response}
 };
-use tokio::fs::{
-    create_dir,
-    read_dir
-};
-use chrono::{DateTime, Utc};
+use tokio::fs::{ create_dir, read_dir };
+use chrono::{ DateTime, Utc };
 
 use crate::state::AppState;
 use crate::request::StatusCode;
 use crate::database::{ Status, Job };
 use crate::print::*;
-use crate::{
-    Arc, Mutex
-};
+use crate::{ Arc, Mutex };
 use serde_json::Value;
 use crate::email::send_email;
 
-/* Primary Routes */
-pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<String, String> {
+/* 
+    The purpose of this interface is to allow our routes to use anyhow's 
+     error handling system to return errors in a way that can be easily
+     converted into a response. This is done by implementing the IntoResponse
+     trait for the AppError struct, which is a wrapper around anyhow::Error.
+ */
+#[derive(Debug)]
+pub struct AppError(anyhow::Error);
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response<Body> {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
+
+pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<&'static str, AppError> {
     println!("\n----- [ Recieved completion update ] -----");
 
-    let mut uid: Option<String> = None;
-    let mut job_id: Option<usize> = None;
-    let mut status_code: Option<String> = None;
-    let mut status_content: Option<String> = None;
-    let mut igait_access_key: Option<String> = None;
+    let mut uid_option: Option<String> = None;
+    let mut job_id_option: Option<usize> = None;
+    let mut status_code_option: Option<String> = None;
+    let mut status_content_option: Option<String> = None;
+    let mut igait_access_key_option: Option<String> = None;
 
     while let Some(field) = multipart
         .next_field().await
-        .map_err(|_| {
-            String::from("Bad request! Is it possible you submitted a file over the size limit?")
-        })?
+        .context("Bad request! Is it possible you submitted a file over the size limit?")?
     {
         print_be(&format!("Field Incoming: {:?}", field.name()));
         match field.name() {
             Some("user_id") => {
-                uid = Some(
+                uid_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'user_id' wasn't readable as text!")
-                            })?
-                            .to_string()
-                    );
+                            .context("Field 'user_id' wasn't readable as text!")?
+                            .to_string());
             },
             Some("job_id") => {
-                job_id = Some(
+                job_id_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'job_id' wasn't readable as text!")
-                            })?
+                            .context("Field 'job_id' wasn't readable as text!")?
                             .to_string()
                             .parse::<usize>()
-                            .map_err(|_| {
-                                String::from("Couldn't parse the incoming 'job_id' field!")
-                            })?
-                    );
+                            .context("Couldn't parse the incoming 'job_id' field!")?);
             },
             Some("status_code") => {
-                status_code = Some(
+                status_code_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'status_code' wasn't readable as text!")
-                            })?
-                            .to_string()
-                    );
+                            .context("Field 'status_code' wasn't readable as text!")?
+                            .to_string());
             },
             Some("status_content") => {
-                status_content = Some(
+                status_content_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'status_content' wasn't readable as text!")
-                            })?
-                            .to_string()
-                    );
+                            .context("Field 'status_content' wasn't readable as text!")?
+                            .to_string());
             },
             Some("igait_access_key") => {
-                igait_access_key = Some(
+                igait_access_key_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'igait_access_key' wasn't readable as text!")
-                            })?
-                            .to_string()
-                    );
+                            .context("Field 'igait_access_key' wasn't readable as text!")?
+                            .to_string());
             },
             _ => {
                 print_be("Which had an unknown/no field name...");
@@ -102,253 +104,227 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
         }
     }
 
-    if 
-        igait_access_key
-            .clone()
-            .and_then(|key| {
-                if key != std::env::var("IGAIT_ACCESS_KEY").expect("MISSING IGAIT_ACCESS_KEY!") {
-                    return None;
-                }
-                Some(())
-            })
-            .is_none() 
-    {
-        print_be("BAD OR MISSING ACCESS KEY! POTENTIAL ATTACKER?");
-        
-        send_email( 
-            String::from("me@hiibolt.com"), 
-            String::from("Potential System Intruder"),
-            format!("User ID: {:?}<br>Job ID: {:?}<br>Status Code: {:?}<br>Status Content: {:?}<br>Access Key: {:?}",
-                uid,
-                job_id,
-                status_code,
-                status_content,
-                igait_access_key
-            )
-        ).expect("Couldn't send security email!");
+    // Make sure all of the fields are present
+    let uid = uid_option.ok_or(anyhow!("Missing 'user_id' in request!"))?;
+    let job_id = job_id_option.ok_or(anyhow!("Missing 'job_id' in request!"))?;
+    let status_code = status_code_option.ok_or(anyhow!("Missing 'status_code' in request!"))?;
+    let status_content = status_content_option.ok_or(anyhow!("Missing 'status_content' in request!"))?;
+    let igait_access_key = igait_access_key_option.ok_or(anyhow!("Missing 'igait_access_key' in request!"))?;
 
-        return Err(String::from("Error reading IGAIT_ACCCESS_KEY!"));
+    // First, check the access key against the environment
+    if igait_access_key != std::env::var("IGAIT_ACCESS_KEY").context("MISSING 'IGAIT_ACCESS_KEY' in environment!")? {
+        print_be("Invalid access key!");
+        Err(anyhow!("Invalid access key from completion endpoint!"))?
     }
 
+    // Build a new status object
     let mut status = Status {
         code: StatusCode::Submitting,
-        value: status_content.clone().ok_or("Missing 'status_content' in request!")?
+        value: status_content.clone()
     };
 
+    // Grab the job it references
     let job: Job = app.lock().await
         .db
         .get_job(
-            uid.clone().expect("Missing UID!"),
-            job_id.clone().expect("Missing JID!")
-        ).await.expect("Failed to locate job!"); 
-    let to = job.email.clone();
+            &uid,
+            job_id
+        ).await
+        .context("The job targeted by the completion request doesn't exist!")?; 
+
+    // Extract the email address and timestamp
+    let recipient_email_address = job.email.clone();
+    let subject;
+    let body;
     let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
 
-    match 
-        status_code.ok_or("Missing 'status_code' in request!")?.as_str()
-    {
-        "OK" => {
-            print_be("Job successful!");
-            status.code = StatusCode::Complete;
+    if &status_code == "OK" {
+        // This is a success, the inference process was completed
+        print_be("Job successful!");
+        status.code = StatusCode::Complete;
 
-            let bytes: Vec<u8> = app.lock()
+        // Extract the bytes from the extensions file
+        let bytes: Vec<u8> = app.lock()
+            .await
+            .bucket
+            .get_object(
+                &format!("{}/{}/extensions.json",
+                    uid,
+                    job_id
+                )
+            ).await
+            .context("Failed to get extensions file!")?
+            .to_vec();
+
+        // Convert the raw bytes to a string
+        let extensions_as_string: String = String::from_utf8(bytes)
+            .context("There was invalid UTF8 data from the `extensions.json` file!")?;
+
+        // Parse the string into a JSON object
+        let extensions: Value = serde_json::from_str(&extensions_as_string)
+            .context("Couldn't convert the `extensions.json` file to a JSON object!")?;
+
+        // Generate the presigned URLs
+        let front_keyframed_url = app.lock()
                 .await
                 .bucket
-                .get_object(
-                    &format!("{}/{}/extensions.json",
-                        uid.clone().expect("Missing UID!"),
-                        job_id.clone().expect("Missing JID!")
-                    )
-                ).await.expect("Failed to get extensions file!")
-                .to_vec();
-            let extensions_string: String = String::from_utf8(bytes).expect("Bad data conversion!");
-            let extensions: Value = serde_json::from_str(&extensions_string).expect("Couldn't convert extension string to JSON!");
+                .presign_get(format!("{}/{}/front_keyframed.{}", uid, job_id, extensions["front"].as_str().context("Invalid extension type for the front file!")?), 86400 * 7, None)
+                .expect("Failed to get the front keyframed URL!");
+        let side_keyframed_url = app.lock()
+                .await
+                .bucket
+                .presign_get(format!("{}/{}/side_keyframed.{}", uid, job_id, extensions["side"].as_str().context("Invalid extension type for the side file!")?), 86400 * 7, None)
+                .expect("Failed to get the side keyframed URL!");
 
-            let front_keyframed_url = app.lock()
-                    .await
-                    .bucket
-                    .presign_get(format!("{}/{}/front_keyframed.{}", uid.clone().expect("Missing UID!"), job_id.clone().expect("Missing JID!"), extensions["front"].as_str().expect("Invalid extension type!")), 86400 * 7, None)
-                    .expect("Failed to get the front keyframed URL!");
+        // Build the email
+        subject = format!("Your recent submission to iGait App has completed!");
+        body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br>These videos will remain downloadable for 7 days from the date of this email. If they expire, contact GaitStudy@niu.edu to have new files issued. If you recieve an error message viewing these videos, please use a different browser such as Chrome.<br><br>User ID: {}<br>Job ID: {}", 
+            status.value,
+            dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
-            let side_keyframed_url = app.lock()
-                    .await
-                    .bucket
-                    .presign_get(format!("{}/{}/side_keyframed.{}", uid.clone().expect("Missing UID!"), job_id.clone().expect("Missing JID!"), extensions["side"].as_str().expect("Invalid extension type!")), 86400 * 7, None)
-                    .expect("Failed to get the side keyframed URL!");
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight,
 
-            let subject = format!("Your recent submission to iGait App has completed!");
-            let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br>These videos will remain downloadable for 7 days from the date of this email. If they expire, contact GaitStudy@niu.edu to have new files issued. If you recieve an error message viewing these videos, please use a different browser such as Chrome.<br><br>User ID: {}<br>Job ID: {}", 
-                status.value,
-                dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
+            front_keyframed_url,
+            side_keyframed_url,
 
-                job.age,
-                job.ethnicity,
-                job.sex,
-                job.height,
-                job.weight,
+            uid,
+            job_id
+        );
+    } else if &status_code == "ERR" {
+        // This is a failure, usually due to an error in the inference process
+        print_be(&format!("Job unsuccessful - status content: '{status_content}'"));
+        status.code = StatusCode::InferenceErr;
 
-                front_keyframed_url,
-                side_keyframed_url,
+        // Build the email
+        subject = format!("Your recent submission to iGait App failed!");
+        body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
+            dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
-                uid.clone().expect("Missing UID!"),
-                job_id.clone().expect("Missing JID!")
-            );
-
-            send_email( to, subject, body ).expect("Failed to send email!");
-        },
-        "ERR" => {
-            print_be(&format!("Job unsuccessful - status content: '{}'",status_content.expect("unreachable")));
-            status.code = StatusCode::InferenceErr;
-
-            let subject = format!("Your recent submission to iGait App failed!");
-            let body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
-                dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
-
-                status.code, status.value, 
-                uid.clone().expect("Missing UID!"),
-                job_id.clone().expect("Missing JID!")
-            );
-
-            send_email( to, subject, body ).expect("Failed to send email!");
-        },
-        _ => {
-            print_be("Invalid status code!");
-            Err("Invalid status code!")?
-        }
+            status.code, status.value, 
+            uid,
+            job_id
+        );
+    } else {
+        // This is an invalid status code, probably a mistake or bad actor
+        print_be("Invalid status code!");
+        return Err(AppError(anyhow!("Invalid status code from completion endpoint!")));
     }
 
-    print_be("Competion request was well-formed, attempting to edit the user's job status...");
-
+    // Update the status of the job
     app.lock().await
         .db.update_status(
-            uid.ok_or("Missing 'user_id' in request!")?,
-            job_id.ok_or("Missing 'job_id' in request!")?,
-            status).await;
+            &uid,
+            job_id,
+            status
+        ).await
+        .context("Failed to update the status of the job! It's worth noting that the email has already been sent.")?;
 
-    Ok(String::from("OK"))
+    // Send the email
+    send_email( &recipient_email_address, &subject, &body )
+        .context(format!("Failed to the email regarding a failed submission! The subject was {}", subject))?;
+
+    Ok("OK")
 }
-/* Primary Routes */
-pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), String> {
+pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), AppError> {
     println!("\n----- [ Recieved base request ] -----");
 
-    let mut uid: Option<String> = None;
-    let mut age: Option<i16> = None;
-    let mut ethnicity: Option<String> = None;
-    let mut sex: Option<char> = None;
-    let mut height: Option<String> = None;
-    let mut weight: Option<i16> = None;
-    let mut email: Option<String> = None;
+    // Initialize all of the fields as options
+    let mut uid_option:       Option<String> = None;
+    let mut age_option:       Option<i16>    = None;
+    let mut ethnicity_option: Option<String> = None;
+    let mut sex_option:       Option<char>   = None;
+    let mut height_option:    Option<String> = None;
+    let mut weight_option:    Option<i16>    = None;
+    let mut email_option:     Option<String> = None;
+
+    // Build a new status object
     let mut status = Status {
         code: StatusCode::Submitting,
         value: String::from("")
     };
 
-    let mut front_file_name: Option<String> = None;
-    let mut front_file_bytes: Result<Bytes, String> = Err(String::from("File download error!"));
+    // Initialize the file fields as options
+    let mut front_file_name_option:  Option<String> = None;
+    let mut side_file_name_option:   Option<String> = None;
+    let mut front_file_bytes_option: Option<Bytes>  = None;
+    let mut side_file_bytes_option:  Option<Bytes>  = None;
 
-    let mut side_file_name: Option<String> = None;
-    let mut side_file_bytes: Result<Bytes, String> = Err(String::from("File download error!"));
-
+    // Loop through the fields
     while let Some(field) = multipart
         .next_field().await
-        .map_err(|_| {
-            String::from("Bad request! Is it possible you submitted a file over the size limit?")
-        })?
+        .context("Bad uploadrequest! Is it possible you submitted a file over the size limit?")?
     {
         print_be(&format!("Field Incoming: {:?} - File Attached: {:?}", field.name(), field.file_name()));
+        
         match field.name() {
             Some("fileuploadfront") => {
-                front_file_name = field
+                front_file_name_option = field
                     .file_name().and_then(|x| Some(String::from(x)));
-                front_file_bytes = field.bytes()
+                front_file_bytes_option = Some(field.bytes()
                     .await
-                    .map_err(|_| {
-                        String::from("Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?")
-                    });
+                    .context("Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?")?);
             },
             Some("fileuploadside") => {
-                side_file_name = field
+                side_file_name_option = field
                     .file_name().and_then(|x| Some(String::from(x)));
-                side_file_bytes = field.bytes()
+                side_file_bytes_option = Some(field.bytes()
                     .await
-                    .map_err(|_| {
-                        String::from("Could not unpack bytes from field 'fileuploadside'! Was there no file attached?")
-                    });
+                    .context("Could not unpack bytes from field 'fileuploadside'! Was there no file attached?")?);
             },
             Some("uid") => {
-                uid = Some(
+                uid_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'uid' wasn't readable as text!")
-                            })?
-                            .to_string()
-                    );
+                            .context("Field 'uid' wasn't readable as text!")?
+                            .to_string());
             }
             Some("age") => {
-                age = Some(
+                age_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'age' wasn't readable as text!")
-                            })?
+                            .context("Field 'age' wasn't readable as text!")?
                             .parse()
-                            .map_err(|_| {
-                                String::from("Field 'age' wasn't parseable as a number! Was the entry only digits?")
-                            })?
-                    );
+                            .context("Field 'age' wasn't parseable as a number! Was the entry only digits?")?);
             },
             Some("ethnicity") => {
-                ethnicity = Some(
+                ethnicity_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'ethnicity' wasn't readable as text!")
-                            })?
-                    );
+                            .context("Field 'ethnicity' wasn't readable as text!")?);
             },
             Some("email") => {
-                email = Some(
+                email_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'email' wasn't readable as text!")
-                            })?
-                    );
+                            .context("Field 'email' wasn't readable as text!")?);
             },
             Some("sex") => {
-                sex = Some(
+                sex_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'sex' wasn't readable as text!")
-                            })?
+                            .context("Field 'sex' wasn't readable as text!")?
                             .chars()
                             .nth(0)
-                            .ok_or(String::from("Field 'sex' didn't have a vaild entry! Was it empty?"))?
+                            .context("Field 'sex' didn't have a vaild entry! Was it empty?")?
                     );
             },
             Some("height") => {
-                height = Some(
+                height_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'height' wasn't readable as text!")
-                            })?
-                    );
+                            .context("Field 'height' wasn't readable as text!")?);
             },
             Some("weight") => {
-                weight = Some(
+                weight_option = Some(
                         field
                             .text().await
-                            .map_err(|_| {
-                                String::from("Field 'weight' wasn't readable as text!")
-                            })?
+                            .context("Field 'weight' wasn't readable as text!")?
                             .parse()
-                            .map_err(|_| {
-                                String::from("Field 'weight' wasn't parseable as a number! Was the entry only digits?")
-                            })?
-                    );
+                            .context("Field 'weight' wasn't parseable as a number! Was the entry only digits?")?);
             },
             _ => {
                 print_be("Which had an unknown/no field name...");
@@ -356,184 +332,196 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         }
     }
 
+    // Make sure all of the fields are present
+    let uid: String       = uid_option.ok_or(       anyhow!( "Missing 'uid' in request!"      ))?;
+    let age: i16          = age_option.ok_or(       anyhow!( "Missing 'age' in request"       ))?;
+    let ethnicity: String = ethnicity_option.ok_or( anyhow!( "Missing 'ethnicity' in request" ))?;
+    let sex: char         = sex_option.ok_or(       anyhow!( "Missing 'sex' in request"       ))?;
+    let height: String    = height_option.ok_or(    anyhow!( "Missing 'height' in request"    ))?;
+    let weight: i16       = weight_option.ok_or(    anyhow!( "Missing 'weight' in request"    ))?;
+    let email: String     = email_option.ok_or(     anyhow!( "Missing 'email' in request"     ))?;
+
+    // Make sure all of the file fields are present
+    let front_file_name:  String = front_file_name_option.ok_or(  anyhow!( "Missing 'fileuploadfront' in request!" ))?;
+    let side_file_name:   String = side_file_name_option.ok_or(   anyhow!( "Missing 'fileuploadside' in request!"  ))?;
+    let front_file_bytes: Bytes  = front_file_bytes_option.ok_or( anyhow!( "Missing 'fileuploadfront' in request!" ))?;
+    let side_file_bytes:  Bytes  = side_file_bytes_option.ok_or(  anyhow!( "Missing 'fileuploadside' in request!"  ))?;
+
+    // Generate the new job ID (no need to add 1 since it's 0-indexed)
     let job_id = app.lock().await
         .db
         .count_jobs(
-            String::from(uid.clone().ok_or("Missing 'uid' in request!")?)
-        ).await;
+            &uid
+        ).await
+        .context("Failed to count the number of jobs!")?;
 
-    let built_job = Job {
-        age:        age.ok_or("Missing 'age' in request!")?,
-        ethnicity:  ethnicity.ok_or("Missing 'ethnicity' in request!")?,
-        sex:        sex.ok_or("Missing 'sex' in request!")?,
-        height:     height.ok_or("Missing 'height' in request!")?,
-        weight:     weight.ok_or("Missing 'weight' in request!")?,
-        status:     status.clone(),
-        email:      email.ok_or("Missing 'email' in request!")?,
+    // Build the new job object
+    let job = Job {
+        age,
+        ethnicity,
+        sex,
+        height,
+        weight,
+        status: status.clone(),
+        email,
         timestamp:  SystemTime::now(),
     };
     
-    // I'm aware that this .ok_or is
-    // redundant and unreachable.
+    // Add the job to the database
     app.lock().await
-        .db.new_job(uid.clone().ok_or("Missing 'uid' in request!")?, built_job.clone()).await;
+        .db.new_job( &uid, job.clone() ).await
+        .context("Failed to add the new job to the database!")?;
 
-    match save_files( 
+    // Try to save the files to S3
+    if let Err(err) = 
+        save_files( 
             app.clone(),
-            front_file_name.clone(),
-            front_file_bytes.clone(),
-            side_file_name.clone(),
-            side_file_bytes.clone(),
-            uid.clone().ok_or("Missing 'uid' in request!")?, 
-            job_id.to_string(),
-            built_job.clone()
-        ).await
+            front_file_name,
+            front_file_bytes,
+            side_file_name,
+            side_file_bytes,
+            &uid, 
+            job_id,
+            job.clone()
+        ).await 
     {
-        Ok(code) => {
-            status.code = code;
-            status.value = String::from("Currently in queue.");
+        // Populate the status object
+        status.code = StatusCode::SubmissionErr;
+        status.value = err.to_string();
 
-            let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+        // Update the status of the job
+        app.lock().await
+            .db.update_status(
+                &uid,
+                job_id,
+                status
+            ).await
+            .context("Failed to update the status of the job! It failed to save, however.")?;
 
-            let subject = format!("Welcome to iGait!");
-            let body = format!("Your job submission on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
-                dt_now_utc.format("%m/%d/%Y at %H:%M"),
-
-                built_job.age,
-                built_job.ethnicity,
-                built_job.sex,
-                built_job.height,
-                built_job.weight,
-
-                uid.clone().expect("Missing UID!"),
-                job_id.to_string()
-            );
-
-            send_email( built_job.email.clone(), subject, body ).expect("Failed to send email!");
-        },
-        Err(err_msg) => {
-            status.code = StatusCode::SubmissionErr;
-            status.value = err_msg;
-        }
+        // Early return as a failure
+        return Err(AppError(anyhow!("Failed to save files to S3! Error:\n{}", err)));
     }
+    
+    // Populate the status object
+    status.code = StatusCode::Queue;
+    status.value = String::from("Currently in queue.");
 
-    // I'm aware that this .ok_or is
-    // redundant and unreachable.
+    // Build the email
+    let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+    let subject = format!("Welcome to iGait!");
+    let body = format!("Your job submission on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+        dt_now_utc.format("%m/%d/%Y at %H:%M"),
+
+        job.age,
+        job.ethnicity,
+        job.sex,
+        job.height,
+        job.weight,
+
+        uid,
+        job_id
+    );
+
+    // Send the email
+    send_email( &job.email, &subject, &body ).
+        context("Failed to send email! However, it was otherwise saved.")?;
+
+    // Update the status of the job
     app.lock().await
         .db.update_status(
-            uid.ok_or("Missing 'uid' in request!")?,
+            &uid,
             job_id,
-            status).await;
+            status
+        ).await
+        .context("Failed to update the status of the job! However, it was otherwise saved.")?;
 
     Ok(())
 }
+
+
 async fn save_files<'a> (
     app: Arc<Mutex<AppState>>,
-    _front_file_name: Option<String>,
-    _front_file_bytes: Result<Bytes, String>, 
-    _side_file_name: Option<String>,
-    _side_file_bytes: Result<Bytes, String>, 
-    user_id: String,
-    job_id: String,
+    front_file_name: String,
+    front_file_bytes: Bytes, 
+    side_file_name: String,
+    side_file_bytes: Bytes, 
+    user_id: &str,
+    job_id: usize,
     job: Job
-) -> Result<StatusCode, String> {
-    // Unpack the file names
-    let front_file_name = _front_file_name
-        .ok_or_else(|| {
-            String::from("Must have associated file name in multipart!")
-        })?;
-    let side_file_name = _side_file_name
-        .ok_or_else(|| {
-            String::from("Must have associated file name in multipart!")
-        })?;
-    
-    // Unpack the extension
+) -> Result<()> {
+    // Unpack the extensions
     let front_extension = front_file_name.split(".")
         .nth(1)
-        .ok_or_else(|| {
-            String::from("Must have a file extension!")
-        })?;
+        .context("Must have a file extension!")?;
     let side_extension = side_file_name.split(".")
         .nth(1)
-        .ok_or_else(|| {
-            String::from("Must have a file extension!")
-        })?;
-
-    // Unpack the data
-    let front_data = _front_file_bytes?;
-    let side_data = _side_file_bytes?;
+        .context("Must have a file extension!")?;
     
     // Ensure a directory exists for this file ID
     let dir_path = format!("queue/{}_{}", user_id, job_id);
     if read_dir(&dir_path).await.is_err() {
+        // If it doesn't exist, create it
         create_dir(&dir_path).await
-            .map_err(|_| String::from("Unable to create directory for queue file!"))?;
+            .context("Unable to create directory for queue file!")?;
+
+        print_be(&format!("Created directory for queue file: {}", dir_path));
     }
 
     // Build path ID and file handle
     let queue_file_path = format!("{}/data.json", dir_path);
     let mut queue_side_file_handle = File::create(queue_file_path)
         .await
-        .map_err(|_| String::from("Unable to open queue file!"))?;
+        .context("Unable to open queue file!")?;
 
+    // Serialize the job data to soon write to the file
     let job_data = serde_json::to_string(&job)
-        .map_err(|_| String::from("Unable to serialize data!"))?;
+        .context("Unable to serialize data!")?;
 
     // Write data
     queue_side_file_handle.write_all(job_data.as_bytes())
         .await
-        .map_err(|_| String::from("Unable to write queue file!"))?;
+        .context("Unable to write queue file!")?;
     queue_side_file_handle.flush()
         .await
-        .map_err(|_| String::from("Unable to flush queue file!"))?;
+        .context("Unable to flush queue file!")?;
 
+    // Build byte vectors
     let mut front_byte_vec: Vec<u8> = Vec::new();
-    front_byte_vec.write_all(&front_data).await
-        .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
+    front_byte_vec.write_all(&front_file_bytes)
+        .await
+        .context("Failed to build u8 vector from the front file's Bytes object!")?;
     let mut side_byte_vec: Vec<u8> = Vec::new();
-    side_byte_vec.write_all(&side_data).await
-        .map_err(|_| String::from("Failed to build u8 vector from Bytes!"))?;
+    side_byte_vec.write_all(&side_file_bytes)
+        .await
+        .context("Failed to build u8 vector from side file's Bytes object!")?;
 
-    let mut extension_data_vec: Vec<u8> = Vec::new();
-    let string_extension_data: String = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
-    extension_data_vec.write_all(string_extension_data.as_bytes()).await
-        .map_err(|_| String::from("Failed to build u8 vector String's Bytes!"))?;
-
-
-
-    match 
-        app.lock()
-            .await
-            .bucket
-            .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
-            .await 
-    {
-        Ok(_) => print_s3("Successfully uploaded front file to S3!"),
-        _ => print_s3("Failed to upload front file to S3! Continuing regardless.")
-    }
-
-    match
-        app.lock()
-            .await
-            .bucket
-            .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
-            .await
-    {
-        Ok(_) => print_s3("Successfully uploaded side file to S3!"),
-        _ => print_s3("Failed to upload front side to S3! Continuing regardless.")
-    }
+    // Serialize the data to write to the extensions file
+    let serialized_extensions = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
     
-    match
-        app.lock()
-            .await
-            .bucket
-            .put_object(format!("{}/{}/extensions.json", user_id, job_id), &extension_data_vec)
-            .await
-    {
-        Ok(_) => print_s3("Successfully uploaded extensions JSON datafile to S3!"),
-        _ => print_s3("Failed to upload front extensions JSON data to S3! Continuing regardless.")
-    }
+    // Upload the all three files to S3
+    app.lock()
+        .await
+        .bucket
+        .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
+        .await 
+        .context("Failed to upload front file to S3! Continuing regardless.")?;
+    print_s3("Successfully uploaded front file to S3!");
+    app.lock()
+        .await
+        .bucket
+        .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
+        .await
+        .context("Failed to upload front side to S3! Continuing regardless.")?;
+    print_s3("Successfully uploaded side file to S3!");
+    app.lock()
+        .await
+        .bucket
+        .put_object(format!("{}/{}/extensions.json", user_id, job_id), serialized_extensions.as_bytes())
+        .await
+        .context("Failed to upload front extensions JSON data to S3! Continuing regardless.")?;
+    print_s3("Successfully uploaded extensions JSON datafile to S3!");
     
-
-    Ok(StatusCode::Queue)
+    // Return as successful
+    print_be("Successfully saved all files physically and to S3!");
+    Ok(())
 }
