@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use openssh::{Session, KnownHosts};
+use anyhow::{ Context, Result };
 use crate::print::print_metis;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -17,29 +18,29 @@ pub struct Request {
     pub status: StatusCode
 }
 
-pub async fn query_metis (
-    user_id: String, job_id: String ,
-    _aws_access_key_id: String, _aws_secret_access_key: String, _igait_access_key: String
-) -> Result<(), String> {
-    println!("\n----- [ Querying METIS ] -----");
-    let session = Session::connect_mux("igait@metis.niu.edu", KnownHosts::Strict).await
-        .map_err(|_| String::from("Couldn't connect to METIS! Are your credentials correct?"))?;
+pub async fn query_metis ( uid: &str, job_id: usize ) -> Result<()> {
+    // Attempt to connect to METIS
+    print_metis("\n----- [ Querying METIS ] -----");
+    let session = Session::connect_mux("igait@metis.niu.edu", KnownHosts::Strict)
+        .await
+        .context("Couldn't connect to METIS! Are your credentials correct?")?;
     print_metis("Connected!");
 
+    // Run the inference job
     let run_inference = session
         .command("qsub")
         .arg("-v")
-        .arg(
-            &format!("USER_ID={user_id},JOB_ID={job_id}")
-        )
+        .arg(&format!("USER_ID={uid},JOB_ID={job_id}"))
         .arg("/lstr/sahara/zwlab/jw/igait-ml-backend/pbs/igait.pbs")
         .output().await
-        .map_err(|_| String::from("Failed to run openpose command!"))?;
-    print_metis(&format!("Output - {}", String::from_utf8(run_inference.stdout).expect("server output was not valid UTF-8")));
+        .context("Failed to run openpose command!")?;
+    print_metis(&format!("Output - {}", String::from_utf8(run_inference.stdout).context("Server output was not valid UTF-8")?));
 
-
+    // Close the SSH session
     session.close().await
-        .expect("Failed to close SSH session - probably fine, continuing.");
-    
+        .context("Failed to close SSH session - probably fine.")?;
+
+    // Return as successful
+    print_metis("Successfully queried METIS!");
     Ok(())
 }

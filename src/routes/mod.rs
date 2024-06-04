@@ -10,13 +10,17 @@ use axum::{
 use tokio::fs::{ create_dir, read_dir };
 use chrono::{ DateTime, Utc };
 
-use crate::state::AppState;
+use crate::{
+    email::{
+        send_failure_email, send_success_email, send_welcome_email
+    }, 
+    state::AppState
+};
 use crate::request::StatusCode;
 use crate::database::{ Status, Job };
 use crate::print::*;
 use crate::{ Arc, Mutex };
 use serde_json::Value;
-use crate::email::send_email;
 
 /* 
     The purpose of this interface is to allow our routes to use anyhow's 
@@ -134,8 +138,6 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
 
     // Extract the email address and timestamp
     let recipient_email_address = job.email.clone();
-    let subject;
-    let body;
     let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
 
     if &status_code == "OK" {
@@ -176,57 +178,36 @@ pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: 
                 .presign_get(format!("{}/{}/side_keyframed.{}", uid, job_id, extensions["side"].as_str().context("Invalid extension type for the side file!")?), 86400 * 7, None)
                 .expect("Failed to get the side keyframed URL!");
 
-        // Build the email
-        subject = format!("Your recent submission to iGait App has completed!");
-        body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br>These videos will remain downloadable for 7 days from the date of this email. If they expire, contact GaitStudy@niu.edu to have new files issued. If you recieve an error message viewing these videos, please use a different browser such as Chrome.<br><br>User ID: {}<br>Job ID: {}", 
-            status.value,
-            dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
-
-            job.age,
-            job.ethnicity,
-            job.sex,
-            job.height,
-            job.weight,
-
-            front_keyframed_url,
-            side_keyframed_url,
-
-            uid,
+        // Send the success email
+        send_success_email(
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &job,
+            &front_keyframed_url,
+            &side_keyframed_url,
+            &uid,
             job_id
-        );
+        ).await.context("Failed to send success email!")?;
     } else if &status_code == "ERR" {
         // This is a failure, usually due to an error in the inference process
         print_be(&format!("Job unsuccessful - status content: '{status_content}'"));
         status.code = StatusCode::InferenceErr;
 
-        // Build the email
-        subject = format!("Your recent submission to iGait App failed!");
-        body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
-            dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
-
-            status.code, status.value, 
-            uid,
+        // Send the failure email
+        send_failure_email(
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &uid,
             job_id
-        );
+        ).await.context("Failed to send failure email!")?;
     } else {
         // This is an invalid status code, probably a mistake or bad actor
         print_be("Invalid status code!");
         return Err(AppError(anyhow!("Invalid status code from completion endpoint!")));
     }
-
-    // Update the status of the job
-    app.lock().await
-        .db.update_status(
-            &uid,
-            job_id,
-            status
-        ).await
-        .context("Failed to update the status of the job! It's worth noting that the email has already been sent.")?;
-
-    // Send the email
-    send_email( &recipient_email_address, &subject, &body )
-        .context(format!("Failed to the email regarding a failed submission! The subject was {}", subject))?;
-
+    
     Ok("OK")
 }
 pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), AppError> {
@@ -406,25 +387,12 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     status.code = StatusCode::Queue;
     status.value = String::from("Currently in queue.");
 
-    // Build the email
-    let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
-    let subject = format!("Welcome to iGait!");
-    let body = format!("Your job submission on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
-        dt_now_utc.format("%m/%d/%Y at %H:%M"),
-
-        job.age,
-        job.ethnicity,
-        job.sex,
-        job.height,
-        job.weight,
-
-        uid,
+    // Send the welcome email
+    send_welcome_email(
+        &job,
+        &uid,
         job_id
-    );
-
-    // Send the email
-    send_email( &job.email, &subject, &body ).
-        context("Failed to send email! However, it was otherwise saved.")?;
+    ).await.context("Failed to send welcome email!")?;
 
     // Update the status of the job
     app.lock().await

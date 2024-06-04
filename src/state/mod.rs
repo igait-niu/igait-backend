@@ -115,12 +115,7 @@ async fn check_dir( app: Arc<Mutex<AppState>>, entry: &DirEntry ) -> Result<()> 
         .context("Failed to update status to 'Processing'!")?;
     
     // Query METIS and handle any errors.
-    let query_result = query_metis(
-        uid.to_string(), job_id.to_string(),
-        std::env::var("AWS_ACCESS_KEY_ID").context("MISSING 'AWS_ACCESS_KEY_ID' in environment!")?,
-        std::env::var("AWS_SECRET_ACCESS_KEY").context("Missing 'AWS_SECREt_ACCESS_KEY' in environment!")?,
-        std::env::var("IGAIT_ACCESS_KEY").context("Missing 'IGAIT_ACCESS_KEY' in environment!")?
-    ).await;
+    let query_result = query_metis(uid, job_id).await;
     
     // If the query failed, we'll update the status of the job to reflect that.
     if let Err(reason) = query_result {
