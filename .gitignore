@@ -1,6 +1,12 @@
-/target
+# Secrets
 .envrc
+.env
 /.direnv
+
+# Development files
 test.mp4
-/data/resources/*
-/data/queue/*
+flake.lock
+flake.nix
+
+# Build files
+/target
