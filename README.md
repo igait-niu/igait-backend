@@ -96,7 +96,7 @@ cargo build
 
 Let's say you've done both. Before you commit it to GitHub, test to make sure it works in Docker too.
 ```bash
-docker built -t testing .
+docker build -t testing .
 docker run testing
 ```
 
