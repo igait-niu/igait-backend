@@ -5,8 +5,6 @@
 
 # Development files
 test.mp4
-flake.lock
-flake.nix
 
 # Build files
 /target

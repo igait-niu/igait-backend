@@ -7,7 +7,7 @@ RUN apt-get install -y pkg-config curl
 RUN apt-get install -y libssl-dev openssl
 RUN ["cargo", "build"]
 
-FROM scratch
+FROM ubuntu:20.04
 COPY --from=build /target/debug/igait-backend /igait-backend
 RUN apt update
 RUN apt install -y openssh-client
