@@ -14,8 +14,6 @@ services:
       - 'ssh:/root/.ssh'
     env_file:
       - .env
-    environment:
-      - FIREBASE_API_KEY='QGqgZ26VvBSjyLpvNtmrAn0zyaBwVOFFa2V7NCFr'
   frontend:
     image: ghcr.io/igait-niu/igait-web:latest
     ports:
