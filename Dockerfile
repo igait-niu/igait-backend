@@ -1,17 +1,24 @@
-# syntax=docker/dockerfile:1
-FROM rust:1.75-slim as build
-WORKDIR /
-COPY . .
-RUN apt-get update
-RUN apt-get install -y pkg-config curl
-RUN apt-get install -y libssl-dev openssl
-RUN ["cargo", "build"]
+FROM nixos/nix:2.18.3 AS builder
 
-FROM ubuntu:20.04
-COPY --from=build /target/debug/igait-backend /igait-backend
-RUN apt update
-RUN apt install -y openssh-client
+# Set up the environment for Nix Flakes
+RUN nix-channel --update
+RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+
+# Set up the environment for the Nix Flake
+WORKDIR /app
+COPY flake.nix flake.lock Cargo.lock ./
+
+# Cache the dependencies
+RUN nix develop .#igait-backend
+
+# Import the work directory and build
+COPY . .
+RUN nix build .#igait-backend
+
+# Run the binary
 VOLUME /data
 VOLUME /root/.ssh
-CMD ["/igait-backend"]
+CMD ["/app/result/bin/igait-backend"]
 EXPOSE 3000
+
+# Reminder: Command to run this image with terminal is `docker run -it <image> /bin/bash`
