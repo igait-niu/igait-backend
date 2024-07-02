@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
     let api_v1 = Router::new()
         .route("/upload", post(routes::upload) )
         .route("/completion", post(routes::completion))
+        .route("/historical_submissions", post(routes::historical_submissions))
         .with_state(state.clone());
 
     // Nest the API into the general app router
