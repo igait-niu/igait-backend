@@ -12,7 +12,7 @@ use chrono::{ DateTime, Utc };
 
 use crate::{
     email::{
-        send_failure_email, send_success_email, send_welcome_email
+        send_email, send_failure_email, send_success_email, send_welcome_email
     }, 
     state::AppState
 };
@@ -49,8 +49,95 @@ where
         Self(err.into())
     }
 }
+/*
+    Historical Submissions -
+        This route is used to send an email to the user with all of their past submissions.
+    
+    Example CURL request:
+        curl -v -F user_id=curlplaceholder http://localhost:3000/api/v1/historical_submissions
+*/
+pub async fn historical_submissions ( 
+    State(app): State<Arc<Mutex<AppState>>>,
+    mut multipart: Multipart
+) -> Result<&'static str, AppError> {
+    println!("\n----- [ Recieved historical submissions request ] -----");
 
-pub async fn completion(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<&'static str, AppError> {
+    // Unwrap all fields, which, in this case,
+    //  is just the user ID.
+    let mut uid_option: Option<String> = None;
+    while let Some(field) = multipart
+        .next_field().await
+        .context("Bad request! Is it possible you submitted a file over the size limit?")?
+    {
+        print_be(&format!("Field Incoming: {:?}", field.name()));
+        match field.name() {
+            Some("user_id") => {
+                uid_option = Some(
+                        field
+                            .text().await
+                            .context("Field 'user_id' wasn't readable as text!")?
+                            .to_string());
+            },
+            _ => {
+                print_be("Which had an unknown/no field name...");
+            }
+        }
+    }
+    let uid = uid_option.ok_or(anyhow!("Missing 'user_id' in request!"))?;
+
+    // Get all jobs
+    let jobs = app.lock().await
+        .db
+        .get_all_jobs(&uid)
+        .await
+        .context("Failed to get jobs!")?;
+
+    // Generate the body
+    let mut body = concat!(
+        "<h1>Thank you for contacting iGait!</h1>",
+        "You recently requested a complete history of your submissions. Located below can be found, in chronological order, all past submissions.<br>"
+        ).to_string();
+    for (index, job) in jobs.iter().enumerate() {
+        body.push_str(&format!(
+            "<h2>Submission #{}</h2>",
+            index + 1,
+        ));
+        let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
+        body.push_str(&format!(
+            "- Submitted on: {}<br>- Email: {}<br>",
+            dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S"),
+            job.email
+        ));
+        body.push_str(&format!(
+            "<h3>Status: {:?}</h3>- Additional Information: {}<br>",
+            job.status.code,
+            job.status.value
+        ));
+        body.push_str(&format!(
+            "<h3>Patient Information:</h3>- Age: {}<br>- Ethnicity: {}<br>- Sex: {}<br>- Height: {}<br>- Weight: {}<br><br>",
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight
+        ));
+    }
+
+    // Send the email to the email in the first job
+    //  (This is a bit of a hack, but it's the easiest way
+    //   to send an email while maintaining flexibility)
+    send_email(
+        &jobs[0].email,
+        "Your iGait Submission History",
+        &body
+    ).context("Failed to send email!")?;
+
+    Ok("OK")
+}
+pub async fn completion (
+    State(app): State<Arc<Mutex<AppState>>>,
+    mut multipart: Multipart
+) -> Result<&'static str, AppError> {
     println!("\n----- [ Recieved completion update ] -----");
 
     let mut uid_option: Option<String> = None;

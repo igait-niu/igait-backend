@@ -152,4 +152,19 @@ impl Database {
         // Return the job if it exists
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.clone())
     }
+    pub async fn get_all_jobs (
+        &self,
+        uid: &str 
+    ) -> Result<Vec<Job>> {
+        // First double check that the user actually exists
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+
+        // Build a path to the job in the database
+        let job_handle = self._state.at(uid).at("jobs");
+
+        // Get the jobs as a mutable vector
+        job_handle.get::<Vec<Job>>().await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get jobs!")
+    }
 }
