@@ -1,0 +1,1 @@
+This is where PDFs are written to. They are immediately deleted upon being uploaded, however.

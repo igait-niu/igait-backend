@@ -1,16 +1,19 @@
-use std::time::SystemTime;
-
 use crate::{database::{Job, Status}, print_be};
+
+use std::time::SystemTime;
 
 use anyhow::{ Context, Result };
 use chrono::{ DateTime, Utc };
+use colored::Colorize;
+
 
 pub fn send_email (
     to:      &str,
     subject: &str,
-    body:    &str
+    body:    &str,
+    task_number: u128
 ) -> Result<()> {
-    print_be(&format!("Sending email to '{to}'..."));
+    print_be!(task_number, "Sending email to '{to}'...");
 
     // Post the form to the Cloudflare Worker
     ureq::post("https://email-service.igaitniu.workers.dev/")
@@ -21,7 +24,7 @@ pub fn send_email (
             ( "body",    body    )
         ])
         .context("Failed to send form to the Cloudllare Worker")?;
-    print_be(&format!("Done!"));
+    print_be!(task_number, "Successfully sent email to '{to}'!");
 
     Ok(())
 }
@@ -33,7 +36,8 @@ pub async fn send_success_email (
     front_keyframed_url:     &str,
     side_keyframed_url:      &str,
     uid:                     &str,
-    job_id:                  usize
+    job_id:                  usize,
+    task_number:             u128
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App has completed!");
@@ -55,14 +59,15 @@ pub async fn send_success_email (
     );
 
     // Send the email
-    send_email(recipient_email_address, &subject, &body)
+    send_email( recipient_email_address, &subject, &body, task_number )
 }
 pub async fn send_failure_email (
     recipient_email_address: &str,
     status:                  &Status,
     dt_timestamp_utc:        &DateTime<Utc>,
     uid:                     &str,
-    job_id:                  usize
+    job_id:                  usize,
+    task_number:             u128
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App failed!");
@@ -75,12 +80,13 @@ pub async fn send_failure_email (
     );
 
     // Send the email
-    send_email(recipient_email_address, &subject, &body)
+    send_email( recipient_email_address, &subject, &body, task_number )
 }
 pub async fn send_welcome_email (
-    job:    &Job,
-    uid:    &str,
-    job_id: usize
+    job:         &Job,
+    uid:         &str,
+    job_id:      usize,
+    task_number: u128
 ) -> Result<()> {
     // Build the email
     let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
@@ -99,5 +105,5 @@ pub async fn send_welcome_email (
     );
 
     // Send the email
-    send_email( &job.email, &subject, &body )
+    send_email( &job.email, &subject, &body, task_number )
 }

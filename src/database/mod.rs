@@ -1,11 +1,14 @@
+use crate::{ 
+    print_db, request::StatusCode
+};
+
+use std::time::SystemTime;
+
 use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
-use crate::{ 
-    request::StatusCode,
-    print::*
-};
 use serde::{ Serialize, Deserialize};
-use std::time::SystemTime;
+use colored::Colorize;
+
 
 #[derive( Serialize, Deserialize, Debug )]
 pub struct User {
@@ -42,28 +45,36 @@ impl Database {
                 .at("users")
         })
     }
-    pub async fn ensure_user (&self, uid: &str) -> Result<()> {
+    pub async fn ensure_user (
+        &self,
+        uid:         &str,
+        task_number: u128
+    ) -> Result<()> {
         // Create a path to the user in the database
         let user_handle = self._state.at(uid);
 
         // Check if the user doesn't exist
-        print_db("Verifying user existence...");
+        print_db!(task_number, "Verifying user existence...");
         if user_handle.get::<User>().await.is_err() {
-            print_db(&format!("User doesn't exist, creating new user with UID '{uid}'..."));
+            print_db!(task_number, "User doesn't exist, creating new user with UID '{uid}'...");
 
             // Create a new user
             user_handle.update(&User {
                 uid: String::from(uid),
                 jobs: Vec::new()
             }).await.map_err(|e| anyhow!("{e:?}")).context("Failed to create a new user while ensuring they existed!")?;
-            print_db("Successfully created new user!");
+            print_db!(task_number, "Successfully created new user!");
         }
 
         Ok(())
     }
-    pub async fn count_jobs (&self, uid: &str ) -> Result<usize> {
+    pub async fn count_jobs (
+        &self,
+        uid:         &str,
+        task_number: u128
+    ) -> Result<usize> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
         // Then, get the jobs and count them
         if let Ok(jobs) = self._state.at(uid).at("jobs").get::<Vec<Job>>().await {
@@ -73,9 +84,14 @@ impl Database {
         // If there was an error, this means there are no jobs
         Ok(0)
     }
-    pub async fn new_job (&self, uid: &str, job: Job) -> Result<()> {
+    pub async fn new_job (
+        &self,
+        uid:         &str,
+        job:         Job,
+        task_number: u128
+    ) -> Result<()> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
         // Get a handle to the location of the jobs in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -93,12 +109,18 @@ impl Database {
         }).await.map_err(|e| anyhow!("{e:?}")).context("Failed to update database with the new job array!")?;
 
         // Return as successful
-        print_db("Added new job!");
+        print_db!(task_number, "Added new job!");
         Ok(())
     }
-    pub async fn update_status (&self, uid: &str, job_id: usize, status: Status) -> Result<()> {
+    pub async fn update_status (
+        &self, 
+        uid:         &str,
+        job_id:      usize, 
+        status:      Status,
+        task_number: u128
+    ) -> Result<()> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
         
         // Get the user and job handles
         let user_handle = self._state.at(&uid);
@@ -121,12 +143,19 @@ impl Database {
             .context("Failed to update the user object in the database!")?;
 
         // Return as successful
-        print_db(&format!("Updated status successfully to {:?} with message {:?}!", status.code, status.value));
+        let code = status.code;
+        let value = status.value;
+        print_db!(task_number, "Updated status successfully to {code:#?} with message {value}!");
         Ok(())
     }
-    pub async fn get_status (&self, uid: &str, job_id: usize) -> Result<Status> {
+    pub async fn get_status (
+        &self, 
+        uid:         &str,
+        job_id:      usize,
+        task_number: u128
+    ) -> Result<Status> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -138,9 +167,14 @@ impl Database {
 
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.status.clone())
     }
-    pub async fn get_job (&self, uid: &str, job_id: usize) -> Result<Job> {
+    pub async fn get_job (
+        &self,
+        uid:         &str,
+        job_id:      usize,
+        task_number: u128
+    ) -> Result<Job> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -154,10 +188,11 @@ impl Database {
     }
     pub async fn get_all_jobs (
         &self,
-        uid: &str 
+        uid:         &str,
+        task_number: u128
     ) -> Result<Vec<Job>> {
         // First double check that the user actually exists
-        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");

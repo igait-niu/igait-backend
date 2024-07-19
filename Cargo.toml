@@ -11,8 +11,9 @@ aws-config = "1.1.5"
 aws-sdk-s3 = "1.15.0"
 axum = { version = "0.7.3", features = ["multipart"] }
 chrono = { version = "0.4.38", features = ["alloc"] }
-colorama = "0.1.0"
+colored = "2.1.0"
 firebase-rs = "2.0.9"
+genpdf = "0.2.0"
 openssh = { version = "0.10.3", features = ["native-mux"] }
 rand = "0.8.5"
 rust-s3 = "0.33.0"

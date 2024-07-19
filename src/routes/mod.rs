@@ -1,26 +1,27 @@
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use std::time::SystemTime;
-use anyhow::{ Result, Context, anyhow };
+use crate::request::StatusCode;
+use crate::database::{ Status, Job };
+use crate::{ Arc, Mutex };
+use crate::{
+    email::{
+        send_email, send_failure_email, send_success_email, send_welcome_email
+    }, print_be, print_s3, state::AppState
+};
 
+use std::time::SystemTime;
+
+use tokio::{
+    fs::{ File, create_dir, read_dir },
+    io::AsyncWriteExt
+};
+use anyhow::{ Result, Context, anyhow };
 use axum::{
     body::{Body, Bytes},
     extract::{ Multipart, State}, response::{IntoResponse, Response}
 };
-use tokio::fs::{ create_dir, read_dir };
-use chrono::{ DateTime, Utc };
-
-use crate::{
-    email::{
-        send_email, send_failure_email, send_success_email, send_welcome_email
-    }, 
-    state::AppState
-};
-use crate::request::StatusCode;
-use crate::database::{ Status, Job };
-use crate::print::*;
-use crate::{ Arc, Mutex };
 use serde_json::Value;
+use chrono::{ DateTime, Utc };
+use colored::Colorize;
+
 
 /* 
     The purpose of this interface is to allow our routes to use anyhow's 
@@ -60,6 +61,11 @@ pub async fn historical_submissions (
     State(app): State<Arc<Mutex<AppState>>>,
     mut multipart: Multipart
 ) -> Result<&'static str, AppError> {
+    // Allocate a new task number
+    app.lock().await
+        .task_number += 1;
+    let task_number = app.lock().await.task_number;
+
     println!("\n----- [ Recieved historical submissions request ] -----");
 
     // Unwrap all fields, which, in this case,
@@ -69,7 +75,8 @@ pub async fn historical_submissions (
         .next_field().await
         .context("Bad request! Is it possible you submitted a file over the size limit?")?
     {
-        print_be(&format!("Field Incoming: {:?}", field.name()));
+        let name = field.name();
+        print_be!(task_number, "Field Incoming: {name:#?}");
         match field.name() {
             Some("user_id") => {
                 uid_option = Some(
@@ -79,7 +86,7 @@ pub async fn historical_submissions (
                             .to_string());
             },
             _ => {
-                print_be("Which had an unknown/no field name...");
+                print_be!(task_number, "Which had an unknown/no field name...");
             }
         }
     }
@@ -88,31 +95,46 @@ pub async fn historical_submissions (
     // Get all jobs
     let jobs = app.lock().await
         .db
-        .get_all_jobs(&uid)
+        .get_all_jobs(
+            &uid,
+            task_number
+        )
         .await
         .context("Failed to get jobs!")?;
 
     // Generate the body
-    let mut body = concat!(
+    let mut email_body = concat!(
         "<h1>Thank you for contacting iGait!</h1>",
         "You recently requested a complete history of your submissions. Located below can be found, in chronological order, all past submissions.<br>"
         ).to_string();
-    for (index, job) in jobs.iter().enumerate() {
-        body.push_str(&format!(
-            "<h2>Submission #{}</h2>",
-            index + 1,
-        ));
+    for job in jobs.iter() {
+        // Add a condensed version of the job to the shortened body
         let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
-        body.push_str(&format!(
-            "- Submitted on: {}<br>- Email: {}<br>",
-            dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S"),
-            job.email
+        email_body.push_str(&format!(
+            "<h2>{}</h2>",
+            dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S UTC")
         ));
-        body.push_str(&format!(
-            "<h3>Status: {:?}</h3>- Additional Information: {}<br>",
-            job.status.code,
-            job.status.value
-        ));
+        match job.status.code {
+            StatusCode::Complete => {
+                email_body.push_str(
+                    &format!(
+                        "- Status: Complete<br>- Confidence: {:.2}%", 
+                        job.status.value
+                            .parse::<f64>()
+                            .context("Failed to parse confidence value!")? 
+                            * 100.0
+                    )
+                );
+            },
+            _ => {
+                email_body.push_str(&format!(
+                    "- Status: {:?}<br>- Additional Information: {}<br>",
+                    job.status.code,
+                    job.status.value
+                ));
+            }
+        }
+        /*
         body.push_str(&format!(
             "<h3>Patient Information:</h3>- Age: {}<br>- Ethnicity: {}<br>- Sex: {}<br>- Height: {}<br>- Weight: {}<br><br>",
             job.age,
@@ -121,23 +143,204 @@ pub async fn historical_submissions (
             job.height,
             job.weight
         ));
+         */
     }
+    print_be!(task_number, "Built the HTML file and email body!");
+
+    // Now that we have created the shortened body, let's 
+    //  upload the more verbose file to the user's S3,
+    //  and attach the link to the shortened body
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("We are not time travelers ^^`")
+        .as_secs();
+
+    /* 
+
+        PDF GENERATION 
+
+        */
+    // Load a font from the file system
+    tokio::spawn(historical_helper(app, email_body, jobs, uid, timestamp, task_number));
+    
+
+    Ok("OK")
+}
+pub async fn historical_helper(
+    app: Arc<Mutex<AppState>>,
+    mut email_body: String,
+    jobs: Vec<Job>,
+    uid: String,
+    timestamp: u64,
+    task_number: u128
+) -> Result<()> {
+    let jobs_og = Arc::new(jobs);
+    let uid_og = Arc::new(uid);
+    let timestamp_og = Arc::new(timestamp);
+
+    let jobs = jobs_og.clone();
+    let uid = uid_og.clone();
+    let timestamp = timestamp_og.clone();
+
+    let sync_thread = tokio::task::spawn( async move {
+        let font_family = genpdf::fonts::from_files("pdf_handling/fonts/SourceSansPro", "SourceSansPro", None)
+            .expect("Failed to load font family!");// Create a document and set the default font family
+        let mut doc = genpdf::Document::new(font_family);
+
+        // Decorate
+        let mut decorator = genpdf::SimplePageDecorator::new();
+        decorator.set_margins(10);
+
+        // Change the default settings
+        doc.set_title("Demo document");
+        doc.set_page_decorator(decorator);
+        
+        // Add the body
+        let title = genpdf::style::StyledString::new("iGait - Complete Historical Results".to_owned(), genpdf::style::Effect::Bold);
+        doc.push(genpdf::elements::Paragraph::new(title));
+
+
+
+        // Add each result as its own paragraph
+        for (index, job) in jobs.iter().enumerate() {
+            let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
+            let status = match job.status.code {
+                StatusCode::Complete => {
+                    format!(
+                        "Complete - Confidence: {:.2}%", 
+                        job.status.value
+                            .parse::<f64>()
+                            .expect("Failed to parse confidence value!")
+                            * 100.0
+                    )
+                },
+                _ => {
+                    format!(
+                        "{:?} - Additional Information: {}",
+                        job.status.code,
+                        job.status.value
+                    )
+                }
+            };
+
+            // Add basic data
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Submission #{}", index +1),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Submitted on: {}", dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S")),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Paragraph::new(genpdf::style::StyledString::new(
+                format!("Status: {}", status),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Email: {}", job.email),
+                genpdf::style::Style::new()
+            )));
+
+            // Add patient data
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                "Patient Information:".to_owned(),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Age: {}", job.age),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Sex: {}", job.sex),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Height: {}", job.height),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                format!("Weight: {}", job.weight),
+                genpdf::style::Style::new()
+            )));
+            doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
+                "",
+                genpdf::style::Style::new()
+            )));
+        }
+        print_be!(task_number, "Built PDF file!");
+
+        // Render the file to a compatible Writer
+        let path = format!("pdf_handling/history_requests/{}_{}.html", uid, timestamp);
+        doc.render_to_file(&path)
+            .expect("Failed to render PDF!");
+
+        print_be!(task_number, "Rendered PDF file to {path}");
+    });
+
+    // Await the sync thread
+    sync_thread
+        .await
+        .map_err(|e| anyhow!("{e:#?}"))
+        .context("Failed to generate PDF file!")?;
+    print_be!(task_number, "Preparing to upload...");
+
+    // Read the bytes of the file
+    let path = format!("pdf_handling/history_requests/{}_{}.html", uid_og, timestamp_og);
+    print_be!(task_number, "Reading file from {path}");
+    let extended_body_byte_vec = tokio::fs::read(&path)
+        .await
+        .context("Failed to read the PDF file!")?;
+
+    // Remove the file
+    tokio::fs::remove_file(&format!("pdf_handling/history_requests/{}_{}.html", uid_og, timestamp_og))
+        .await
+        .context("Failed to remove the PDF file!")?;
+    print_be!(task_number, "Removed file!");
+
+    // Put the extended body into the user's S3 bucket
+    print_s3!(task_number, "Putting file to AWS...");
+    let aws_path = format!("{}/history_requests/{}.pdf", uid_og, timestamp_og);
+    app.lock()
+        .await
+        .bucket
+        .put_object(&aws_path, &extended_body_byte_vec)
+        .await 
+        .context("Failed to upload front file to S3! Continuing regardless.")?;
+    print_s3!(task_number, "Uploaded PDF file to S3!");
+
+    // Generate the presigned URL
+    print_s3!(task_number, "Generating presigned URL...");
+    let extended_body_url = app.lock()
+            .await
+            .bucket
+            .presign_get(aws_path, 86400 * 7, None)
+            .context("Failed to get the front keyframed URL!")?;
+    print_s3!(task_number, "Generated a presigned URL for the HTML file!");
+
+    email_body += &format!("<br><br><h3>Complete Historical Data:</h3>{}<br>", extended_body_url);
+    email_body += "<br><br><h2>Please contact &lt;contact email here&gt; with any additional questions!</h2>";
 
     // Send the email to the email in the first job
     //  (This is a bit of a hack, but it's the easiest way
     //   to send an email while maintaining flexibility)
     send_email(
-        &jobs[0].email,
+        &jobs_og[0].email,
         "Your iGait Submission History",
-        &body
+        &email_body,
+        task_number
     ).context("Failed to send email!")?;
 
-    Ok("OK")
+    Ok(())
 }
 pub async fn completion (
     State(app): State<Arc<Mutex<AppState>>>,
     mut multipart: Multipart
 ) -> Result<&'static str, AppError> {
+    // Allocate a new task number
+    app.lock().await
+        .task_number += 1;
+    let task_number = app.lock().await.task_number;
+
     println!("\n----- [ Recieved completion update ] -----");
 
     let mut uid_option: Option<String> = None;
@@ -150,7 +353,8 @@ pub async fn completion (
         .next_field().await
         .context("Bad request! Is it possible you submitted a file over the size limit?")?
     {
-        print_be(&format!("Field Incoming: {:?}", field.name()));
+        let name = field.name();
+        print_be!(task_number, "Field Incoming: {name:#?}");
         match field.name() {
             Some("user_id") => {
                 uid_option = Some(
@@ -190,7 +394,7 @@ pub async fn completion (
                             .to_string());
             },
             _ => {
-                print_be("Which had an unknown/no field name...");
+                print_be!(task_number, "Which had an unknown/no field name...");
             }
         }
     }
@@ -204,7 +408,7 @@ pub async fn completion (
 
     // First, check the access key against the environment
     if igait_access_key != std::env::var("IGAIT_ACCESS_KEY").context("MISSING 'IGAIT_ACCESS_KEY' in environment!")? {
-        print_be("Invalid access key!");
+        print_be!(task_number, "Invalid access key!");
         Err(anyhow!("Invalid access key from completion endpoint!"))?
     }
 
@@ -219,7 +423,8 @@ pub async fn completion (
         .db
         .get_job(
             &uid,
-            job_id
+            job_id,
+            task_number
         ).await
         .context("The job targeted by the completion request doesn't exist!")?; 
 
@@ -229,7 +434,7 @@ pub async fn completion (
 
     if &status_code == "OK" {
         // This is a success, the inference process was completed
-        print_be("Job successful!");
+        print_be!(task_number, "Job successful!");
         status.code = StatusCode::Complete;
 
         // Extract the bytes from the extensions file
@@ -274,11 +479,12 @@ pub async fn completion (
             &front_keyframed_url,
             &side_keyframed_url,
             &uid,
-            job_id
+            job_id,
+            task_number
         ).await.context("Failed to send success email!")?;
     } else if &status_code == "ERR" {
         // This is a failure, usually due to an error in the inference process
-        print_be(&format!("Job unsuccessful - status content: '{status_content}'"));
+        print_be!(task_number, "Job unsuccessful - status content: '{status_content}'");
         status.code = StatusCode::InferenceErr;
 
         // Send the failure email
@@ -287,17 +493,26 @@ pub async fn completion (
             &status,
             &dt_timestamp_utc,
             &uid,
-            job_id
+            job_id,
+            task_number
         ).await.context("Failed to send failure email!")?;
     } else {
         // This is an invalid status code, probably a mistake or bad actor
-        print_be("Invalid status code!");
+        print_be!(task_number, "Invalid status code!");
         return Err(AppError(anyhow!("Invalid status code from completion endpoint!")));
     }
     
     Ok("OK")
 }
-pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Multipart) -> Result<(), AppError> {
+pub async fn upload(
+    State(app): State<Arc<Mutex<AppState>>>,
+    mut multipart: Multipart
+) -> Result<(), AppError> {
+    // Allocate a new task number
+    app.lock().await
+        .task_number += 1;
+    let task_number = app.lock().await.task_number;
+
     println!("\n----- [ Recieved base request ] -----");
 
     // Initialize all of the fields as options
@@ -326,7 +541,9 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         .next_field().await
         .context("Bad uploadrequest! Is it possible you submitted a file over the size limit?")?
     {
-        print_be(&format!("Field Incoming: {:?} - File Attached: {:?}", field.name(), field.file_name()));
+        let name = field.name();
+        let field_name = field.file_name();
+        print_be!(task_number, "Field Incoming: {name:#?} - File Attached: {field_name:?}");
         
         match field.name() {
             Some("fileuploadfront") => {
@@ -395,7 +612,7 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
                             .context("Field 'weight' wasn't parseable as a number! Was the entry only digits?")?);
             },
             _ => {
-                print_be("Which had an unknown/no field name...");
+                print_be!(task_number, "Which had an unknown/no field name...");
             }
         }
     }
@@ -419,7 +636,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     let job_id = app.lock().await
         .db
         .count_jobs(
-            &uid
+            &uid,
+            task_number
         ).await
         .context("Failed to count the number of jobs!")?;
 
@@ -437,7 +655,11 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     
     // Add the job to the database
     app.lock().await
-        .db.new_job( &uid, job.clone() ).await
+        .db.new_job(
+            &uid,
+            job.clone(),
+            task_number
+        ).await
         .context("Failed to add the new job to the database!")?;
 
     // Try to save the files to S3
@@ -450,7 +672,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             side_file_bytes,
             &uid, 
             job_id,
-            job.clone()
+            job.clone(),
+            task_number
         ).await 
     {
         // Populate the status object
@@ -462,7 +685,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
             .db.update_status(
                 &uid,
                 job_id,
-                status
+                status,
+                task_number
             ).await
             .context("Failed to update the status of the job! It failed to save, however.")?;
 
@@ -478,7 +702,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
     send_welcome_email(
         &job,
         &uid,
-        job_id
+        job_id,
+        task_number
     ).await.context("Failed to send welcome email!")?;
 
     // Update the status of the job
@@ -486,7 +711,8 @@ pub async fn upload(State(app): State<Arc<Mutex<AppState>>>, mut multipart: Mult
         .db.update_status(
             &uid,
             job_id,
-            status
+            status,
+            task_number
         ).await
         .context("Failed to update the status of the job! However, it was otherwise saved.")?;
 
@@ -502,7 +728,8 @@ async fn save_files<'a> (
     side_file_bytes: Bytes, 
     user_id: &str,
     job_id: usize,
-    job: Job
+    job: Job,
+    task_number: u128
 ) -> Result<()> {
     // Unpack the extensions
     let front_extension = front_file_name.split(".")
@@ -519,7 +746,7 @@ async fn save_files<'a> (
         create_dir(&dir_path).await
             .context("Unable to create directory for queue file!")?;
 
-        print_be(&format!("Created directory for queue file: {}", dir_path));
+        print_be!(task_number, "Created directory for queue file: {dir_path}");
     }
 
     // Build path ID and file handle
@@ -560,23 +787,23 @@ async fn save_files<'a> (
         .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
-    print_s3("Successfully uploaded front file to S3!");
+    print_s3!(task_number, "Successfully uploaded front file to S3!");
     app.lock()
         .await
         .bucket
         .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
-    print_s3("Successfully uploaded side file to S3!");
+    print_s3!(task_number, "Successfully uploaded side file to S3!");
     app.lock()
         .await
         .bucket
         .put_object(format!("{}/{}/extensions.json", user_id, job_id), serialized_extensions.as_bytes())
         .await
         .context("Failed to upload front extensions JSON data to S3! Continuing regardless.")?;
-    print_s3("Successfully uploaded extensions JSON datafile to S3!");
+    print_s3!(task_number, "Successfully uploaded extensions JSON datafile to S3!");
     
     // Return as successful
-    print_be("Successfully saved all files physically and to S3!");
+    print_be!(task_number, "Successfully saved all files physically and to S3!");
     Ok(())
 }
