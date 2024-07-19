@@ -6,12 +6,12 @@ mod print;
 mod email;
 
 use anyhow::{ Context, Result };
-use crate::print::*;
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use colored::Colorize;
 
 
 #[tokio::main]
@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     tokio::spawn(state::work_queue(state));
 
     // Serve the API
-    print_be("Starting iGait Backend on 3000...");
+    print_be!(0, "Starting iGait Backend on 3000...");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await
         .context("Couldn't start up listener!")?;
     axum::serve(listener, app).await

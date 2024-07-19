@@ -1,21 +1,36 @@
-use colorama::Colored;
+#[macro_export]
+macro_rules! print_be{
+    ($a:expr, $b:expr) => {
+        let message = format!($b);
+        let to_print = format!("[Backend] [Task {}]", $a);
 
-// S3 coloring
-pub fn print_s3 ( input: &str ) {
-    println!("{}", String::from(input).color("blue") );
+        println!("{} {}", to_print.blue(), message);
+    }
 }
+#[macro_export]
+macro_rules! print_db{
+    ($a:expr, $b:expr) => {
+        let message = format!($b);
+        let to_print = format!("[DB] [Task {}]", $a);
 
-// Database coloring
-pub fn print_db ( input: &str ) {
-    println!("{}", String::from(input).color("bright magenta") );
+        println!("{} {}", to_print.purple(), message);
+    }
 }
+#[macro_export]
+macro_rules! print_s3{
+    ($a:expr, $b:expr) => {
+        let message = format!($b);
+        let to_print = format!("[S3] [Task {}]", $a);
 
-// Backend coloring
-pub fn print_be ( input: &str ) {
-    println!("{}", String::from(input).color("green") );
+        println!("{} {}", to_print.cyan(), message);
+    }
 }
+#[macro_export]
+macro_rules! print_metis{
+    ($a:expr, $b:expr) => {
+        let message = format!($b);
+        let to_print = format!("[METIS] [Task {}]", $a);
 
-// Backend coloring
-pub fn print_metis ( input: &str ) {
-    println!("{}", String::from(input).color("yellow") );
+        println!("{} {}", to_print.magenta(), message);
+    }
 }
