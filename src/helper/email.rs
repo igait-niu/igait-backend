@@ -1,17 +1,19 @@
-use crate::{database::{Job, Status}, print_be};
 
 use std::time::SystemTime;
 
 use anyhow::{ Context, Result };
 use chrono::{ DateTime, Utc };
-use colored::Colorize;
+
+use crate::print_be;
+
+use super::lib::{Job, JobStatus, JobTaskID};
 
 
 pub fn send_email (
     to:      &str,
     subject: &str,
     body:    &str,
-    task_number: u128
+    task_number: JobTaskID
 ) -> Result<()> {
     print_be!(task_number, "Sending email to '{to}'...");
 
@@ -30,14 +32,14 @@ pub fn send_email (
 }
 pub async fn send_success_email (
     recipient_email_address: &str,
-    status:                  &Status,
+    status:                  &JobStatus,
     dt_timestamp_utc:        &DateTime<Utc>,
     job:                     &Job,
     front_keyframed_url:     &str,
     side_keyframed_url:      &str,
     uid:                     &str,
     job_id:                  usize,
-    task_number:             u128
+    task_number:             JobTaskID
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App has completed!");
@@ -63,11 +65,11 @@ pub async fn send_success_email (
 }
 pub async fn send_failure_email (
     recipient_email_address: &str,
-    status:                  &Status,
+    status:                  &JobStatus,
     dt_timestamp_utc:        &DateTime<Utc>,
     uid:                     &str,
     job_id:                  usize,
-    task_number:             u128
+    task_number:             JobTaskID
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App failed!");
@@ -86,7 +88,7 @@ pub async fn send_welcome_email (
     job:         &Job,
     uid:         &str,
     job_id:      usize,
-    task_number: u128
+    task_number: JobTaskID
 ) -> Result<()> {
     // Build the email
     let dt_now_utc: DateTime<Utc> = SystemTime::now().into();

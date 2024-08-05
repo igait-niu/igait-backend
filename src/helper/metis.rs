@@ -1,30 +1,14 @@
 use crate::print_metis;
 
-use serde::{Serialize, Deserialize};
 use openssh::{Session, KnownHosts};
 use anyhow::{ Context, Result };
-use colored::Colorize;
 
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub enum StatusCode {
-    Submitting,
-    SubmissionErr,
-    Queue,
-    Processing,
-    InferenceErr,
-    Complete
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Request {
-    pub id: usize,
-    pub status: StatusCode
-}
+use super::lib::JobTaskID;
 
 pub async fn query_metis (
     uid:         &str,
     job_id:      usize,
-    task_number: u128
+    task_number: JobTaskID
 ) -> Result<()> {
     // Attempt to connect to METIS
     print_metis!(task_number, "\n----- [ Querying METIS ] -----");

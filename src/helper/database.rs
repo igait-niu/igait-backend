@@ -1,36 +1,10 @@
-use crate::{ 
-    print_db, request::StatusCode
-};
-
-use std::time::SystemTime;
+use crate::{helper::lib::User, print_db};
 
 use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
-use serde::{ Serialize, Deserialize};
-use colored::Colorize;
 
+use super::lib::{Job, JobStatus, JobTaskID};
 
-#[derive( Serialize, Deserialize, Debug )]
-pub struct User {
-    pub uid: String,
-    pub jobs: Vec<Job>
-}
-#[derive( Serialize, Deserialize, Clone, Debug )]
-pub struct Job {
-    pub age: i16,
-    pub ethnicity: String,
-    pub sex: char,
-    pub height: String,
-    pub status: Status,
-    pub timestamp: SystemTime,
-    pub weight: i16,
-    pub email: String
-}
-#[derive( Serialize, Deserialize, Clone, Debug )]
-pub struct Status {
-    pub code: StatusCode,
-    pub value: String,
-}
 
 #[derive( Debug )]
 pub struct Database {
@@ -48,7 +22,7 @@ impl Database {
     pub async fn ensure_user (
         &self,
         uid:         &str,
-        task_number: u128
+        task_number: JobTaskID
     ) -> Result<()> {
         // Create a path to the user in the database
         let user_handle = self._state.at(uid);
@@ -71,7 +45,7 @@ impl Database {
     pub async fn count_jobs (
         &self,
         uid:         &str,
-        task_number: u128
+        task_number: JobTaskID
     ) -> Result<usize> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
@@ -88,7 +62,7 @@ impl Database {
         &self,
         uid:         &str,
         job:         Job,
-        task_number: u128
+        task_number: JobTaskID
     ) -> Result<()> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
@@ -116,8 +90,8 @@ impl Database {
         &self, 
         uid:         &str,
         job_id:      usize, 
-        status:      Status,
-        task_number: u128
+        status:      JobStatus,
+        task_number: JobTaskID
     ) -> Result<()> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
@@ -152,8 +126,8 @@ impl Database {
         &self, 
         uid:         &str,
         job_id:      usize,
-        task_number: u128
-    ) -> Result<Status> {
+        task_number: JobTaskID
+    ) -> Result<JobStatus> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
@@ -171,7 +145,7 @@ impl Database {
         &self,
         uid:         &str,
         job_id:      usize,
-        task_number: u128
+        task_number: JobTaskID
     ) -> Result<Job> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
@@ -189,7 +163,7 @@ impl Database {
     pub async fn get_all_jobs (
         &self,
         uid:         &str,
-        task_number: u128
+        task_number: JobTaskID
     ) -> Result<Vec<Job>> {
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;

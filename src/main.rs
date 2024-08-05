@@ -1,31 +1,29 @@
-mod database;
-mod state;
-mod request;
+mod helper;
+mod daemons;
 mod routes;
-mod print;
-mod email;
 
 use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
+use daemons::state::work_queue;
+use helper::lib::AppState;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use colored::Colorize;
 
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Create a thread-safe mutex lock to hold the app state
-    let state: Arc<Mutex<state::AppState>> = Arc::new(Mutex::new(
-        state::AppState::new().await.context("Couldn't set up app state!")?
+    let state: Arc<Mutex<AppState>> = Arc::new(Mutex::new(
+        AppState::new().await.context("Couldn't set up app state!")?
     ));
 
     // Build the V1 API router
     let api_v1 = Router::new()
-        .route("/upload", post(routes::upload) )
-        .route("/completion", post(routes::completion))
-        .route("/historical_submissions", post(routes::historical_submissions))
+        .route("/upload", post(crate::routes::upload::upload_entrypoint) )
+        .route("/completion", post(crate::routes::completion::completion_entrypoint))
+        .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
         .with_state(state.clone());
 
     // Nest the API into the general app router
@@ -34,7 +32,7 @@ async fn main() -> Result<()> {
         .layer(DefaultBodyLimit::max(500000000));
 
     // Start the queue worker
-    tokio::spawn(state::work_queue(state));
+    tokio::spawn(work_queue(state));
 
     // Serve the API
     print_be!(0, "Starting iGait Backend on 3000...");

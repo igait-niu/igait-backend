@@ -4,7 +4,7 @@ macro_rules! print_be{
         let message = format!($b);
         let to_print = format!("[Backend] [Task {}]", $a);
 
-        println!("{} {}", to_print.blue(), message);
+        println!("{} {}", <&str as colored::Colorize>::blue(&to_print), message);
     }
 }
 #[macro_export]
@@ -13,7 +13,7 @@ macro_rules! print_db{
         let message = format!($b);
         let to_print = format!("[DB] [Task {}]", $a);
 
-        println!("{} {}", to_print.purple(), message);
+        println!("{} {}", <&str as colored::Colorize>::purple(&to_print), message);
     }
 }
 #[macro_export]
@@ -22,7 +22,7 @@ macro_rules! print_s3{
         let message = format!($b);
         let to_print = format!("[S3] [Task {}]", $a);
 
-        println!("{} {}", to_print.cyan(), message);
+        println!("{} {}", <&str as colored::Colorize>::cyan(&to_print), message);
     }
 }
 #[macro_export]
@@ -31,6 +31,6 @@ macro_rules! print_metis{
         let message = format!($b);
         let to_print = format!("[METIS] [Task {}]", $a);
 
-        println!("{} {}", to_print.magenta(), message);
+        println!("{} {}", <&str as colored::Colorize>::magenta(&to_print), message);
     }
 }

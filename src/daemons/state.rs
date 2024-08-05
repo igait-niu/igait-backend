@@ -1,44 +1,9 @@
-use crate::{ 
-    database::{ Database, Status }, print_be, request::{query_metis, StatusCode}, Arc, Mutex
-};
+use std::{sync::Arc, time::Duration};
 
-use std::fs::remove_dir_all;
+use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
+use anyhow::{ Result, Context, anyhow };
 
-use tokio::{
-    time::{
-        sleep,
-        Duration
-    },
-    fs::{ 
-        read_dir, DirEntry
-    }
-};
-use s3::{ Bucket, creds::Credentials };
-use colored::Colorize;
-use anyhow::{ anyhow, Context, Result };
-
-
-
-
-#[derive(Debug)]
-pub struct AppState {
-    pub db: Database,
-    pub bucket: Bucket,
-    pub task_number: u128
-}
-impl AppState {
-    pub async fn new() -> Result<Self> {
-        Ok(Self {
-            db: Database::init().await.context("Failed to initialize database while setting up app state!")?,
-            bucket: Bucket::new(
-                "igait-storage",
-                "us-east-2".parse().context("Improper region!")?,
-                Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
-            ).context("Failed to initialize bucket!")?,
-            task_number: 0
-        })
-    }
-}
+use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::query_metis}, print_be};
 
 async fn check_dir(
     app:         Arc<Mutex<AppState>>,
@@ -83,28 +48,28 @@ async fn check_dir(
         .await
         .or_else(|_| {
             // Purge that directory
-            if let Err(e) = remove_dir_all(format!("queue/{}", dir_name)).context("FAILED TO REMOVE") {
-                return Err(e);
-            }
+            std::fs::remove_dir_all(format!("queue/{}", dir_name))
+                .context("Failed to remove directory!")?;
 
             Err(anyhow!("\t\tJob didn't exist - Purging files accordingly."))
         })?;
 
     // If the status is processing or submitting, we don't need to do anything,
     //  the backend is already working on it.
-    if status.code == StatusCode::Processing || status.code == StatusCode::Submitting {
+    if status.code == JobStatusCode::Processing || status.code == JobStatusCode::Submitting {
         return Ok(());
     }
 
     // If we're here, we have an unusual status code that we need to handle,
     //  we'll purge the directory and update the status accordingly.
-    if status.code == StatusCode::InferenceErr || status.code == StatusCode::SubmissionErr || status.code == StatusCode::Complete {
+    if status.code == JobStatusCode::InferenceErr || status.code == JobStatusCode::SubmissionErr || status.code == JobStatusCode::Complete {
         print_be!(0, "\n----- [ State Update ] -----");
         let code = status.code;
         print_be!(0, "Unusual status code detected, purging accordingly: {code:#?}");
     
         // Purge that directory
-        remove_dir_all(format!("queue/{}", dir_name)).context(format!("FAILED TO REMOVE 'queue/{}'!", dir_name))?;
+        std::fs::remove_dir_all(format!("queue/{}", dir_name))
+            .context(format!("FAILED TO REMOVE 'queue/{}'!", dir_name))?;
     }
 
     // If it's in the queue, and we're at this state in the code, we
@@ -116,8 +81,8 @@ async fn check_dir(
     app.lock().await.db.update_status(
             uid,
             job_id,
-            Status {
-                code: StatusCode::Processing,
+            JobStatus {
+                code: JobStatusCode::Processing,
                 value: String::from("Querying METIS and awaiting response...")
             },
             0
@@ -132,8 +97,8 @@ async fn check_dir(
         app.lock().await.db.update_status(
                 uid,
                 job_id,
-                Status {
-                    code: StatusCode::InferenceErr,
+                JobStatus {
+                    code: JobStatusCode::InferenceErr,
                     value: format!("Couldn't query METIS for reason '{reason}'!")
                 },
                 0
@@ -150,7 +115,7 @@ pub async fn work_queue(app: Arc<Mutex<AppState>>) -> Result<()> {
     loop {
         sleep(Duration::from_secs(5)).await;
 
-        let mut dir = read_dir("queue")
+        let mut dir = tokio::fs::read_dir("queue")
             .await
             .context("Failed to read from queue director! Please ensure 'queue' exists!")?;
         
