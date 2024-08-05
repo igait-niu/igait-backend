@@ -51,9 +51,10 @@ pub async fn historical_entrypoint (
         .task_number += 1;
     let task_number = app.lock().await.task_number;
 
-    println!("\n----- [ Recieved historical submissions request ] -----");
+    print_be!(task_number, "\n----- [ Recieved historical submissions request ] -----");
 
     // Unpack the arguments
+    print_be!(task_number, "Unpacking arguments...");
     let arguments = unpack_historical_arguments(multipart, task_number).await
         .context("Failed to unpack historical arguments!")?;
 
@@ -117,7 +118,7 @@ pub async fn historical_entrypoint (
     //  and attach the link to the shortened body
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("We are not time travelers ^^`")
+        .expect("Unreachable - We are not time travelers ^^`")
         .as_secs();
 
     // Generate the PDF
@@ -160,7 +161,7 @@ pub async fn get_email_and_pdf_link(
 
     let sync_thread = tokio::task::spawn( async move {
         let font_family = genpdf::fonts::from_files("pdf_handling/fonts/SourceSansPro", "SourceSansPro", None)
-            .expect("Failed to load font family!");// Create a document and set the default font family
+            .expect("Closure - Failed to load font family!");// Create a document and set the default font family
         let mut doc = genpdf::Document::new(font_family);
 
         // Decorate
@@ -186,7 +187,7 @@ pub async fn get_email_and_pdf_link(
                         "Complete - Confidence: {:.2}%", 
                         job.status.value
                             .parse::<f64>()
-                            .expect("Failed to parse confidence value!")
+                            .expect("Closure - Failed to parse confidence value!")
                             * 100.0
                     )
                 },
@@ -248,7 +249,7 @@ pub async fn get_email_and_pdf_link(
         // Render the file to a compatible Writer
         let path = format!("pdf_handling/history_requests/{}_{}.html", uid_arc, timestamp_arc);
         doc.render_to_file(&path)
-            .expect("Failed to render PDF!");
+            .expect("Closure - Failed to render PDF!");
 
         print_be!(task_number, "Rendered PDF file to {path}");
     });

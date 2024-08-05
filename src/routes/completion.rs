@@ -5,19 +5,19 @@ use chrono::{DateTime, Utc};
 use tokio::sync::Mutex;
 use anyhow::{ Result, Context, anyhow };
 
-use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppError, AppState, Job, JobStatus, JobStatusCode}}, print_be};
+use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be};
 
-pub async fn completion_entrypoint (
-    State(app): State<Arc<Mutex<AppState>>>,
-    mut multipart: Multipart
-) -> Result<&'static str, AppError> {
-    // Allocate a new task number
-    app.lock().await
-        .task_number += 1;
-    let task_number = app.lock().await.task_number;
-
-    println!("\n----- [ Recieved completion update ] -----");
-
+struct CompletionRequestArguments {
+    uid:              String,
+    job_id:           usize,
+    status_code:      String,
+    status_content:   String,
+    igait_access_key: String
+}
+async fn unpack_completion_arguments(
+    mut multipart: Multipart,
+    task_number:   JobTaskID
+) -> Result<CompletionRequestArguments> {
     let mut uid_option: Option<String> = None;
     let mut job_id_option: Option<usize> = None;
     let mut status_code_option: Option<String> = None;
@@ -81,8 +81,32 @@ pub async fn completion_entrypoint (
     let status_content = status_content_option.ok_or(anyhow!("Missing 'status_content' in request!"))?;
     let igait_access_key = igait_access_key_option.ok_or(anyhow!("Missing 'igait_access_key' in request!"))?;
 
+    Ok(CompletionRequestArguments {
+        uid,
+        job_id,
+        status_code,
+        status_content,
+        igait_access_key
+    })
+}
+pub async fn completion_entrypoint (
+    State(app): State<Arc<Mutex<AppState>>>,
+    multipart: Multipart
+) -> Result<&'static str, AppError> {
+    // Allocate a new task number
+    app.lock().await
+        .task_number += 1;
+    let task_number = app.lock().await.task_number;
+
+    print_be!(task_number, "\n----- [ Recieved completion update ] -----");
+
+    // Unpack the arguments from the request
+    print_be!(task_number, "Unpacking arguments...");
+    let arguments = unpack_completion_arguments(multipart, task_number).await
+        .context("Failed to unpack completion arguments!")?;
+    
     // First, check the access key against the environment
-    if igait_access_key != std::env::var("IGAIT_ACCESS_KEY").context("MISSING 'IGAIT_ACCESS_KEY' in environment!")? {
+    if arguments.igait_access_key != std::env::var("IGAIT_ACCESS_KEY").context("MISSING 'IGAIT_ACCESS_KEY' in environment!")? {
         print_be!(task_number, "Invalid access key!");
         Err(anyhow!("Invalid access key from completion endpoint!"))?
     }
@@ -90,15 +114,15 @@ pub async fn completion_entrypoint (
     // Build a new status object
     let mut status = JobStatus {
         code: JobStatusCode::Submitting,
-        value: status_content.clone()
+        value: arguments.status_content.clone()
     };
 
     // Grab the job it references
     let job: Job = app.lock().await
         .db
         .get_job(
-            &uid,
-            job_id,
+            &arguments.uid,
+            arguments.job_id,
             task_number
         ).await
         .context("The job targeted by the completion request doesn't exist!")?; 
@@ -107,7 +131,7 @@ pub async fn completion_entrypoint (
     let recipient_email_address = job.email.clone();
     let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
 
-    if &status_code == "OK" {
+    if &arguments.status_code == "OK" {
         // This is a success, the inference process was completed
         print_be!(task_number, "Job successful!");
         status.code = JobStatusCode::Complete;
@@ -118,8 +142,8 @@ pub async fn completion_entrypoint (
             .bucket
             .get_object(
                 &format!("{}/{}/extensions.json",
-                    uid,
-                    job_id
+                    arguments.uid,
+                    arguments.job_id
                 )
             ).await
             .context("Failed to get extensions file!")?
@@ -137,13 +161,33 @@ pub async fn completion_entrypoint (
         let front_keyframed_url = app.lock()
                 .await
                 .bucket
-                .presign_get(format!("{}/{}/front_keyframed.{}", uid, job_id, extensions["front"].as_str().context("Invalid extension type for the front file!")?), 86400 * 7, None)
-                .expect("Failed to get the front keyframed URL!");
+                .presign_get(
+                    format!("{}/{}/front_keyframed.{}",
+                        arguments.uid,
+                        arguments.job_id,
+                        extensions["front"]
+                            .as_str()
+                            .context("Invalid extension type for the front file!")?
+                    ),
+                    86400 * 7,
+                    None
+                )
+                .context("Failed to get the front keyframed URL!")?;
         let side_keyframed_url = app.lock()
                 .await
                 .bucket
-                .presign_get(format!("{}/{}/side_keyframed.{}", uid, job_id, extensions["side"].as_str().context("Invalid extension type for the side file!")?), 86400 * 7, None)
-                .expect("Failed to get the side keyframed URL!");
+                .presign_get(
+                    format!("{}/{}/side_keyframed.{}",
+                        arguments.uid,
+                        arguments.job_id,
+                        extensions["side"]
+                            .as_str()
+                            .context("Invalid extension type for the side file!")?
+                        ),
+                    86400 * 7,
+                    None
+                )
+                .context("Failed to get the side keyframed URL!")?;
 
         // Send the success email
         send_success_email(
@@ -153,12 +197,13 @@ pub async fn completion_entrypoint (
             &job,
             &front_keyframed_url,
             &side_keyframed_url,
-            &uid,
-            job_id,
+            &arguments.uid,
+            arguments.job_id,
             task_number
         ).await.context("Failed to send success email!")?;
-    } else if &status_code == "ERR" {
+    } else if &arguments.status_code == "ERR" {
         // This is a failure, usually due to an error in the inference process
+        let status_content = &arguments.status_content;
         print_be!(task_number, "Job unsuccessful - status content: '{status_content}'");
         status.code = JobStatusCode::InferenceErr;
 
@@ -167,8 +212,8 @@ pub async fn completion_entrypoint (
             &recipient_email_address,
             &status,
             &dt_timestamp_utc,
-            &uid,
-            job_id,
+            &arguments.uid,
+            arguments.job_id,
             task_number
         ).await.context("Failed to send failure email!")?;
     } else {

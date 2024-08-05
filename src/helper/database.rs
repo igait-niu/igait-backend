@@ -154,8 +154,10 @@ impl Database {
         let job_handle = self._state.at(uid).at("jobs");
 
         // Get the jobs as a mutable vector
-        let mut jobs = job_handle.get::<Vec<Job>>().await
-            .expect("Failed to get jobs!");
+        let mut jobs = job_handle.get::<Vec<Job>>()
+            .await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get jobs!")?;
 
         // Return the job if it exists
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.clone())
