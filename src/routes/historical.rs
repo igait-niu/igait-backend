@@ -7,13 +7,24 @@ use tokio::sync::Mutex;
 
 use crate::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
 
-struct HistoricalArguments {
+/// The request arguments for the historical submissions endpoint.
+struct HistoricalRequestArguments {
     uid: String
 }
+
+
+/// Takes in the `Multipart` request and unpacks the arguments into a `HistoricalRequestArguments` object.
+/// 
+/// # Fails
+/// If any of the fields are missing or if the files are too large.
+/// 
+/// # Arguments
+/// * `multipart` - The `Multipart` object to unpack.
+/// * `task_number` - The task number to print out to the console.
 async fn unpack_historical_arguments(
     mut multipart: Multipart,
     task_number:   JobTaskID
-) -> Result<HistoricalArguments> {
+) -> Result<HistoricalRequestArguments> {
     // Unwrap all fields, which, in this case,
     //  is just the user ID.
     let mut uid_option: Option<String> = None;
@@ -38,10 +49,21 @@ async fn unpack_historical_arguments(
     }
     let uid = uid_option.ok_or(anyhow!("Missing 'user_id' in request!"))?;
 
-    Ok(HistoricalArguments {
+    Ok(HistoricalRequestArguments {
         uid
     })
 }
+
+/// The entrypoint for the historical submissions endpoint.
+/// 
+/// # Fails
+/// * If the arguments cannot be unpacked.
+/// * If the jobs cannot be retrieved from the database.
+/// * If the email cannot be sent.
+/// 
+/// # Arguments
+/// * `app` - The application state.
+/// * `multipart` - The `Multipart` object containing the request.
 pub async fn historical_entrypoint ( 
     State(app): State<Arc<Mutex<AppState>>>,
     multipart: Multipart
@@ -144,7 +166,36 @@ pub async fn historical_entrypoint (
 
     Ok("OK")
 }
-pub async fn get_email_and_pdf_link(
+
+/// Generates a PDF file containing the complete history of the user's submissions.
+/// 
+/// # Fails
+/// * If the PDF cannot be generated.
+/// * If the PDF cannot be read.
+/// * If the PDF cannot be uploaded to the user's S3 bucket.
+/// * If the presigned URL cannot be generated.
+/// 
+/// # Panics
+/// * If the PDF cannot be rendered.
+/// 
+/// # Arguments
+/// * `app` - The application state.
+/// * `jobs` - The jobs to include in the PDF.
+/// * `uid` - The user ID.
+/// * `timestamp` - The timestamp to use for the PDF.
+/// * `task_number` - The task number to print out to the console.
+/// 
+/// # Returns
+/// * The email address of the user.
+/// * The presigned URL of the PDF.
+/// 
+/// # Notes
+/// <div class="warning">
+///    This function is currently a bit of a hack. It uses a synchronous closure to generate the PDF.
+///    <br>It is possible for this function to panic without catching the panic.
+///    <br><br>Currently, I do not have the technical skills to fix this. I will come back with more skill later.
+/// </div>
+async fn get_email_and_pdf_link(
     app: Arc<Mutex<AppState>>,
     jobs: Vec<Job>,
     uid: String,

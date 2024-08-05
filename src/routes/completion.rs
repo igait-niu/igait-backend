@@ -7,6 +7,7 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be};
 
+/// The required arguments for the completion request.
 struct CompletionRequestArguments {
     uid:              String,
     job_id:           usize,
@@ -14,6 +15,18 @@ struct CompletionRequestArguments {
     status_content:   String,
     igait_access_key: String
 }
+
+
+/// Unpacks the completion request arguments from the multipart request into `CompletionRequestArguments`.
+/// 
+/// # Fails
+/// * If any of the required fields are missing or the wrong data type
+/// * If any of the fields are unreadable
+/// * If the 'igait_access_key' is incorrect
+/// 
+/// # Arguments
+/// * `multipart` - The multipart request to unpack
+/// * `task_number` - The task number for logging
 async fn unpack_completion_arguments(
     mut multipart: Multipart,
     task_number:   JobTaskID
@@ -89,6 +102,22 @@ async fn unpack_completion_arguments(
         igait_access_key
     })
 }
+
+/// The completion entrypoint for the server.
+/// 
+/// # Fails
+/// * If the access key is incorrect
+/// * If the job targeted by the completion request doesn't exist
+/// * If the extensions file is unreadable
+/// * If the extensions file is invalid UTF8
+/// * If the extensions file is invalid JSON
+/// * If the presigned URLs can't be generated
+/// * If the success email can't be sent
+/// * If the failure email can't be sent
+/// 
+/// # Arguments
+/// * `State(app)` - The application state
+/// * `multipart` - The multipart request
 pub async fn completion_entrypoint (
     State(app): State<Arc<Mutex<AppState>>>,
     multipart: Multipart

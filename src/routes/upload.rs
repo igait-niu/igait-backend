@@ -6,6 +6,7 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{helper::{email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be, print_s3};
 
+/// The required arguments for the upload request.
 struct UploadRequestArguments {
     uid:              String,
     age:              i16,
@@ -14,12 +15,25 @@ struct UploadRequestArguments {
     height:           String,
     weight:           i16,
     email:            String,
-    status:           JobStatus,
-    front_file_name:  String,
-    side_file_name:   String,
-    front_file_bytes: Bytes,
-    side_file_bytes:  Bytes
+    front_file:       UploadRequestFile,
+    side_file:        UploadRequestFile
 }
+
+/// A representation of a file in a `Multipart` request.
+struct UploadRequestFile {
+    name:  String,
+    bytes: Bytes
+}
+
+
+/// Takes in the `Multipart` request and unpacks the arguments into a `UploadRequestArguments` object.
+/// 
+/// # Fails
+/// If any of the fields are missing or if the files are too large.
+/// 
+/// # Arguments
+/// * `multipart` - The `Multipart` object to unpack.
+/// * `task_number` - The task number to print out to the console.
 async fn unpack_upload_arguments(
     multipart:   &mut Multipart,
     task_number: JobTaskID
@@ -33,11 +47,6 @@ async fn unpack_upload_arguments(
     let mut weight_option:    Option<i16>    = None;
     let mut email_option:     Option<String> = None;
 
-    // Build a new status object
-    let status = JobStatus {
-        code: JobStatusCode::Submitting,
-        value: String::from("")
-    };
 
     // Initialize the file fields as options
     let mut front_file_name_option:  Option<String> = None;
@@ -143,10 +152,29 @@ async fn unpack_upload_arguments(
 
     Ok(UploadRequestArguments {
         uid, age, ethnicity, sex, height, weight, email, 
-        status,
-        front_file_name, side_file_name, front_file_bytes, side_file_bytes
+        front_file: UploadRequestFile {
+            name: front_file_name, 
+            bytes: front_file_bytes
+        },
+        side_file: UploadRequestFile {
+            name: side_file_name,
+            bytes: side_file_bytes
+        }
     })
 }
+
+/// The entrypoint for the upload request.
+/// 
+/// # Fails
+/// * If the arguments are missing.
+/// * If the files are too large.
+/// * If the files fail to save to S3.
+/// * If the job fails to save to the database.
+/// * If the welcome email fails to send.
+/// 
+/// # Arguments
+/// * `app` - The application state.
+/// * `multipart` - The `Multipart` object to unpack.
 pub async fn upload_entrypoint(
     State(app): State<Arc<Mutex<AppState>>>,
     mut multipart: Multipart
@@ -160,11 +188,17 @@ pub async fn upload_entrypoint(
     print_be!(task_number, "Unpacking arguments...");
 
     // Unpack the arguments
-    let mut arguments = unpack_upload_arguments(
+    let arguments = unpack_upload_arguments(
             &mut multipart,
             task_number
         ).await
         .context("Failed to unpack arguments!")?;
+
+    // Build a new status object
+    let mut status = JobStatus {
+        code: JobStatusCode::Submitting,
+        value: String::from("")
+    };
 
     // Generate the new job ID (no need to add 1 since it's 0-indexed)
     let job_id = app.lock().await
@@ -182,7 +216,7 @@ pub async fn upload_entrypoint(
         sex:       arguments.sex,
         height:    arguments.height,
         weight:    arguments.weight,
-        status:    arguments.status.clone(),
+        status:    status.clone(),
         email:     arguments.email,
         timestamp: SystemTime::now(),
     };
@@ -200,10 +234,8 @@ pub async fn upload_entrypoint(
     if let Err(err) = 
         save_upload_files( 
             app.clone(),
-            arguments.front_file_name,
-            arguments.front_file_bytes,
-            arguments.side_file_name,
-            arguments.side_file_bytes,
+            arguments.front_file,
+            arguments.side_file,
             &arguments.uid, 
             job_id,
             job.clone(),
@@ -211,15 +243,15 @@ pub async fn upload_entrypoint(
         ).await 
     {
         // Populate the status object
-        arguments.status.code = JobStatusCode::SubmissionErr;
-        arguments.status.value = err.to_string();
+        status.code = JobStatusCode::SubmissionErr;
+        status.value = err.to_string();
 
         // Update the status of the job
         app.lock().await
             .db.update_status(
                 &arguments.uid,
                 job_id,
-                arguments.status,
+                status,
                 task_number
             ).await
             .context("Failed to update the status of the job! It failed to save, however.")?;
@@ -229,8 +261,8 @@ pub async fn upload_entrypoint(
     }
     
     // Populate the status object
-    arguments.status.code = JobStatusCode::Queue;
-    arguments.status.value = String::from("Currently in queue.");
+    status.code = JobStatusCode::Queue;
+    status.value = String::from("Currently in queue.");
 
     // Send the welcome email
     send_welcome_email(
@@ -245,29 +277,42 @@ pub async fn upload_entrypoint(
         .db.update_status(
             &arguments.uid,
             job_id,
-            arguments.status,
+            status,
             task_number
         ).await
         .context("Failed to update the status of the job! However, it was otherwise saved.")?;
 
     Ok(())
 }
+
+/// Saves the upload files to S3 and the local filesystem.
+/// 
+/// # Fails
+/// * If the files fail to save to S3.
+/// * If the files fail to save to the local filesystem.
+/// 
+/// # Arguments
+/// * `app` - The application state.
+/// * `front_file` - The front file to save.
+/// * `side_file` - The side file to save.
+/// * `user_id` - The user ID to save the files under.
+/// * `job_id` - The job ID to save the files under.
+/// * `job` - The job object to save to the local filesystem.
+/// * `task_number` - The task number to print out to the console.
 async fn save_upload_files<'a> (
     app:              Arc<Mutex<AppState>>,
-    front_file_name:  String,
-    front_file_bytes: Bytes, 
-    side_file_name:   String,
-    side_file_bytes:  Bytes, 
+    front_file:       UploadRequestFile,
+    side_file:        UploadRequestFile,
     user_id:          &str,
     job_id:           usize,
     job:              Job,
     task_number:      JobTaskID
 ) -> Result<()> {
     // Unpack the extensions
-    let front_extension = front_file_name.split(".")
+    let front_extension = front_file.name.split(".")
         .nth(1)
         .context("Must have a file extension!")?;
-    let side_extension = side_file_name.split(".")
+    let side_extension = side_file.name.split(".")
         .nth(1)
         .context("Must have a file extension!")?;
     
@@ -301,11 +346,11 @@ async fn save_upload_files<'a> (
 
     // Build byte vectors
     let mut front_byte_vec: Vec<u8> = Vec::new();
-    front_byte_vec.write_all(&front_file_bytes)
+    front_byte_vec.write_all(&front_file.bytes)
         .await
         .context("Failed to build u8 vector from the front file's Bytes object!")?;
     let mut side_byte_vec: Vec<u8> = Vec::new();
-    side_byte_vec.write_all(&side_file_bytes)
+    side_byte_vec.write_all(&side_file.bytes)
         .await
         .context("Failed to build u8 vector from side file's Bytes object!")?;
 
@@ -337,6 +382,6 @@ async fn save_upload_files<'a> (
     
     // Return as successful
     print_be!(task_number, "Successfully saved all files physically and to S3!");
-    
+
     Ok(())
 }
