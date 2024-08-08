@@ -21,7 +21,7 @@ To see more information about a specific route, see [the routes module](routes).
 
 # 2 - Codebase
 ### 2.1 - Structure
-<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/169108989/328351527-a6262923-a3a6-47e1-94d9-297513e1729d.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20240808%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240808T013947Z&X-Amz-Expires=300&X-Amz-Signature=7d400b74fe999346368ca913dec1549c85d99455853fd58d149cbcaf1453bbbb&X-Amz-SignedHeaders=host&actor_id=91273156&key_id=0&repo_id=739494899" width=750></img>
+<img src="https://github.com/user-attachments/assets/3eaebabc-ac73-4041-a866-c7221923f94a" width=750></img>
 
 The codebase is split up into multiple modules:
 
