@@ -8,7 +8,23 @@ use crate::print_be;
 
 use super::lib::{Job, JobStatus, JobTaskID};
 
-
+/// Sends an email to the specified address with the specified subject and body.
+/// 
+/// # Arguments
+/// * `to` - The email address to send the email to
+/// * `subject` - The subject of the email
+/// * `body` - The body of the email
+/// 
+/// # Fails
+/// * If the `IGAIT_ACCESS_KEY` environment variable is missing
+/// * If the form fails to send to the Cloudflare Worker
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+/// 
+/// # Notes
+/// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
+/// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
 pub fn send_email (
     to:      &str,
     subject: &str,
@@ -30,6 +46,28 @@ pub fn send_email (
 
     Ok(())
 }
+
+/// A wrapper around `send_email` that sends a success email to the recipient.
+/// 
+/// # Arguments
+/// * `recipient_email_address` - The email address to send the email to
+/// * `status` - The status of the job
+/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `job` - The job that was submitted
+/// * `front_keyframed_url` - The URL to the front keyframed video
+/// * `side_keyframed_url` - The URL to the side keyframed video
+/// * `uid` - The user ID of the job
+/// * `job_id` - The job ID of the job
+/// * `task_number` - The task number of the job
+/// 
+/// # Fails
+/// * If the email fails to send
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+/// 
+/// # Notes
+/// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_success_email (
     recipient_email_address: &str,
     status:                  &JobStatus,
@@ -63,6 +101,25 @@ pub async fn send_success_email (
     // Send the email
     send_email( recipient_email_address, &subject, &body, task_number )
 }
+
+/// A wrapper around `send_email` that sends a failure email to the recipient.
+/// 
+/// # Arguments
+/// * `recipient_email_address` - The email address to send the email to
+/// * `status` - The status of the job
+/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `uid` - The user ID of the job
+/// * `job_id` - The job ID of the job
+/// * `task_number` - The task number of the job
+/// 
+/// # Fails
+/// * If the email fails to send
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+/// 
+/// # Notes
+/// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_failure_email (
     recipient_email_address: &str,
     status:                  &JobStatus,
@@ -84,6 +141,23 @@ pub async fn send_failure_email (
     // Send the email
     send_email( recipient_email_address, &subject, &body, task_number )
 }
+
+/// A wrapper around `send_email` that sends a welcome email to the recipient.
+/// 
+/// # Arguments
+/// * `job` - The job that was submitted
+/// * `uid` - The user ID of the job
+/// * `job_id` - The job ID of the job
+/// * `task_number` - The task number of the job
+/// 
+/// # Fails
+/// * If the email fails to send
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+/// 
+/// # Notes
+/// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_welcome_email (
     job:         &Job,
     uid:         &str,

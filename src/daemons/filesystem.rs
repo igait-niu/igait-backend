@@ -5,6 +5,32 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::query_metis}, print_be};
 
+/// Checks the directory for a given entry and updates the status of the job accordingly.
+/// 
+/// # Arguments
+/// * `app` - The application state
+/// * `entry` - The directory entry to check
+/// 
+/// # Fails
+/// * If the path is invalid Unicode
+/// * If the parser finds a malformed file name
+/// * If the directory couldn't be removed
+/// * If the job didn't exist
+/// * If the status couldn't be updated to 'Processing'
+/// * If the status couldn't be updated to 'InferenceErr'
+/// * If the query to METIS failed
+/// 
+/// # Returns
+/// * A successful result if the directory was checked
+/// 
+/// # Notes
+/// * If the status is 'Processing' or 'Submitting', the function will return early
+/// * If the status is 'InferenceErr', 'SubmissionErr', or 'Complete', the directory will be purged
+/// * If the status is 'Queue', the status will be updated to 'Processing' and the METIS query will be fired
+/// * If the METIS query fails, the status will be updated to 'InferenceErr'
+/// * The directory name must be in the format '\<id\>_\<job-id\>'
+/// * The directory name must not be '.gitignore'
+/// * This function is used in a loop to check the queue directory for new jobs
 async fn check_dir(
     app:         Arc<Mutex<AppState>>,
     entry:       &DirEntry
@@ -111,17 +137,36 @@ async fn check_dir(
     Ok(())
 }
 
-pub async fn work_queue(app: Arc<Mutex<AppState>>) -> Result<()> {
+/// The work queue daemon, which checks the queue directory for new jobs.
+/// 
+/// # Arguments
+/// * `app` - The application state
+/// 
+/// # Fails
+/// * If the queue directory couldn't be read
+/// * If the queue directory couldn't be iterated over
+/// * If the directory couldn't be checked
+/// 
+/// # Notes
+/// * This function never returns, ideally it should be run in a separate thread.
+pub async fn work_queue(
+    app: Arc<Mutex<AppState>>
+) -> () {
     loop {
         sleep(Duration::from_secs(5)).await;
 
-        let mut dir = tokio::fs::read_dir("queue")
-            .await
-            .context("Failed to read from queue director! Please ensure 'queue' exists!")?;
-        
-        while let Some(entry) = dir.next_entry().await.context("Failed to read from queue directory!")? {
-            if let Err(e) = check_dir(app.clone(), &entry).await {
-                print_be!(0, "{e:?}\n\nContinuing as usual...");
+        match tokio::fs::read_dir("queue").await {
+            Ok(mut dir) => {
+                while let Ok(Some(entry)) = dir.next_entry().await {
+                    if let Err(e) = check_dir(app.clone(), &entry).await {
+                        print_be!(0, "Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
+                    }
+                }
+            },
+            Err(why) => {
+                print_be!(0, "Couldn't read from queue directory!");
+                print_be!(0, "{why:?}\n\nContinuing as usual...");
+                continue;
             }
         }
     }

@@ -1,22 +1,6 @@
 //! This module contains the routes for the API.
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
-//! 
-//! # Layout and Explanation
-//! The API has three routes:
-//! * `completion`: This route is for use by **Metis** to update the status of a job.
-//! * `historical_submissions`: This route is for use by the iGait frontend to get the historical submissions of a user.
-//! * `upload`: This route is for use by the iGait frontend to upload a job to the server.
-//! 
-//! In the lifecycle of a job, first, the patient information and files are uploaded to the server via the `upload` route.
-//! Then, the job is processed by the server, and eventually shipped to **Metis**. 
-//! Finally, the status of the job is updated by **Metis** via the `completion` route.
-//! After the job is completed, the user can view the historical submissions via the `historical_submissions` route.
-//! 
-//! # Notes
-//! * The API is currently versioned at `v1`, meaning every route is actually at `/api/v1/<route>`.
-//! * The `completion` endpoint is only for use by **Metis**.
-//! * The `upload` and `historical_submissions` endpoints are for use by the iGait frontend.
 
 /// This module contains the completion endpoint for the API.
 /// 

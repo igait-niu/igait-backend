@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 mod helper;
 mod daemons;
 mod routes;
@@ -6,12 +7,26 @@ use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-use daemons::state::work_queue;
+use daemons::filesystem::work_queue;
 use helper::lib::AppState;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-
+/// The main entrypoint for the iGait backend.
+/// 
+/// # Fails
+/// * If the app state fails to initialize
+/// * If the listener fails to start
+/// * If the API fails to serve
+/// 
+/// # Returns
+/// * A successful result if the API is served
+/// 
+/// # Notes
+/// * The API is served on port 3000
+/// * The API is served at the root of the server
+/// * The API is served with a body limit of 500MB
+/// * The API is served with the V1 API nested under `/api/v1`
 #[tokio::main]
 async fn main() -> Result<()> {
     // Create a thread-safe mutex lock to hold the app state

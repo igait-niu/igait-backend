@@ -1,116 +1,124 @@
 # iGait ASD - Backend
-This is the primary 'brain' behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles this.
+This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
 
 *Under no circumstances should this repository ever be made public. To make it public could compromise sensitive client data. All code is property of the Dr. Ziteng Wang, the iGait Project, and Northern Illinois University.*
 
-## Tech Stack
-Languages:
-- **Rust** - 
-  Arguably one of the best languages for writing a fault-tolerant backend is Rust. It's not error prone, and forces you to handle most edge cases in advance. The borrow checker system ensures there are very few surprises, and the speed is comparable *only* to native C.
-- **Docker** - 
-  We frequently moved around our server infastructure. To ensure that no matter where we did anything, stuff would work the first time, with zero config, we used Docker. There's no system-level installs, just starting the Docker container and watching the magic happen.
+# 1 - API
+### 1.1 - Layout and Explanation
+The API has three routes:
+* [`api/v1/completion`](routes::completion)
+* [`api/v1/historical_submissions`](routes::historical)
+* [`api/v1/upload`](routes::upload)
 
-## Backend Request Handling and Operations
-![image](https://github.com/igait-niu/igait-backend/assets/169108989/a6262923-a3a6-47e1-94d9-297513e1729d)
+In the lifecycle of a job, first, the patient information and files are uploaded to the server via the `upload` route.
+Then, the job is processed by the server, and eventually shipped to **Metis**. 
+Finally, the status of the job is updated by **Metis** via the `completion` route. When the status is finalized by the backend server, emails are sent to the owner of the job via Cloudflare Workers by the backend.
+After the job is completed, the user can view the historical submissions via the `historical_submissions` route.
 
-Let's first talk about the goal of the project. We want to take a video, convert it to pose mappings, and run an inference on them.
-*Why here, and not on the customer's device?* - A valid question - but consider a Samsung from the early 2010s, and whether it'll be able to run that inference in any timely manner.
+To see more information about a specific route, see [the routes module](routes).
+### 1.2 - Notes
+* The API is currently versioned at `v1`, meaning every route is actually at `/api/v1/<route>`.
+* The `completion` endpoint is only for use by **Metis**.
+* The `upload` and `historical_submissions` endpoints are for use by the iGait frontend.
 
-The solution is to instead upload the video to a device that *can* handle that inference in a timely manner. In this case, that's Metis - the NIU CRCD's flagship supercomputing cluster. However, Metis doesn't allow hosting web servers directly on it. How do we work around this?
+# 2 - Codebase
+### 2.1 - Structure
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/169108989/328351527-a6262923-a3a6-47e1-94d9-297513e1729d.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20240808%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240808T013947Z&X-Amz-Expires=300&X-Amz-Signature=7d400b74fe999346368ca913dec1549c85d99455853fd58d149cbcaf1453bbbb&X-Amz-SignedHeaders=host&actor_id=91273156&key_id=0&repo_id=739494899" width=750></img>
 
-### /api/v1/upload
-Let's say we submit two videos, and our medical data to the backend. What happens is all of the **blue** arrows. 
-Order of operations:
-- User account is created as a **User** object and uploaded to Firebase Realtime DB
-- User data is placed into a **Job** object, and added to the **User** object, then Firebase Realtime DB is updated
-- The two videos are uploaded to AWS S3.
-- The iGait backend opens an SSH session to Metis, and supplies it with the USER_ID and JOB_ID of the now-uploaded videos.
-- Sends the user a 'Welcome to iGait!' email.
+The codebase is split up into multiple modules:
 
+- [`daemons`]:
+  - [`daemons/filesystem.rs`](daemons::filesystem): Daemon which fires Metis inference requests when a new file is detected
+- [`helper`]:
+  - [`helper/database.rs`](helper::database): Handles the interfacing with Google Firebase
+  - [`helper/email.rs`](helper::email): Handles the interfacing with Cloudflare Workers to send email
+  - [`helper/lib.rs`](helper::lib): Defines all custom datatypes the iGait backend uses 
+  - [`helper/metis.rs`](helper::metis): Handles the interfacing with the Metis supercomputer
+  - [`helper/print.rs`](helper::print): Helper printing macros to create easily readable print messages
+- [`routes`]: 
+  - [`routes/completion.rs`](routes::completion): This route is for use by **Metis** to update the status of a job
+  - [`routes/historical.rs`](routes::historical): This route is for use by the **iGait frontend** to get the historical submissions of a user.
+  - [`routes/upload.rs`](routes::upload): This route is for use by the **iGait frontend** to upload a job to the server.
 
-Then, Metis pulls the videos from S3 and runs the inference. Now, again, Metis can't really do 'web server' things like most servers can. How do we get around this?
+# 3 - Setting Up Your Development Environment
+There are two ways to ensure that you have the proper development environment.
 
-### /api/v1/completion
-The second endpoint is designed only for Metis to use, and is secured using a pre-set API key to prevent outside usage.
+You can either individually install each dependancy, or you can use the [Nix package manager](https://nixos.org/) to instead only run a single command to download [my](https://github.com/hiibolt) exact environment.
+### 3.1 - Installation
+#### 3.1.1 - Nix (recommended)
+- Install [Nix](https://nixos.org/)
+- Enable Nix Flakes (the process will likely have changed/integrated into standard by the time someone reads this, so you will need to read the [Nix documentation](https://nixos.wiki/wiki/Flakes))
+- Run `nix develop`
+#### 3.1.2 - Individual Installation (alternative to Nix)
+Do the following:
+- Install [Docker](https://www.docker.com/)
+- Install [Rust](https://www.rust-lang.org/)
+- Install [GCC](https://gcc.gnu.org/)
+- Install the following packages via your package manager of choice:
+  - `pkg-config`
+  - `openssl`
+  - `openssh`
+  - `curl`
 
-This allows Metis to let the central backend know that it has processed the videos and uploaded them to S3 for viewing and usage, and also provides the result from the inference.
-
-After recieving this informaiton, the backend does the following:
-- Updates the **Job** object's status for the **User** object, then updates Firebase Realtime DB
-- Sends the user an email containing the results.
-
-## Codebase Structure
-The codebase is split up into multiple modules.
-
-- **data/\***
-  Directory in which the server's *State* handler looks at to check for un-processed jobs. When a job is built, a directory for it is created with various metadata here. When the server finishes uploading everything to S3, Realtime DB, and Metis, it automatically deletes the folder.
-- **public/\***
-  There is a (now pointless) proof-of-concept frontend. You may safely pretend this folder doesn't exist, it's for debugging purposes, however it would now require some modification to be useful, as our fields have changed. 
-
-  Regardless, this website is served on `localhost:3000`. Our NGINX configuration intentionally doesn't let this page face the public - it shouldn't, as it allows manual, unfiltered data submission.
-- **src/database/\***
-  Handles everything related to Firebase Realtime DB.
-- **src/email/\***
-  Handles everything related to sending emails via Cloudflare Workers.
-- **src/print/\***
-  Printing utilities to help color server log output to distinguish whether a log message is related to S3, Firebase, Metis, etc.
-- **src/request/\***
-  Handles everything related to Metis SSH request sessions.
-- **src/routers/\***
-  Contains the actual routing server logic for the API.
-- **src/state/\***
-  Contains the logic for the server state handler so that everything stays properly synchronized across threads.
-- **src/main.rs**
-  Server entrypoint. Should contain very minimal code.
-
-## Setting Up Your Development Environment
-If you already use Nix Flakes, you can find my entire environment contained in `flake.nix`. 
-
-If you don't, install the following:
-- [Docker](https://www.docker.com/)
-- [Rust](https://www.rust-lang.org/)
-
+Recommended (but optional!) Extensions and Packages:
+- `rustfmt`
+- `clippy`
+- `rust-analyzer`
+### 3.2 - Secrets
 To run the backend, you will need to set a few environment variables:
-```bash
-AWS_ACCESS_KEY_ID=***REMOVED***
-AWS_SECRET_ACCESS_KEY=***REMOVED***
-FIREBASE_ACCESS_KEY=***REMOVED***
-IGAIT_ACCESS_KEY=***REMOVED***
-```
-
+- `AWS_ACCESS_KEY_ID`: Found via the AWS Console
+- `AWS_SECRET_ACCESS_KEY`: Found via the AWS Console
+- `FIREBASE_ACCESS_KEY`: Found in the Google Firebase API settings
+- `IGAIT_ACCESS_KEY`: This is an arbitrary value, what is important is that it is set to the same value for both the **Metis** scripts and the backend. This is because this API key is what secures the [`completion`](routes::completion) endpoint.
+### 3.3 - Download the `igait-backend` Repository
 Next, clone the repository:
 ```bash
 git clone https://github.com/igait-niu/igait-backend.git
 cd igait-backend
 ```
+### 3.4 - Development and Deployment Command List
+A typical development process should be in the following order:
+- 1.) Implement changes
+- 2.) Test a basic run with the [run command](#3.4.1)
+- 3.) Test a Docker build with the [associated commands](#3.4.3)
 
-Then, start the backend!
-```bash
-cargo run
-```
+A typical deployment process should be in the following order:
+- 1.) Commit changes to the `master` branch of the [GitHub repository](https://github.com/igait-niu/igait-backend)
+- 2.) Wait for GitHub Actions to build and publish the image automatically
+- 3.) Pull and launch the new Docker Image with the [associated commands](#3.4.5)
 
-To build the backend:
-```bash
-cargo build
-```
+To test production speed locally to gauge performance, use the [release build commands](#3.4.2).
 
-Let's say you've done both. Before you commit it to GitHub, test to make sure it works in Docker too.
+To diagnose an error where it builds locally but not on GitHub Actions, use the [Nix release build command](#3.4.4).
+#### <a name="3.4.1">3.4.1</a> - Running the Backend Locally
 ```bash
-docker build -t testing .
-docker run testing
+$ cargo run
 ```
-
-Looks good? Kill the Docker container, comment your code, and commit it to the GitHub repository.
+#### <a name="3.4.2">3.4.2</a> - Building and Running Release Binary Locally
 ```bash
-docker ps # find the name of the Docker container
-docker kill <the name of the container>
+$ cargo build --release
+$ ./target/release/igait-backend
 ```
-
-Any changes to the `master` branch will set the GitHub worker to automatically build a private Docker container. Please note this process takes some time (5~ minutes), but you can view it from [the home page](https://www.github.com/igait-niu/igait-backend).
-Once complete, to update the container on the AWS EC2 instance (from the `/igait-openpose` root directory): 
+#### <a name="3.4.3">3.4.3</a> - Docker Build and Run
 ```bash
-docker compose down
-docker pull ghcr.io/igait-niu/igait-backend:latest
-docker compose up -d
+$ docker build -t testing .
+$ docker run testing
+$ docker ps # find the name of the Docker container
+$ docker kill <the name of the container>
 ```
-*Note: You will need to be logged into Docker with your GitHub. Since this is a private repository, you need to prove to GHCR that you have access! There are many guides online. You may need to issue yourself an authentication secret or key.*
+#### <a name="3.4.4">3.4.4</a> - Nix Build and Run
+```bash
+$ nix build .#igait-backend
+```
+#### <a name="3.4.5">3.4.5</a> - AWS Pull and Deploy From GHCR
+```bash
+$ cd igait-backend
+$ docker compose down
+$ docker pull ghcr.io/igait-niu/igait-backend:latest
+$ docker compose up -d
+```
+#### <a name="3.4.6">3.4.6</a> - AWS Startup from Stopped
+```bash
+$ cd igait-backend
+$ docker compose up -d
+```

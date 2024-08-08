@@ -5,12 +5,25 @@ use anyhow::{ Context, Result, anyhow };
 
 use super::lib::{Job, JobStatus, JobTaskID};
 
-
+/// A wrapper class on the Firebase database to make it easier to interact with.
 #[derive( Debug )]
 pub struct Database {
     _state: Firebase
 }
 impl Database {
+    /// Initializes the Firebase wrapper class.
+    /// 
+    /// # Fails
+    /// * If the Firebase URL is invalid
+    /// * If the Firebase access key is missing
+    /// 
+    /// # Returns
+    /// * The Firebase wrapper class
+    /// 
+    /// # Notes
+    /// * The Firebase URL is the URL to the Firebase database, not the URL to the Firebase console.
+    /// * The Firebase access key is the key that allows you to access the Firebase database.
+    /// * The Firebase access key should be stored in the system environment as `FIREBASE_ACCESS_KEY`.
     pub async fn init () -> Result<Self> {
         Ok(Self {
             _state: Firebase::auth("https://network-technology-project-default-rtdb.firebaseio.com/", &std::env::var("FIREBASE_ACCESS_KEY").context("Missing FIREBASE_ACCESS_KEY! Make sure it's set in your system environment.")?)
@@ -19,6 +32,22 @@ impl Database {
                 .at("users")
         })
     }
+
+    /// Ensures that a user exists in the database.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to ensure exists.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the user can't be updated
+    /// 
+    /// # Returns
+    /// * A successful result if the user exists
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
     pub async fn ensure_user (
         &self,
         uid:         &str,
@@ -42,6 +71,23 @@ impl Database {
 
         Ok(())
     }
+
+    /// Counts the number of jobs a user has.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to count the jobs of.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user can't be ensured
+    /// * If the jobs can't be counted
+    /// 
+    /// # Returns
+    /// * The number of jobs the user has
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
+    /// * This function returns `0` if there are no jobs, but the user exists.
     pub async fn count_jobs (
         &self,
         uid:         &str,
@@ -58,6 +104,24 @@ impl Database {
         // If there was an error, this means there are no jobs
         Ok(0)
     }
+
+    /// Adds a new job to the user's job list.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to add the job to.
+    /// * `job` - The job to add to the user's job list.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the jobs can't be updated
+    /// 
+    /// # Returns
+    /// * A successful result if the job was added
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
+    /// * This function adds the job to the end of the user's job list.
     pub async fn new_job (
         &self,
         uid:         &str,
@@ -86,6 +150,25 @@ impl Database {
         print_db!(task_number, "Added new job!");
         Ok(())
     }
+
+    /// Updates the status of a job.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to update the job of.
+    /// * `job_id` - The ID of the job to update.
+    /// * `status` - The new status of the job.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the job ID doesn't exist
+    ///  
+    /// # Returns
+    /// * A successful result if the status was updated
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
+    /// * This function overwrites the status of the job with the new status.
     pub async fn update_status (
         &self, 
         uid:         &str,
@@ -122,6 +205,23 @@ impl Database {
         print_db!(task_number, "Updated status successfully to {code:#?} with message {value}!");
         Ok(())
     }
+
+    /// Gets the status of a job.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to get the job status of.
+    /// * `job_id` - The ID of the job to get the status of.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the job ID doesn't exist
+    /// 
+    /// # Returns
+    /// * The status of the job
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
     pub async fn get_status (
         &self, 
         uid:         &str,
@@ -141,6 +241,23 @@ impl Database {
 
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.status.clone())
     }
+
+    /// Gets a job given a user ID and a job ID.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to get the job of.
+    /// * `job_id` - The ID of the job to get.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the job ID doesn't exist
+    /// 
+    /// # Returns
+    /// * The job
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
     pub async fn get_job (
         &self,
         uid:         &str,
@@ -162,6 +279,21 @@ impl Database {
         // Return the job if it exists
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.clone())
     }
+
+    /// Gets all jobs of a user.
+    /// 
+    /// # Arguments
+    /// * `uid` - The user ID to get the jobs of.
+    /// * `task_number` - The task number to print out to the console.
+    /// 
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// 
+    /// # Returns
+    /// * The jobs of the user
+    /// 
+    /// # Notes
+    /// * This function creates a new user if the user doesn't exist.
     pub async fn get_all_jobs (
         &self,
         uid:         &str,
