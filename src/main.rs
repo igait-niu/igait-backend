@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("docs_home.md")]
 mod helper;
 mod daemons;
 mod routes;
