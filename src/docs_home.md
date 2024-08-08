@@ -120,3 +120,10 @@ $ docker compose up -d
 $ cd igait-backend
 $ docker compose up -d
 ```
+#### <a name="3.4.7">3.4.7</a> - Docs Build
+```bash
+cargo doc --no-deps
+rm -rf ./docs
+echo "<meta http-equiv=\"refresh\" content=\"0; url=igait_backend/index.html\">" > target/doc/index.html
+cp -r target/doc ./docs
+```
