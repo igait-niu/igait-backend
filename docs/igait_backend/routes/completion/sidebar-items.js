@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["completion_entrypoint","unpack_completion_arguments"],"struct":["CompletionRequestArguments"]};

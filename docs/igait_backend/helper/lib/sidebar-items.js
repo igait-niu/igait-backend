@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["JobStatusCode"],"struct":["AppError","AppState","Job","JobStatus","Request","User"],"type":["JobTaskID"]};

@@ -1,0 +1,123 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="iGait ASD - Backend"><title>igait_backend - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-e32f0c247825364d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../igait_backend/index.html">igait_backend</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../igait_backend/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">igait_backend</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/igait_backend/main.rs.html#1-60">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="igait-asd---backend"><a class="doc-anchor" href="#igait-asd---backend">§</a>iGait ASD - Backend</h2>
+<p>This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.</p>
+<p><em>Under no circumstances should this repository ever be made public. To make it public could compromise sensitive client data. All code is property of the Dr. Ziteng Wang, the iGait Project, and Northern Illinois University.</em></p>
+<h2 id="1---api"><a class="doc-anchor" href="#1---api">§</a>1 - API</h2><h4 id="11---layout-and-explanation"><a class="doc-anchor" href="#11---layout-and-explanation">§</a>1.1 - Layout and Explanation</h4>
+<p>The API has three routes:</p>
+<ul>
+<li><a href="routes/completion/index.html" title="mod igait_backend::routes::completion"><code>api/v1/completion</code></a></li>
+<li><a href="routes/historical/index.html" title="mod igait_backend::routes::historical"><code>api/v1/historical_submissions</code></a></li>
+<li><a href="routes/upload/index.html" title="mod igait_backend::routes::upload"><code>api/v1/upload</code></a></li>
+</ul>
+<p>In the lifecycle of a job, first, the patient information and files are uploaded to the server via the <code>upload</code> route.
+Then, the job is processed by the server, and eventually shipped to <strong>Metis</strong>. 
+Finally, the status of the job is updated by <strong>Metis</strong> via the <code>completion</code> route. When the status is finalized by the backend server, emails are sent to the owner of the job via Cloudflare Workers by the backend.
+After the job is completed, the user can view the historical submissions via the <code>historical_submissions</code> route.</p>
+<p>To see more information about a specific route, see <a href="routes/index.html" title="mod igait_backend::routes">the routes module</a>.</p>
+<h4 id="12---notes"><a class="doc-anchor" href="#12---notes">§</a>1.2 - Notes</h4>
+<ul>
+<li>The API is currently versioned at <code>v1</code>, meaning every route is actually at <code>/api/v1/&lt;route&gt;</code>.</li>
+<li>The <code>completion</code> endpoint is only for use by <strong>Metis</strong>.</li>
+<li>The <code>upload</code> and <code>historical_submissions</code> endpoints are for use by the iGait frontend.</li>
+</ul>
+<h2 id="2---codebase"><a class="doc-anchor" href="#2---codebase">§</a>2 - Codebase</h2><h4 id="21---structure"><a class="doc-anchor" href="#21---structure">§</a>2.1 - Structure</h4>
+<p><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/169108989/328351527-a6262923-a3a6-47e1-94d9-297513e1729d.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20240808%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240808T013947Z&X-Amz-Expires=300&X-Amz-Signature=7d400b74fe999346368ca913dec1549c85d99455853fd58d149cbcaf1453bbbb&X-Amz-SignedHeaders=host&actor_id=91273156&key_id=0&repo_id=739494899" width=750></img></p>
+<p>The codebase is split up into multiple modules:</p>
+<ul>
+<li><a href="daemons/index.html" title="mod igait_backend::daemons"><code>daemons</code></a>:
+<ul>
+<li><a href="daemons/filesystem/index.html" title="mod igait_backend::daemons::filesystem"><code>daemons/filesystem.rs</code></a>: Daemon which fires Metis inference requests when a new file is detected</li>
+</ul>
+</li>
+<li><a href="helper/index.html" title="mod igait_backend::helper"><code>helper</code></a>:
+<ul>
+<li><a href="helper/database/index.html" title="mod igait_backend::helper::database"><code>helper/database.rs</code></a>: Handles the interfacing with Google Firebase</li>
+<li><a href="helper/email/index.html" title="mod igait_backend::helper::email"><code>helper/email.rs</code></a>: Handles the interfacing with Cloudflare Workers to send email</li>
+<li><a href="helper/lib/index.html" title="mod igait_backend::helper::lib"><code>helper/lib.rs</code></a>: Defines all custom datatypes the iGait backend uses </li>
+<li><a href="helper/metis/index.html" title="mod igait_backend::helper::metis"><code>helper/metis.rs</code></a>: Handles the interfacing with the Metis supercomputer</li>
+<li><a href="helper/print/index.html" title="mod igait_backend::helper::print"><code>helper/print.rs</code></a>: Helper printing macros to create easily readable print messages</li>
+</ul>
+</li>
+<li><a href="routes/index.html" title="mod igait_backend::routes"><code>routes</code></a>: 
+<ul>
+<li><a href="routes/completion/index.html" title="mod igait_backend::routes::completion"><code>routes/completion.rs</code></a>: This route is for use by <strong>Metis</strong> to update the status of a job</li>
+<li><a href="routes/historical/index.html" title="mod igait_backend::routes::historical"><code>routes/historical.rs</code></a>: This route is for use by the <strong>iGait frontend</strong> to get the historical submissions of a user.</li>
+<li><a href="routes/upload/index.html" title="mod igait_backend::routes::upload"><code>routes/upload.rs</code></a>: This route is for use by the <strong>iGait frontend</strong> to upload a job to the server.</li>
+</ul>
+</li>
+</ul>
+<h2 id="3---setting-up-your-development-environment"><a class="doc-anchor" href="#3---setting-up-your-development-environment">§</a>3 - Setting Up Your Development Environment</h2>
+<p>There are two ways to ensure that you have the proper development environment.</p>
+<p>You can either individually install each dependancy, or you can use the <a href="https://nixos.org/">Nix package manager</a> to instead only run a single command to download <a href="https://github.com/hiibolt">my</a> exact environment.</p>
+<h4 id="31---installation"><a class="doc-anchor" href="#31---installation">§</a>3.1 - Installation</h4><h5 id="311---nix-recommended"><a class="doc-anchor" href="#311---nix-recommended">§</a>3.1.1 - Nix (recommended)</h5>
+<ul>
+<li>Install <a href="https://nixos.org/">Nix</a></li>
+<li>Enable Nix Flakes (the process will likely have changed/integrated into standard by the time someone reads this, so you will need to read the <a href="https://nixos.wiki/wiki/Flakes">Nix documentation</a>)</li>
+<li>Run <code>nix develop</code></li>
+</ul>
+<h5 id="312---individual-installation-alternative-to-nix"><a class="doc-anchor" href="#312---individual-installation-alternative-to-nix">§</a>3.1.2 - Individual Installation (alternative to Nix)</h5>
+<p>Do the following:</p>
+<ul>
+<li>Install <a href="https://www.docker.com/">Docker</a></li>
+<li>Install <a href="https://www.rust-lang.org/">Rust</a></li>
+<li>Install <a href="https://gcc.gnu.org/">GCC</a></li>
+<li>Install the following packages via your package manager of choice:
+<ul>
+<li><code>pkg-config</code></li>
+<li><code>openssl</code></li>
+<li><code>openssh</code></li>
+<li><code>curl</code></li>
+</ul>
+</li>
+</ul>
+<p>Recommended (but optional!) Extensions and Packages:</p>
+<ul>
+<li><code>rustfmt</code></li>
+<li><code>clippy</code></li>
+<li><code>rust-analyzer</code></li>
+</ul>
+<h4 id="32---secrets"><a class="doc-anchor" href="#32---secrets">§</a>3.2 - Secrets</h4>
+<p>To run the backend, you will need to set a few environment variables:</p>
+<ul>
+<li><code>AWS_ACCESS_KEY_ID</code>: Found via the AWS Console</li>
+<li><code>AWS_SECRET_ACCESS_KEY</code>: Found via the AWS Console</li>
+<li><code>FIREBASE_ACCESS_KEY</code>: Found in the Google Firebase API settings</li>
+<li><code>IGAIT_ACCESS_KEY</code>: This is an arbitrary value, what is important is that it is set to the same value for both the <strong>Metis</strong> scripts and the backend. This is because this API key is what secures the <a href="routes/completion/index.html" title="mod igait_backend::routes::completion"><code>completion</code></a> endpoint.</li>
+</ul>
+<h4 id="33---download-the-igait-backend-repository"><a class="doc-anchor" href="#33---download-the-igait-backend-repository">§</a>3.3 - Download the <code>igait-backend</code> Repository</h4>
+<p>Next, clone the repository:</p>
+<div class="example-wrap"><pre class="language-bash"><code>git clone https://github.com/igait-niu/igait-backend.git
+cd igait-backend
+</code></pre></div><h4 id="34---development-and-deployment-command-list"><a class="doc-anchor" href="#34---development-and-deployment-command-list">§</a>3.4 - Development and Deployment Command List</h4>
+<p>A typical development process should be in the following order:</p>
+<ul>
+<li>1.) Implement changes</li>
+<li>2.) Test a basic run with the <a href="#3.4.1">run command</a></li>
+<li>3.) Test a Docker build with the <a href="#3.4.3">associated commands</a></li>
+</ul>
+<p>A typical deployment process should be in the following order:</p>
+<ul>
+<li>1.) Commit changes to the <code>master</code> branch of the <a href="https://github.com/igait-niu/igait-backend">GitHub repository</a></li>
+<li>2.) Wait for GitHub Actions to build and publish the image automatically</li>
+<li>3.) Pull and launch the new Docker Image with the <a href="#3.4.5">associated commands</a></li>
+</ul>
+<p>To test production speed locally to gauge performance, use the <a href="#3.4.2">release build commands</a>.</p>
+<p>To diagnose an error where it builds locally but not on GitHub Actions, use the <a href="#3.4.4">Nix release build command</a>.</p>
+<h5 id="341---running-the-backend-locally"><a class="doc-anchor" href="#341---running-the-backend-locally">§</a><a name="3.4.1">3.4.1</a> - Running the Backend Locally</h5><div class="example-wrap"><pre class="language-bash"><code>$ cargo run
+</code></pre></div><h5 id="342---building-and-running-release-binary-locally"><a class="doc-anchor" href="#342---building-and-running-release-binary-locally">§</a><a name="3.4.2">3.4.2</a> - Building and Running Release Binary Locally</h5><div class="example-wrap"><pre class="language-bash"><code>$ cargo build --release
+$ ./target/release/igait-backend
+</code></pre></div><h5 id="343---docker-build-and-run"><a class="doc-anchor" href="#343---docker-build-and-run">§</a><a name="3.4.3">3.4.3</a> - Docker Build and Run</h5><div class="example-wrap"><pre class="language-bash"><code>$ docker build -t testing .
+$ docker run testing
+$ docker ps # find the name of the Docker container
+$ docker kill &lt;the name of the container&gt;
+</code></pre></div><h5 id="344---nix-build-and-run"><a class="doc-anchor" href="#344---nix-build-and-run">§</a><a name="3.4.4">3.4.4</a> - Nix Build and Run</h5><div class="example-wrap"><pre class="language-bash"><code>$ nix build .#igait-backend
+</code></pre></div><h5 id="345---aws-pull-and-deploy-from-ghcr"><a class="doc-anchor" href="#345---aws-pull-and-deploy-from-ghcr">§</a><a name="3.4.5">3.4.5</a> - AWS Pull and Deploy From GHCR</h5><div class="example-wrap"><pre class="language-bash"><code>$ cd igait-backend
+$ docker compose down
+$ docker pull ghcr.io/igait-niu/igait-backend:latest
+$ docker compose up -d
+</code></pre></div><h5 id="346---aws-startup-from-stopped"><a class="doc-anchor" href="#346---aws-startup-from-stopped">§</a><a name="3.4.6">3.4.6</a> - AWS Startup from Stopped</h5><div class="example-wrap"><pre class="language-bash"><code>$ cd igait-backend
+$ docker compose up -d
+</code></pre></div><h5 id="347---building-docs-with-rustdoc"><a class="doc-anchor" href="#347---building-docs-with-rustdoc">§</a><a name="3.4.7">3.4.7</a> - Building Docs with <code>rustdoc</code></h5><div class="example-wrap"><pre class="language-bash"><code>cargo doc --no-deps
+rm -rf ./docs
+echo &quot;&lt;meta http-equiv=\&quot;refresh\&quot; content=\&quot;0; url=build_wheel\&quot;&gt;&quot; &gt; target/doc/index.html
+cp -r target/doc ./docs
+</code></pre></div></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="daemons/index.html" title="mod igait_backend::daemons">daemons</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the daemons that are used to manage and maintain the system.</div></li><li><div class="item-name"><a class="mod" href="helper/index.html" title="mod igait_backend::helper">helper</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains all the helper functions used in the project.</div></li><li><div class="item-name"><a class="mod" href="routes/index.html" title="mod igait_backend::routes">routes</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the routes for the API.</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.print_be.html" title="macro igait_backend::print_be">print_be</a></div><div class="desc docblock-short">Prints indication of a backend-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_db.html" title="macro igait_backend::print_db">print_db</a></div><div class="desc docblock-short">Prints indication of a database-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_metis.html" title="macro igait_backend::print_metis">print_metis</a></div><div class="desc docblock-short">Prints indication of a Metis-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_s3.html" title="macro igait_backend::print_s3">print_s3</a></div><div class="desc docblock-short">Prints indication of a S3-related message.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.main.html" title="fn igait_backend::main">main</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">The main entrypoint for the iGait backend.</div></li></ul></section></div></main></body></html>

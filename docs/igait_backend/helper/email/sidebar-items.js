@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["send_email","send_failure_email","send_success_email","send_welcome_email"]};

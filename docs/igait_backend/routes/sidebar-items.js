@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["completion","historical","upload"]};
