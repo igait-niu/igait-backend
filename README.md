@@ -4,6 +4,8 @@ This is the primary brain behind everything in the iGait app. There are a variet
 ## Documentation
 It is highly recommended to read the [documentation](https://igait-niu.github.io/igait-backend/) as onboarding before contributing to this project.
 
+A ground-up explanation of the backend's development can also be found [here](https://hiibolt.com/hpc/rust/aws/nix/docker/openpose/bash/2024/05/13/freshman-supercomputing.html).
+
 ## Technologies Used
 - ⚡ - Rust and Cargo
 - 🔭 - Nix Flakes
