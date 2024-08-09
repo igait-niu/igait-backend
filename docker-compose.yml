@@ -3,14 +3,8 @@ services:
     image: ghcr.io/hiibolt/socials:latest
     ports:
       - "4000:4000"
-    environment:
-      - FOO='BAR'
   backend:
-<<<<<<< HEAD
     image: ghcr.io/igait-niu/igait-backend:latest
-=======
-    image: ghcr.io/hiibolt/igait-backend:latest
->>>>>>> 0a5953d (Finalized compose file)
     ports:
       - "3000:3000"
     volumes:
@@ -22,17 +16,6 @@ services:
     image: ghcr.io/igait-niu/igait-web:latest
     ports:
       - "4173:4173"
-    environment:
-      - FIREBASE_API_KEY='***REMOVED***'
-  frontend:
-    image: ghcr.io/igait-niu/igait-web:latest
-    ports:
-      - "4173:4173"
-    environment:
-      - FOO='BAR'
 volumes:
   data:
-<<<<<<< HEAD
   ssh:
-=======
->>>>>>> 0a5953d (Finalized compose file)
