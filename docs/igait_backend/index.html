@@ -1,5 +1,69 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="iGait ASD - Backend"><title>igait_backend - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-e32f0c247825364d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../igait_backend/index.html">igait_backend</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../igait_backend/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">igait_backend</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/igait_backend/main.rs.html#1-60">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="igait-asd---backend"><a class="doc-anchor" href="#igait-asd---backend">§</a>iGait ASD - Backend</h2>
 <p>This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.</p>
+<h2 id="table-of-contents"><a class="doc-anchor" href="#table-of-contents">§</a>Table of Contents</h2>
+<ul>
+<li><a href="#1---api">1</a> - API
+<ul>
+<li><a href="#11---layout-and-explanation">1.1</a> - Layout and Explanation</li>
+<li><a href="#12---notes">1.2</a> - Notes</li>
+</ul>
+</li>
+<li><a href="#2---codebase-structure">2</a> - Codebase Structure</li>
+<li><a href="#3---setting-up-your-development-environment">3</a> - Setting Up Your Development Environment
+<ul>
+<li><a href="#31---installation">3.1</a> - Installation
+<ul>
+<li><a href="#311---nix-recommended">3.1.1</a> - Nix (recommended)</li>
+<li><a href="#312---individual-installation-alternative-to-nix">3.1.2</a> - Individual Installation (alternative to Nix)</li>
+</ul>
+</li>
+<li><a href="#32---secrets">3.2</a> - Secrets</li>
+<li><a href="#33---download-the-igait-backend-repository">3.3</a> - Download the <code>igait-backend</code> Repository</li>
+<li><a href="#34---development-and-deployment-command-list">3.4</a> - Development and Deployment Command List
+<ul>
+<li><a href="#341---running-the-backend-locally">3.4.1</a> - Running the Backend Locally</li>
+<li><a href="#342---building-and-running-release-binary-locally">3.4.2</a> - Building and Running Release Binary Locally</li>
+<li><a href="#343---docker-build-and-run">3.4.3</a> - Docker Build and Run</li>
+<li><a href="#344---nix-build-and-run">3.4.4</a> - Nix Build and Run</li>
+<li><a href="#345---aws-pull-and-deploy-from-ghcr">3.4.5</a> - AWS Pull and Deploy From GHCR</li>
+<li><a href="#346---aws-startup-from-stopped">3.4.6</a> - AWS Startup from Stopped</li>
+<li><a href="#347---rust-docs-build">3.4.7</a> - Rust Docs Build</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#4---ground-up-explanation-of-backend-service-selection">4</a> - Ground-up Explanation of Backend Service Selection
+<ul>
+<li><a href="#40---about">4.0</a> - About</li>
+<li><a href="#41---how-to-extract-gait-parameters">4.1</a> - How to Extract Gait Parameters</li>
+<li><a href="#42---consumer-devices-are-often-low-in-computation-power">4.2</a> - Consumer Devices are Often Low in Computation Power</li>
+<li><a href="#43---openpose-uses-the-entire-gpu">4.3</a> - OpenPose Uses the Entire GPU</li>
+<li><a href="#44---how-to-store-client-data-for-later-retrieval">4.4</a> - How to Store Client Data for Later Retrieval</li>
+<li><a href="#45---growing-number-of-programs-can-be-easy-to-break">4.5</a> - Growing Number of Programs can be Easy to Break</li>
+<li><a href="#46---how-to-securely-allow-access-of-historical-results">4.6</a> - How to Securely Allow Access of Historical Results</li>
+<li><a href="#47---aws-ec2--gpu-is-extremely-costly">4.7</a> - AWS EC2 + GPU is Extremely Costly </li>
+</ul>
+</li>
+<li><a href="#5---implementation">5</a> - Implementation
+<ul>
+<li><a href="#51---email">5.1</a> - Email</li>
+<li><a href="#52---job-statuses">5.2</a> - Job Statuses</li>
+<li><a href="#53---database">5.3</a> - Database
+<ul>
+<li><a href="#531---database-structure">5.3.1</a> - Database Structure</li>
+<li><a href="#532---database-wrapper-functions">5.3.2</a> - Database Wrapper Functions</li>
+</ul>
+</li>
+<li><a href="#54---server-state">5.4</a> - Server State</li>
+<li><a href="#55---metis">5.5</a> - Metis
+<ul>
+<li><a href="#551---automating-ssh-job-creation">5.5.1</a> - Automating SSH Job Creation</li>
+<li><a href="#552---pbs-script">5.5.2</a> - PBS Script</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 <h2 id="1---api"><a class="doc-anchor" href="#1---api">§</a>1 - API</h2><h4 id="11---layout-and-explanation"><a class="doc-anchor" href="#11---layout-and-explanation">§</a>1.1 - Layout and Explanation</h4>
 <p>The API has three routes:</p>
 <ul>
@@ -127,24 +191,24 @@ $ cp -r target/doc ./docs
 <p>Firstly, a <a href="https://en.wikipedia.org/wiki/Pose_(computer_vision)">pose estimation</a> must be created. This allows us to serialize a person’s current bodily position. Accordingly, by analyzing the rate of change between each position for each joint, we can train a model to scan for abnormalities in <a href="https://www.kenhub.com/en/library/anatomy/gait-cycle">walking gait</a>.</p>
 <p>To accomplish this, we employed Carnegie Mellon’s <a href="https://github.com/CMU-Perceptual-Computing-Lab/openpose">OpenPose</a>.</p>
 <p><img src="https://github.com/CMU-Perceptual-Computing-Lab/openpose/raw/master/.github/media/pose_face_hands.gif" alt="image" /></p>
-<h4 id="41---consumer-devices-are-often-low-in-computation-power"><a class="doc-anchor" href="#41---consumer-devices-are-often-low-in-computation-power">§</a>4.1 - Consumer Devices are Often Low in Computation Power</h4>
+<h4 id="42---consumer-devices-are-often-low-in-computation-power"><a class="doc-anchor" href="#42---consumer-devices-are-often-low-in-computation-power">§</a>4.2 - Consumer Devices are Often Low in Computation Power</h4>
 <p>Since mobile devices do not always have the computational power to run a dense machine learning model, we must create a machine that can run these jobs <em>for</em> the client. </p>
 <p>By creating a backend that could accept job submissions, perform computations, and return a score, we can effectively handle these intensive computations on otherwise weak devices.</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/11647ab4-2339-49f4-95d7-452af2f5cbf2" alt="image" /></p>
-<h4 id="42---openpose-uses-the-entire-gpu"><a class="doc-anchor" href="#42---openpose-uses-the-entire-gpu">§</a>4.2 - OpenPose Uses the Entire GPU</h4>
+<h4 id="43---openpose-uses-the-entire-gpu"><a class="doc-anchor" href="#43---openpose-uses-the-entire-gpu">§</a>4.3 - OpenPose Uses the Entire GPU</h4>
 <p>OpenPose is computationally intensive and makes usage of the <em>entire GPU</em> while running. This creates parallelization issues almost immediately. To understand why, let us consider the following scenario. We have two people who submit a job request within a brief period of time to our theoretical backend.</p>
 <p><strong>Person 1:</strong> Submits a job, which the server accepts and gets to work on, putting the GPU at 100% usage.</p>
 <p><strong>Person 2:</strong> Submits a job, which the server accepts, but immediately errors! OpenPose could not access the GPU as it is currently in use!</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/5197cd12-137c-4ca6-b489-cad61869e76d" alt="image" /></p>
 <p>This means that only one job can run at a time. To combat this, we must create our own <strong>queue system</strong>. This means the server should have a list of jobs, running them one at a time. Instead of trying to immediately run incoming submissions, as most API requests are handled, we assume an extended period. Instead of receiving a result on submission, we receive <strong>200 OK</strong>, signifying that while the backend has received your job submission, a result is not ready – check back later.</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/d5196814-377d-4f80-b2aa-f6e32c1358dd" alt="image" /></p>
-<h4 id="43---how-to-store-client-data-for-later-retrieval"><a class="doc-anchor" href="#43---how-to-store-client-data-for-later-retrieval">§</a>4.3 - How to Store Client Data for Later Retrieval</h4>
+<h4 id="44---how-to-store-client-data-for-later-retrieval"><a class="doc-anchor" href="#44---how-to-store-client-data-for-later-retrieval">§</a>4.4 - How to Store Client Data for Later Retrieval</h4>
 <p>This diagram is a great first step to a time-concerned backend system. However, there are additional constraints that were next introduced. Firstly, all entry results and associated data had to be <em>stored for later retrieval</em>. This meant we needed a database. </p>
 <p>For this, we selected <a href="https://firebase.google.com/products/realtime-database/">Firebase Realtime DB</a>. </p>
 <p>Secondly, we needed to store our user’s videos. This is more complicated than a standard database – these videos can be multiple hundred megabytes. </p>
 <p>Accordingly, we chose <a href="https://aws.amazon.com/s3/">AWS S3</a> – since we planned to use AWS EC2 instances to host our backend, it made sense to also use S3.</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/c6f27a3e-6a9e-44d4-a956-a4db4cc80b23" alt="image" /></p>
-<h4 id="44---growing-number-of-programs-can-be-easy-to-break"><a class="doc-anchor" href="#44---growing-number-of-programs-can-be-easy-to-break">§</a>4.4 - Growing Number of Programs can be Easy to Break</h4>
+<h4 id="45---growing-number-of-programs-can-be-easy-to-break"><a class="doc-anchor" href="#45---growing-number-of-programs-can-be-easy-to-break">§</a>4.5 - Growing Number of Programs can be Easy to Break</h4>
 <p>At this point, there are three programs running on AWS. </p>
 <ul>
 <li>Frontend (React)</li>
@@ -154,11 +218,11 @@ $ cp -r target/doc ./docs
 <p>The issue with this is that there are three programs with seperate and potentially conflicting dependancies. It can become extremely difficult to keep track of setup, deployment steps, and more with this many technologies.</p>
 <p><a href="https://www.docker.com/">Docker</a> became our immediate solution. Docker allows you to keep messy programs defined in a zero-config file which builds an image which always runs, every time. This also means we can more directly isolate each section of our application from eachother - note that each container below is instead only able to communicate via API or port number.</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/4817a850-1d4f-4b8b-bdd1-71227e7083aa" alt="image" /></p>
-<h4 id="45---how-to-securely-allow-access-of-historical-results"><a class="doc-anchor" href="#45---how-to-securely-allow-access-of-historical-results">§</a>4.5 - How to Securely Allow Access of Historical Results</h4>
+<h4 id="46---how-to-securely-allow-access-of-historical-results"><a class="doc-anchor" href="#46---how-to-securely-allow-access-of-historical-results">§</a>4.6 - How to Securely Allow Access of Historical Results</h4>
 <p>The above diagram is already very secure. However, there is one flaw – Realtime DB must be pseudo-public to be able to re-access results!</p>
 <p>To combat this, we deliver results by email instead. There are many email services, but we opted to use Cloudflare Workers, as it allows us to easily send emails from our Cloudflare-protected domain. We still use Firebase DB behind the scenes, but it can now be made private, as seen below.</p>
 <p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/4be2c6ac-35b7-4621-8e11-18cd24e38ea2" alt="image" /></p>
-<h4 id="46---aws-ec2--gpu-is-extremely-costly"><a class="doc-anchor" href="#46---aws-ec2--gpu-is-extremely-costly">§</a>4.6 - AWS EC2 + GPU is Extremely Costly</h4>
+<h4 id="47---aws-ec2--gpu-is-extremely-costly"><a class="doc-anchor" href="#47---aws-ec2--gpu-is-extremely-costly">§</a>4.7 - AWS EC2 + GPU is Extremely Costly</h4>
 <p>AWS EC2 with GPU acceleration is <strong>not</strong> cheap. Hundreds, and even thousands, of dollars per month.</p>
 <p>Thankfully, NIU’s CRCD (Center for Research Computing and Data) created <a href="https://www.niu.edu/crcd/index.shtml">Metis</a> - an absolute powerhouse of computation.</p>
 <p>Accordingly, we now let AWS EC2 handle job submission requests, and let Metis handle the heavy lifting. To learn more about how this communication occurs, see the <a href="helper/metis/index.html" title="mod igait_backend::helper::metis"><code>metis module</code></a>.</p>

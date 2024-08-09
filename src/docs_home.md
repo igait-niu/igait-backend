@@ -1,6 +1,45 @@
 # iGait ASD - Backend
 This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
 
+# Table of Contents
+- [1](#1---api) - API
+  - [1.1](#11---layout-and-explanation) - Layout and Explanation
+  - [1.2](#12---notes) - Notes
+- [2](#2---codebase-structure) - Codebase Structure
+- [3](#3---setting-up-your-development-environment) - Setting Up Your Development Environment
+  - [3.1](#31---installation) - Installation
+    - [3.1.1](#311---nix-recommended) - Nix (recommended)
+    - [3.1.2](#312---individual-installation-alternative-to-nix) - Individual Installation (alternative to Nix)
+  - [3.2](#32---secrets) - Secrets
+  - [3.3](#33---download-the-igait-backend-repository) - Download the `igait-backend` Repository
+  - [3.4](#34---development-and-deployment-command-list) - Development and Deployment Command List
+    - [3.4.1](#341---running-the-backend-locally) - Running the Backend Locally
+    - [3.4.2](#342---building-and-running-release-binary-locally) - Building and Running Release Binary Locally
+    - [3.4.3](#343---docker-build-and-run) - Docker Build and Run
+    - [3.4.4](#344---nix-build-and-run) - Nix Build and Run
+    - [3.4.5](#345---aws-pull-and-deploy-from-ghcr) - AWS Pull and Deploy From GHCR
+    - [3.4.6](#346---aws-startup-from-stopped) - AWS Startup from Stopped
+    - [3.4.7](#347---rust-docs-build) - Rust Docs Build
+- [4](#4---ground-up-explanation-of-backend-service-selection) - Ground-up Explanation of Backend Service Selection
+  - [4.0](#40---about) - About
+  - [4.1](#41---how-to-extract-gait-parameters) - How to Extract Gait Parameters
+  - [4.2](#42---consumer-devices-are-often-low-in-computation-power) - Consumer Devices are Often Low in Computation Power
+  - [4.3](#43---openpose-uses-the-entire-gpu) - OpenPose Uses the Entire GPU
+  - [4.4](#44---how-to-store-client-data-for-later-retrieval) - How to Store Client Data for Later Retrieval
+  - [4.5](#45---growing-number-of-programs-can-be-easy-to-break) - Growing Number of Programs can be Easy to Break
+  - [4.6](#46---how-to-securely-allow-access-of-historical-results) - How to Securely Allow Access of Historical Results
+  - [4.7](#47---aws-ec2--gpu-is-extremely-costly) - AWS EC2 + GPU is Extremely Costly 
+- [5](#5---implementation) - Implementation
+  - [5.1](#51---email) - Email
+  - [5.2](#52---job-statuses) - Job Statuses
+  - [5.3](#53---database) - Database
+    - [5.3.1](#531---database-structure) - Database Structure
+    - [5.3.2](#532---database-wrapper-functions) - Database Wrapper Functions
+  - [5.4](#54---server-state) - Server State
+  - [5.5](#55---metis) - Metis
+    - [5.5.1](#551---automating-ssh-job-creation) - Automating SSH Job Creation
+    - [5.5.2](#552---pbs-script) - PBS Script
+
 # 1 - API
 ### 1.1 - Layout and Explanation
 The API has three routes:
@@ -139,13 +178,13 @@ Firstly, a [pose estimation](https://en.wikipedia.org/wiki/Pose_(computer_vision
 To accomplish this, we employed Carnegie Mellon’s [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose).  
 
 ![image](https://github.com/CMU-Perceptual-Computing-Lab/openpose/raw/master/.github/media/pose_face_hands.gif)
-### 4.1 - Consumer Devices are Often Low in Computation Power
+### 4.2 - Consumer Devices are Often Low in Computation Power
 Since mobile devices do not always have the computational power to run a dense machine learning model, we must create a machine that can run these jobs *for* the client. 
 
 By creating a backend that could accept job submissions, perform computations, and return a score, we can effectively handle these intensive computations on otherwise weak devices.  
 
 ![image](https://github.com/hiibolt/hiibolt/assets/91273156/11647ab4-2339-49f4-95d7-452af2f5cbf2)  
-### 4.2 - OpenPose Uses the Entire GPU
+### 4.3 - OpenPose Uses the Entire GPU
 OpenPose is computationally intensive and makes usage of the *entire GPU* while running. This creates parallelization issues almost immediately. To understand why, let us consider the following scenario. We have two people who submit a job request within a brief period of time to our theoretical backend.
 
 **Person 1:** Submits a job, which the server accepts and gets to work on, putting the GPU at 100% usage.  
@@ -157,7 +196,7 @@ OpenPose is computationally intensive and makes usage of the *entire GPU* while 
 This means that only one job can run at a time. To combat this, we must create our own **queue system**. This means the server should have a list of jobs, running them one at a time. Instead of trying to immediately run incoming submissions, as most API requests are handled, we assume an extended period. Instead of receiving a result on submission, we receive **200 OK**, signifying that while the backend has received your job submission, a result is not ready – check back later.  
 
 ![image](https://github.com/hiibolt/hiibolt/assets/91273156/d5196814-377d-4f80-b2aa-f6e32c1358dd)
-### 4.3 - How to Store Client Data for Later Retrieval
+### 4.4 - How to Store Client Data for Later Retrieval
 This diagram is a great first step to a time-concerned backend system. However, there are additional constraints that were next introduced. Firstly, all entry results and associated data had to be *stored for later retrieval*. This meant we needed a database. 
 
 For this, we selected [Firebase Realtime DB](https://firebase.google.com/products/realtime-database/). 
@@ -167,7 +206,7 @@ Secondly, we needed to store our user’s videos. This is more complicated than 
 Accordingly, we chose [AWS S3](https://aws.amazon.com/s3/) – since we planned to use AWS EC2 instances to host our backend, it made sense to also use S3.  
 
 ![image](https://github.com/hiibolt/hiibolt/assets/91273156/c6f27a3e-6a9e-44d4-a956-a4db4cc80b23)  
-### 4.4 - Growing Number of Programs can be Easy to Break
+### 4.5 - Growing Number of Programs can be Easy to Break
 At this point, there are three programs running on AWS. 
 - Frontend (React)
 - Backend API (Rust)
@@ -178,13 +217,13 @@ The issue with this is that there are three programs with seperate and potential
 [Docker](https://www.docker.com/) became our immediate solution. Docker allows you to keep messy programs defined in a zero-config file which builds an image which always runs, every time. This also means we can more directly isolate each section of our application from eachother - note that each container below is instead only able to communicate via API or port number.
 
 ![image](https://github.com/hiibolt/hiibolt/assets/91273156/4817a850-1d4f-4b8b-bdd1-71227e7083aa)  
-### 4.5 - How to Securely Allow Access of Historical Results
+### 4.6 - How to Securely Allow Access of Historical Results
 The above diagram is already very secure. However, there is one flaw – Realtime DB must be pseudo-public to be able to re-access results!
 
 To combat this, we deliver results by email instead. There are many email services, but we opted to use Cloudflare Workers, as it allows us to easily send emails from our Cloudflare-protected domain. We still use Firebase DB behind the scenes, but it can now be made private, as seen below.
 
 ![image](https://github.com/hiibolt/hiibolt/assets/91273156/4be2c6ac-35b7-4621-8e11-18cd24e38ea2)  
-### 4.6 - AWS EC2 + GPU is Extremely Costly
+### 4.7 - AWS EC2 + GPU is Extremely Costly
 AWS EC2 with GPU acceleration is **not** cheap. Hundreds, and even thousands, of dollars per month.
 
 Thankfully, NIU’s CRCD (Center for Research Computing and Data) created [Metis](https://www.niu.edu/crcd/index.shtml) - an absolute powerhouse of computation.
