@@ -52,7 +52,9 @@ pub async fn query_metis (
         .output().await
         .context("Failed to run openpose command!")?;
     
-    let output = String::from_utf8(run_inference.stdout.clone()).context("Server output was not valid UTF-8")?;
+    // Extract the output from stdout
+    let output = String::from_utf8(run_inference.stdout.clone())
+        .context("Server output was not valid UTF-8")?;
     print_metis!(task_number, "Output - {output}");
 
     // Close the SSH session

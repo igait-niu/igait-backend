@@ -63,6 +63,8 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::print_metis;
 
 <span class="kw">use </span>openssh::{Session, KnownHosts};
@@ -117,7 +119,9 @@
         .output().<span class="kw">await
         </span>.context(<span class="string">"Failed to run openpose command!"</span>)<span class="question-mark">?</span>;
     
-    <span class="kw">let </span>output = String::from_utf8(run_inference.stdout.clone()).context(<span class="string">"Server output was not valid UTF-8"</span>)<span class="question-mark">?</span>;
+    <span class="comment">// Extract the output from stdout
+    </span><span class="kw">let </span>output = String::from_utf8(run_inference.stdout.clone())
+        .context(<span class="string">"Server output was not valid UTF-8"</span>)<span class="question-mark">?</span>;
     <span class="macro">print_metis!</span>(task_number, <span class="string">"Output - {output}"</span>);
 
     <span class="comment">// Close the SSH session

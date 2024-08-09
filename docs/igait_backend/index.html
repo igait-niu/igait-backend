@@ -11,6 +11,7 @@
 Then, the job is processed by the server, and eventually shipped to <strong>Metis</strong>. 
 Finally, the status of the job is updated by <strong>Metis</strong> via the <code>completion</code> route. When the status is finalized by the backend server, emails are sent to the owner of the job via Cloudflare Workers by the backend.
 After the job is completed, the user can view the historical submissions via the <code>historical_submissions</code> route.</p>
+<p>To learn more about why the API is designed how it is, or more about how it works, skip to the <a href="#">API section</a>.</p>
 <p>To see more information about a specific route, see <a href="routes/index.html" title="mod igait_backend::routes">the routes module</a>.</p>
 <h4 id="12---notes"><a class="doc-anchor" href="#12---notes">§</a>1.2 - Notes</h4>
 <ul>
@@ -18,7 +19,7 @@ After the job is completed, the user can view the historical submissions via the
 <li>The <code>completion</code> endpoint is only for use by <strong>Metis</strong>.</li>
 <li>The <code>upload</code> and <code>historical_submissions</code> endpoints are for use by the iGait frontend.</li>
 </ul>
-<h2 id="2---codebase"><a class="doc-anchor" href="#2---codebase">§</a>2 - Codebase</h2><h4 id="21---structure"><a class="doc-anchor" href="#21---structure">§</a>2.1 - Structure</h4>
+<h2 id="2---codebase-structure"><a class="doc-anchor" href="#2---codebase-structure">§</a>2 - Codebase Structure</h2>
 <p><img src="https://github.com/user-attachments/assets/3eaebabc-ac73-4041-a866-c7221923f94a" width=750></img></p>
 <p>The codebase is split up into multiple modules:</p>
 <ul>
@@ -84,8 +85,8 @@ After the job is completed, the user can view the historical submissions via the
 </ul>
 <h4 id="33---download-the-igait-backend-repository"><a class="doc-anchor" href="#33---download-the-igait-backend-repository">§</a>3.3 - Download the <code>igait-backend</code> Repository</h4>
 <p>Next, clone the repository:</p>
-<div class="example-wrap"><pre class="language-bash"><code>git clone https://github.com/igait-niu/igait-backend.git
-cd igait-backend
+<div class="example-wrap"><pre class="language-bash"><code>$ git clone https://github.com/igait-niu/igait-backend.git
+$ cd igait-backend
 </code></pre></div><h4 id="34---development-and-deployment-command-list"><a class="doc-anchor" href="#34---development-and-deployment-command-list">§</a>3.4 - Development and Deployment Command List</h4>
 <p>A typical development process should be in the following order:</p>
 <ul>
@@ -115,8 +116,236 @@ $ docker pull ghcr.io/igait-niu/igait-backend:latest
 $ docker compose up -d
 </code></pre></div><h5 id="346---aws-startup-from-stopped"><a class="doc-anchor" href="#346---aws-startup-from-stopped">§</a><a name="3.4.6">3.4.6</a> - AWS Startup from Stopped</h5><div class="example-wrap"><pre class="language-bash"><code>$ cd igait-backend
 $ docker compose up -d
-</code></pre></div><h5 id="347---docs-build"><a class="doc-anchor" href="#347---docs-build">§</a><a name="3.4.7">3.4.7</a> - Docs Build</h5><div class="example-wrap"><pre class="language-bash"><code>cargo doc --no-deps
-rm -rf ./docs
-echo &quot;&lt;meta http-equiv=\&quot;refresh\&quot; content=\&quot;0; url=igait_backend/index.html\&quot;&gt;&quot; &gt; target/doc/index.html
-cp -r target/doc ./docs
-</code></pre></div></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="daemons/index.html" title="mod igait_backend::daemons">daemons</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the daemons that are used to manage and maintain the system.</div></li><li><div class="item-name"><a class="mod" href="helper/index.html" title="mod igait_backend::helper">helper</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains all the helper functions used in the project.</div></li><li><div class="item-name"><a class="mod" href="routes/index.html" title="mod igait_backend::routes">routes</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the routes for the API.</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.print_be.html" title="macro igait_backend::print_be">print_be</a></div><div class="desc docblock-short">Prints indication of a backend-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_db.html" title="macro igait_backend::print_db">print_db</a></div><div class="desc docblock-short">Prints indication of a database-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_metis.html" title="macro igait_backend::print_metis">print_metis</a></div><div class="desc docblock-short">Prints indication of a Metis-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_s3.html" title="macro igait_backend::print_s3">print_s3</a></div><div class="desc docblock-short">Prints indication of a S3-related message.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.main.html" title="fn igait_backend::main">main</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">The main entrypoint for the iGait backend.</div></li></ul></section></div></main></body></html>
+</code></pre></div><h5 id="347---rust-docs-build"><a class="doc-anchor" href="#347---rust-docs-build">§</a><a name="3.4.7">3.4.7</a> - Rust Docs Build</h5><div class="example-wrap"><pre class="language-bash"><code>$ cargo doc --no-deps
+$ rm -rf ./docs
+$ echo &quot;&lt;meta http-equiv=\&quot;refresh\&quot; content=\&quot;0; url=igait_backend/index.html\&quot;&gt;&quot; &gt; target/doc/index.html
+$ cp -r target/doc ./docs
+</code></pre></div><h2 id="4---ground-up-explanation-of-backend-service-selection"><a class="doc-anchor" href="#4---ground-up-explanation-of-backend-service-selection">§</a>4 - Ground-up Explanation of Backend Service Selection</h2><h4 id="40---about"><a class="doc-anchor" href="#40---about">§</a>4.0 - About</h4>
+<p>This section is quite extensive, and will generally follow a problem-solution style explanation. It’s important to note that exact function signatures, datatypes, or other parts may be altered in the future.</p>
+<p>However, it is strongly recommended for any incoming maintainers or developers to read this in order to understand the decisions we made, and why.</p>
+<h4 id="41---how-to-extract-gait-parameters"><a class="doc-anchor" href="#41---how-to-extract-gait-parameters">§</a>4.1 - How to Extract Gait Parameters</h4>
+<p>Firstly, a <a href="https://en.wikipedia.org/wiki/Pose_(computer_vision)">pose estimation</a> must be created. This allows us to serialize a person’s current bodily position. Accordingly, by analyzing the rate of change between each position for each joint, we can train a model to scan for abnormalities in <a href="https://www.kenhub.com/en/library/anatomy/gait-cycle">walking gait</a>.</p>
+<p>To accomplish this, we employed Carnegie Mellon’s <a href="https://github.com/CMU-Perceptual-Computing-Lab/openpose">OpenPose</a>.</p>
+<p><img src="https://github.com/CMU-Perceptual-Computing-Lab/openpose/raw/master/.github/media/pose_face_hands.gif" alt="image" /></p>
+<h4 id="41---consumer-devices-are-often-low-in-computation-power"><a class="doc-anchor" href="#41---consumer-devices-are-often-low-in-computation-power">§</a>4.1 - Consumer Devices are Often Low in Computation Power</h4>
+<p>Since mobile devices do not always have the computational power to run a dense machine learning model, we must create a machine that can run these jobs <em>for</em> the client. </p>
+<p>By creating a backend that could accept job submissions, perform computations, and return a score, we can effectively handle these intensive computations on otherwise weak devices.</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/11647ab4-2339-49f4-95d7-452af2f5cbf2" alt="image" /></p>
+<h4 id="42---openpose-uses-the-entire-gpu"><a class="doc-anchor" href="#42---openpose-uses-the-entire-gpu">§</a>4.2 - OpenPose Uses the Entire GPU</h4>
+<p>OpenPose is computationally intensive and makes usage of the <em>entire GPU</em> while running. This creates parallelization issues almost immediately. To understand why, let us consider the following scenario. We have two people who submit a job request within a brief period of time to our theoretical backend.</p>
+<p><strong>Person 1:</strong> Submits a job, which the server accepts and gets to work on, putting the GPU at 100% usage.</p>
+<p><strong>Person 2:</strong> Submits a job, which the server accepts, but immediately errors! OpenPose could not access the GPU as it is currently in use!</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/5197cd12-137c-4ca6-b489-cad61869e76d" alt="image" /></p>
+<p>This means that only one job can run at a time. To combat this, we must create our own <strong>queue system</strong>. This means the server should have a list of jobs, running them one at a time. Instead of trying to immediately run incoming submissions, as most API requests are handled, we assume an extended period. Instead of receiving a result on submission, we receive <strong>200 OK</strong>, signifying that while the backend has received your job submission, a result is not ready – check back later.</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/d5196814-377d-4f80-b2aa-f6e32c1358dd" alt="image" /></p>
+<h4 id="43---how-to-store-client-data-for-later-retrieval"><a class="doc-anchor" href="#43---how-to-store-client-data-for-later-retrieval">§</a>4.3 - How to Store Client Data for Later Retrieval</h4>
+<p>This diagram is a great first step to a time-concerned backend system. However, there are additional constraints that were next introduced. Firstly, all entry results and associated data had to be <em>stored for later retrieval</em>. This meant we needed a database. </p>
+<p>For this, we selected <a href="https://firebase.google.com/products/realtime-database/">Firebase Realtime DB</a>. </p>
+<p>Secondly, we needed to store our user’s videos. This is more complicated than a standard database – these videos can be multiple hundred megabytes. </p>
+<p>Accordingly, we chose <a href="https://aws.amazon.com/s3/">AWS S3</a> – since we planned to use AWS EC2 instances to host our backend, it made sense to also use S3.</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/c6f27a3e-6a9e-44d4-a956-a4db4cc80b23" alt="image" /></p>
+<h4 id="44---growing-number-of-programs-can-be-easy-to-break"><a class="doc-anchor" href="#44---growing-number-of-programs-can-be-easy-to-break">§</a>4.4 - Growing Number of Programs can be Easy to Break</h4>
+<p>At this point, there are three programs running on AWS. </p>
+<ul>
+<li>Frontend (React)</li>
+<li>Backend API (Rust)</li>
+<li>OpenPose</li>
+</ul>
+<p>The issue with this is that there are three programs with seperate and potentially conflicting dependancies. It can become extremely difficult to keep track of setup, deployment steps, and more with this many technologies.</p>
+<p><a href="https://www.docker.com/">Docker</a> became our immediate solution. Docker allows you to keep messy programs defined in a zero-config file which builds an image which always runs, every time. This also means we can more directly isolate each section of our application from eachother - note that each container below is instead only able to communicate via API or port number.</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/4817a850-1d4f-4b8b-bdd1-71227e7083aa" alt="image" /></p>
+<h4 id="45---how-to-securely-allow-access-of-historical-results"><a class="doc-anchor" href="#45---how-to-securely-allow-access-of-historical-results">§</a>4.5 - How to Securely Allow Access of Historical Results</h4>
+<p>The above diagram is already very secure. However, there is one flaw – Realtime DB must be pseudo-public to be able to re-access results!</p>
+<p>To combat this, we deliver results by email instead. There are many email services, but we opted to use Cloudflare Workers, as it allows us to easily send emails from our Cloudflare-protected domain. We still use Firebase DB behind the scenes, but it can now be made private, as seen below.</p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/4be2c6ac-35b7-4621-8e11-18cd24e38ea2" alt="image" /></p>
+<h4 id="46---aws-ec2--gpu-is-extremely-costly"><a class="doc-anchor" href="#46---aws-ec2--gpu-is-extremely-costly">§</a>4.6 - AWS EC2 + GPU is Extremely Costly</h4>
+<p>AWS EC2 with GPU acceleration is <strong>not</strong> cheap. Hundreds, and even thousands, of dollars per month.</p>
+<p>Thankfully, NIU’s CRCD (Center for Research Computing and Data) created <a href="https://www.niu.edu/crcd/index.shtml">Metis</a> - an absolute powerhouse of computation.</p>
+<p>Accordingly, we now let AWS EC2 handle job submission requests, and let Metis handle the heavy lifting. To learn more about how this communication occurs, see the <a href="helper/metis/index.html" title="mod igait_backend::helper::metis"><code>metis module</code></a>.</p>
+<p>This resulting final model is incredibly performant, secure, and HIPAA compliant. </p>
+<p><img src="https://github.com/hiibolt/hiibolt/assets/91273156/cc1884fa-e1dd-4c93-b77c-8666ef8b8c7c" alt="image" /></p>
+<h2 id="5---implementation"><a class="doc-anchor" href="#5---implementation">§</a>5 - Implementation</h2><h4 id="51---email"><a class="doc-anchor" href="#51---email">§</a>5.1 - Email</h4>
+<p>We needed a way to send email. To do so, we selected <a href="https://workers.cloudflare.com/">Cloudflare Workers</a>. If you want to see an example of the code deployed to our Worker, you can see my article on setting it up <a href="https://hiibolt.com/nodejs/npm/cloudflare/2024/04/16/emails-cloudflare.html">here</a>.</p>
+<p>Implementation is extremely simple - fire a POST request to the Cloudflare Worker, which does the rest of the work behind the scenes. Since we are also using Cloudflare DNS and Origin Server Certificates for HTTPS, we can easily implement emails to come from our domain. This ensures that customers understand it is us by an easily recognizable and legitimate email.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>...
+<span class="kw">pub fn </span>send_email (
+    to:      <span class="kw-2">&amp;</span>str,
+    subject: <span class="kw-2">&amp;</span>str,
+    body:    <span class="kw-2">&amp;</span>str,
+    task_number: JobTaskID
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    ...
+}</code></pre></div>
+<p>If an email bounces, the Cloudflare Worker is down, or the email fails to send, the server can react accordingly thanks to the returned <a href="https://docs.rs/anyhow/1.0.85/anyhow/type.Result.html" title="type anyhow::Result"><code>Result</code></a> type.</p>
+<h4 id="52---job-statuses"><a class="doc-anchor" href="#52---job-statuses">§</a>5.2 - Job Statuses</h4>
+<p>We must be able to track what stage of completion each job is currently. To do so, we shall explictly define every possible status in advance.</p>
+<p>Some statuses should also be able to contain additional information, such as error and completion types - which would hold error reasons or completion scores respectfully.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>JobStatusCode {
+    Submitting,
+    SubmissionErr,
+    Queue,
+    Processing,
+    InferenceErr,
+    Complete
+}
+<span class="attr">#[derive( Serialize, Deserialize, Clone, Debug )]
+</span><span class="kw">pub struct </span>JobStatus {
+    <span class="kw">pub </span>code: JobStatusCode,
+    <span class="kw">pub </span>value: String,
+}</code></pre></div>
+<h4 id="53---database"><a class="doc-anchor" href="#53---database">§</a>5.3 - Database</h4><h5 id="531---database-structure"><a class="doc-anchor" href="#531---database-structure">§</a>5.3.1 - Database Structure</h5>
+<p>We use Google Firebase Realtime DB to handle our data.</p>
+<p>The Rust crate for handling database calls expects strictly typed datatypes that are consistent across all users.</p>
+<p>Accordingly, we must define what a <a href="helper/lib/struct.User.html" title="struct igait_backend::helper::lib::User"><code>User</code></a> is to look like, and what their <a href="helper/lib/struct.Job.html" title="struct igait_backend::helper::lib::Job"><code>Job</code></a>s must look like.</p>
+<p>Note that each <a href="helper/lib/struct.Job.html" title="struct igait_backend::helper::lib::Job"><code>Job</code></a> also has its <a href="helper/lib/struct.JobStatus.html" title="struct igait_backend::helper::lib::JobStatus"><code>JobStatus</code></a> that we previously defined.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive( Serialize, Deserialize, Debug )]
+</span><span class="kw">pub struct </span>User {
+    <span class="kw">pub </span>uid: String,
+    <span class="kw">pub </span>jobs: Vec&lt;Job&gt;
+}
+<span class="attr">#[derive( Serialize, Deserialize, Clone, Debug )]
+</span><span class="kw">pub struct </span>Job {
+    <span class="kw">pub </span>age: i16,
+    <span class="kw">pub </span>ethnicity: String,
+    <span class="kw">pub </span>sex: char,
+    <span class="kw">pub </span>height: String,
+    <span class="kw">pub </span>status: Status,
+    <span class="kw">pub </span>timestamp: SystemTime,
+    <span class="kw">pub </span>weight: i16,
+    <span class="kw">pub </span>email: String
+}</code></pre></div>
+<h5 id="532---database-wrapper-functions"><a class="doc-anchor" href="#532---database-wrapper-functions">§</a>5.3.2 - Database Wrapper Functions</h5>
+<p>The Firebase crate is somewhat complex, and has much utility we can abstract away specifically for our usecase.</p>
+<p>To do so, we will create a struct that contains only the Firebase data to be operated on, and make that field private.</p>
+<p>This means the only way to modify that data is through our helper functions, which we define in order to manipulate the database.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive( Debug )]
+</span><span class="kw">pub struct </span>Database {
+    _state: Firebase
+}
+<span class="kw">impl </span>Database {
+    <span class="kw">pub async fn </span>init () -&gt; <span class="self">Self </span>{
+        ...
+    }
+    <span class="kw">pub async fn </span>count_jobs ( <span class="kw-2">&amp;</span><span class="self">self</span>, uid: String ) -&gt; usize {
+        ...
+    }
+    <span class="kw">pub async fn </span>new_job ( <span class="kw-2">&amp;</span><span class="self">self</span>, uid: String, job: Job) {
+        ...
+    }
+    <span class="kw">pub async fn </span>update_status ( <span class="kw-2">&amp;</span><span class="self">self</span>, uid: String, job_id: usize, status: Status) {
+        ...
+    }
+    <span class="kw">pub async fn </span>get_status ( <span class="kw-2">&amp;</span><span class="self">self</span>, uid: String, job_id: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Status&gt; {
+        ...
+    }
+    <span class="kw">pub async fn </span>get_job ( <span class="kw-2">&amp;</span><span class="self">self</span>, uid: String, job_id: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Job&gt; {
+        ...
+    }
+}</code></pre></div>
+<h4 id="54---server-state"><a class="doc-anchor" href="#54---server-state">§</a>5.4 - Server State</h4>
+<p>We now have two handles - one to Firebase Realtime DB, <code>Database</code>; and another (not previously mentioned) to S3, <code>Bucket</code>.</p>
+<p>When a job is submitted, the submitted files are downloaded to our AWS EC2 and placed in a folder. The existance of this folder indicates to the server that it has not yet been handled.</p>
+<p>These two handles and the folder containing data comprise the entire state of our app. To combine the three, we create an <code>AppState</code> object which holds both handles, and a <code>work_queue</code> function. The <a href="daemons/filesystem/index.html" title="mod igait_backend::daemons::filesystem"><code>filesystem daemon</code></a> repeatedly checks the folder for new job submissions, and updates the app state accordingly.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AppState {
+    <span class="kw">pub </span>db: Database,
+    <span class="kw">pub </span>bucket: Bucket
+}</code></pre></div>
+<p>Well, it is important to consider that each incoming request is handled asynchronously. In order to share data across multiple threads, you <em>need</em> to protect it. Otherwise, if <strong>Thread 1</strong> and <strong>Thread 2</strong> try to write data to the state at the same time, a <a href="https://en.wikipedia.org/wiki/Race_condition">data race</a> can occur, which can cause a multitude of images.</p>
+<p>To combat this, [<code>Mutex</code>] is used. This will force other threads to wait until the currently accessing thread is done working.</p>
+<p>Now, Rust cares a lot about <a href="https://doc.rust-lang.org/rust-by-example/scope/lifetime.html">lifetimes</a>, especially for pointers. However, if multiple things <a href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html">own</a> a pointer, Rust refuses to compile.</p>
+<p>This is because by default, in Rust, shared references cannot be mutable, for the same data race concern. To solve this, similarly, we create an <a href="https://doc.rust-lang.org/std/sync/struct.Arc.html"><code>Arc&lt;T&gt;</code></a> which allows multiple pointers to the same thing, atomically (thread-safe).</p>
+<p>So to recap, <code>Arc&lt;Mutex&lt;AppState&gt;&gt;</code> is a thread-safe pointer that can be copied to as many places as we need which allows access to the two main microservices, <strong>S3</strong> and <strong>Firebase</strong>.</p>
+<h4 id="55---metis"><a class="doc-anchor" href="#55---metis">§</a>5.5 - Metis</h4><h5 id="551---automating-ssh-job-creation"><a class="doc-anchor" href="#551---automating-ssh-job-creation">§</a>5.5.1 - Automating SSH Job Creation</h5>
+<p>Because Metis is an NIU-only server, access is closed, and no web servers may be hosted on it. </p>
+<p>This makes sense, as it is computationally optimized, and NIU offers web server solutions seperately. </p>
+<p>Accordingly, to submit work to Metis, we must use SSH and run a <a href="https://altair.com/pbs-professional/">PBS Professional</a> script. However, it is possible to automate this normally manual process! </p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>...
+<span class="kw">pub async fn </span>query_metis (
+    uid:         <span class="kw-2">&amp;</span>str,
+    job_id:      usize,
+    task_number: JobTaskID
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    ...
+}</code></pre></div>
+<h5 id="552---pbs-script"><a class="doc-anchor" href="#552---pbs-script">§</a>5.5.2 - PBS Script</h5>
+<p>Metis can’t recieve files by hosting a file drop endpoint. Instead we provide the job and user ID by launch arguments to the job script.</p>
+<p>By doing so, within the PBS script, we can download the files to then perform work on them. </p>
+<p>It is worth noting that since we can have any number of different file extensions, a JSON file keeps track of what Metis needs to download from S3.</p>
+<div class="example-wrap"><pre class="language-bash"><code># Import files
+/.../.venv/bin/python /.../download_files.py &quot;$USER_ID&quot; &quot;$JOB_ID&quot; ... ... ...
+ls ./queue
+
+# Get the video dir
+VIDEO_DIR=&quot;$TMPDIR/queue&quot;
+
+# Find the front and side videos and extract their extensions
+FRONT_VIDEO=$(find &quot;$VIDEO_DIR&quot; -type f -iname &#39;*front*&#39; | head -n 1)
+SIDE_VIDEO=$(find &quot;$VIDEO_DIR&quot; -type f -iname &#39;*side*&#39; | head -n 1)
+
+# Extract the extensions
+FRONT_EXT=&quot;${FRONT_VIDEO##*.}&quot;
+SIDE_EXT=&quot;${SIDE_VIDEO##*.}&quot;
+
+printf &quot;EXTENSIONS: $FRONT_EXT and $SIDE_EXT&quot;
+</code></pre></div>
+<p>Because OpenPose uses so many libraries and programs to run, rather than bug the sysadmin to install them, we used Docker. </p>
+<p>There are some caveats, mainly that OpenPose needs access to the GPU. To make this happen, and to be able to run Docker without <code>sudo</code>, we employed <a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html">NVIDIA Container Toolkit</a> and <a href="https://podman.io/">Podman</a>.</p>
+<p>Since the files are on our host operating system and not yet in our Docker container, we must also copy them there.</p>
+<div class="example-wrap"><pre class="language-bash"><code># Start Openpose
+printf &quot;[ :3 - Starting OpenPose GPU container... - :3 ]\n&quot;
+/bin/podman run --name openpose -t -d --device nvidia.com/gpu=all --security-opt=label=disable ghcr.io/hiibolt/igait-openpose
+printf &quot;[ :3 - Started OpenPose GPU container! - :3 ]\n\n&quot;
+
+# Build file structure
+printf &quot;[ :3 - Building file structure in OpenPose container... - :3 ]\n&quot;
+/bin/podman exec openpose mkdir /inputs
+/bin/podman exec openpose mkdir /outputs
+/bin/podman exec openpose mkdir /outputs/videos
+/bin/podman exec openpose mkdir /outputs/json
+printf &quot;[ :3 - Build file structure in OpenPose container! - :3 ]\n\n&quot;
+
+# Import video files
+printf &quot;[ :3 - Importing video file inputs to OpenPose container... - :3 ]\n&quot;
+/bin/podman cp $VIDEO_DIR/front.$FRONT_EXT openpose:/inputs/front.$FRONT_EXT
+/bin/podman cp $VIDEO_DIR/side.$FRONT_EXT openpose:/inputs/side.$FRONT_EXT
+/bin/podman exec openpose ls /inputs
+printf &quot;[ :3 - Imported video file inputs to OpenPose container! - :3 ]\n\n&quot;
+</code></pre></div>
+<p>Finally, we run the pose estimation. </p>
+<p>After the video overlays and JSON serializations of the pose estimation are completed, we pull them back out of the Docker container, and upload them to S3. </p>
+<div class="example-wrap"><pre class="language-bash"><code># Run OpenPose on video files
+printf &quot;[ :3 - Starting OpenPose pose estimation... - :3 ]\n&quot;
+/bin/podman exec openpose ./build/examples/openpose/openpose.bin --video /inputs/front.$FRONT_EXT --display 0 --write_video /outputs/videos/front.$FRONT_EXT --write_json /outputs/json/front
+/bin/podman exec openpose ./build/examples/openpose/openpose.bin --video /inputs/side.$SIDE_EXT --display 0 --write_video /outputs/videos/side.$SIDE_EXT --write_json /outputs/json/side
+printf &quot;[ :3 - Finished OpenPose pose estimations! - :3 ]\n\n&quot;
+
+# Move output to host filesystem
+printf &quot;[ :3 - Copying outputs... - :3 ]\n&quot;
+/bin/podman cp openpose:/outputs /.../
+printf &quot;[ :3 - Finished copying outputs! - :3 ]\n\n&quot;
+</code></pre></div>
+<p>Since we do not need those videos again on Metis, we safely delete them. </p>
+<p>Next, we take those JSON serialized pose mappings and run our inference on them. </p>
+<p>With our confidence score, we send a request to our AWS EC2 server, letting them know what the new status is.</p>
+<div class="example-wrap"><pre class="language-bash"><code># Kill  OpenPose
+printf &quot;[ :3 - Killing OpenPose... - :3 ]\n&quot;
+/bin/podman kill openpose
+/bin/podman rm openpose
+printf &quot;[ :3 - Finished killing OpenPose! - :3 ]\n\n&quot;
+
+# Clean up files and submit confidence score
+/.../.venv/bin/python /.../post_and_cleanup.py &quot;$USER_ID&quot; &quot;$JOB_ID&quot; ... ... ... &quot;$FRONT_EXT&quot; &quot;$SIDE_EXT&quot;
+printf &quot;[[ :3 - Ending job - :3 ]]&quot;
+</code></pre></div><h2 id="more"><a class="doc-anchor" href="#more">§</a>More</h2>
+<p>For additional, more in-depth documentation, it is suggested to first read the documentation in the associated modules below.</p>
+<p>If your questions are still unanswered, the raw Rust source code is thoroughly documented.</p>
+<p>If you still have questions, please reach out to the current project lead.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="daemons/index.html" title="mod igait_backend::daemons">daemons</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the daemons that are used to manage and maintain the system.</div></li><li><div class="item-name"><a class="mod" href="helper/index.html" title="mod igait_backend::helper">helper</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains all the helper functions used in the project.</div></li><li><div class="item-name"><a class="mod" href="routes/index.html" title="mod igait_backend::routes">routes</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">This module contains the routes for the API.</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.print_be.html" title="macro igait_backend::print_be">print_be</a></div><div class="desc docblock-short">Prints indication of a backend-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_db.html" title="macro igait_backend::print_db">print_db</a></div><div class="desc docblock-short">Prints indication of a database-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_metis.html" title="macro igait_backend::print_metis">print_metis</a></div><div class="desc docblock-short">Prints indication of a Metis-related message.</div></li><li><div class="item-name"><a class="macro" href="macro.print_s3.html" title="macro igait_backend::print_s3">print_s3</a></div><div class="desc docblock-short">Prints indication of a S3-related message.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.main.html" title="fn igait_backend::main">main</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">The main entrypoint for the iGait backend.</div></li></ul></section></div></main></body></html>

@@ -1,5 +1,7 @@
 # iGait ASD - Backend
-This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
+![image](https://github.com/hiibolt/hiibolt/assets/91273156/6c3abf53-cc67-451c-a605-e76d5e726356)
+
+here are a variety of microservices involved with the submitssion, upload, storage, and more - this backend server handles all of this to bring our product to the convenience of a low-power mobile device.
 
 ## Documentation
 It is highly recommended to read the [documentation](https://igait-niu.github.io/igait-backend/) as onboarding before contributing to this project.
