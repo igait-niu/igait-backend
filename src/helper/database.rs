@@ -93,6 +93,8 @@ impl Database {
         uid:         &str,
         task_number: JobTaskID
     ) -> Result<usize> {
+        print_db!(task_number, "Counting jobs...");
+
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
@@ -176,6 +178,8 @@ impl Database {
         status:      JobStatus,
         task_number: JobTaskID
     ) -> Result<()> {
+        print_db!(task_number, "Updating status...");
+
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
         
@@ -228,6 +232,8 @@ impl Database {
         job_id:      usize,
         task_number: JobTaskID
     ) -> Result<JobStatus> {
+        print_db!(task_number, "Getting status...");
+
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
@@ -264,6 +270,8 @@ impl Database {
         job_id:      usize,
         task_number: JobTaskID
     ) -> Result<Job> {
+        print_db!(task_number, "Getting job...");
+
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 
@@ -299,6 +307,8 @@ impl Database {
         uid:         &str,
         task_number: JobTaskID
     ) -> Result<Vec<Job>> {
+        print_db!(task_number, "Getting all jobs...");
+
         // First double check that the user actually exists
         self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
 

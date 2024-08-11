@@ -311,6 +311,16 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{helper::lib::User, print_db};
 
 <span class="kw">use </span>firebase_rs::<span class="kw-2">*</span>;
@@ -406,6 +416,8 @@
         uid:         <span class="kw-2">&amp;</span>str,
         task_number: JobTaskID
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Counting jobs..."</span>);
+
         <span class="comment">// First double check that the user actually exists
         </span><span class="self">self</span>.ensure_user(uid, task_number).<span class="kw">await</span>.context(<span class="string">"Failed to ensure user!"</span>)<span class="question-mark">?</span>;
 
@@ -489,6 +501,8 @@
         status:      JobStatus,
         task_number: JobTaskID
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Updating status..."</span>);
+
         <span class="comment">// First double check that the user actually exists
         </span><span class="self">self</span>.ensure_user(uid, task_number).<span class="kw">await</span>.context(<span class="string">"Failed to ensure user!"</span>)<span class="question-mark">?</span>;
         
@@ -541,6 +555,8 @@
         job_id:      usize,
         task_number: JobTaskID
     ) -&gt; <span class="prelude-ty">Result</span>&lt;JobStatus&gt; {
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Getting status..."</span>);
+
         <span class="comment">// First double check that the user actually exists
         </span><span class="self">self</span>.ensure_user(uid, task_number).<span class="kw">await</span>.context(<span class="string">"Failed to ensure user!"</span>)<span class="question-mark">?</span>;
 
@@ -577,6 +593,8 @@
         job_id:      usize,
         task_number: JobTaskID
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Job&gt; {
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Getting job..."</span>);
+
         <span class="comment">// First double check that the user actually exists
         </span><span class="self">self</span>.ensure_user(uid, task_number).<span class="kw">await</span>.context(<span class="string">"Failed to ensure user!"</span>)<span class="question-mark">?</span>;
 
@@ -612,6 +630,8 @@
         uid:         <span class="kw-2">&amp;</span>str,
         task_number: JobTaskID
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Job&gt;&gt; {
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Getting all jobs..."</span>);
+
         <span class="comment">// First double check that the user actually exists
         </span><span class="self">self</span>.ensure_user(uid, task_number).<span class="kw">await</span>.context(<span class="string">"Failed to ensure user!"</span>)<span class="question-mark">?</span>;
 

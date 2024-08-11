@@ -65,7 +65,11 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::print_metis;
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+</pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../docs/metis.md"</span>)]
+
+</span><span class="kw">use </span><span class="kw">crate</span>::print_metis;
 
 <span class="kw">use </span>openssh::{Session, KnownHosts};
 <span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result </span>};
@@ -107,7 +111,7 @@
     </span><span class="macro">print_metis!</span>(task_number, <span class="string">"\n----- [ Querying METIS ] -----"</span>);
     <span class="kw">let </span>session = Session::connect_mux(<span class="string">"igait@metis.niu.edu"</span>, KnownHosts::Strict)
         .<span class="kw">await
-        </span>.context(<span class="string">"Couldn't connect to METIS! Are your credentials correct?"</span>)<span class="question-mark">?</span>;
+        </span>.map_err(|e| <span class="macro">anyhow::anyhow!</span>(<span class="string">"Error starting Metis connection! See below:\n{:#?}"</span>, e))<span class="question-mark">?</span>;
     <span class="macro">print_metis!</span>(task_number, <span class="string">"Connected!"</span>);
 
     <span class="comment">// Run the inference job

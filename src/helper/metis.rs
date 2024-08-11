@@ -1,3 +1,5 @@
+#![doc = include_str!("../docs/metis.md")]
+
 use crate::print_metis;
 
 use openssh::{Session, KnownHosts};
@@ -40,7 +42,7 @@ pub async fn query_metis (
     print_metis!(task_number, "\n----- [ Querying METIS ] -----");
     let session = Session::connect_mux("igait@metis.niu.edu", KnownHosts::Strict)
         .await
-        .context("Couldn't connect to METIS! Are your credentials correct?")?;
+        .map_err(|e| anyhow::anyhow!("Error starting Metis connection! See below:\n{:#?}", e))?;
     print_metis!(task_number, "Connected!");
 
     // Run the inference job

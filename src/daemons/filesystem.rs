@@ -83,6 +83,7 @@ async fn check_dir(
     // If the status is processing or submitting, we don't need to do anything,
     //  the backend is already working on it.
     if status.code == JobStatusCode::Processing || status.code == JobStatusCode::Submitting {
+        print_be!(0, "Status is 'Processing' or 'Submitting', skipping...");
         return Ok(());
     }
 

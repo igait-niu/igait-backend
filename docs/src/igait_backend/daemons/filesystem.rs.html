@@ -171,6 +171,7 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::Duration};
 
 <span class="kw">use </span>tokio::{fs::DirEntry, sync::Mutex, time::sleep};
@@ -256,6 +257,7 @@
     <span class="comment">// If the status is processing or submitting, we don't need to do anything,
     //  the backend is already working on it.
     </span><span class="kw">if </span>status.code == JobStatusCode::Processing || status.code == JobStatusCode::Submitting {
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Status is 'Processing' or 'Submitting', skipping..."</span>);
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 

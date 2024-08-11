@@ -1,6 +1,17 @@
 # iGait ASD - Backend
 This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
 
+# Other Repositories and Documents
+Helpful links and documentation for other sources is also in this documentation.
+### Email
+- [Email Documentation](helper::email)
+- [`igait-email` GitHub Repository](https://github.com/igait-niu/igait-email)
+- [Cloudflare Worker](https://dash.cloudflare.com/4e56fe676d50c0b04e4593542eb465f2/workers/services/view/email-service/production?versionFilter=all)
+### Metis
+- [How to Login](https://www.niu.edu/crcd/current-users/getting-started/login-to-metis.shtml)
+- [(NIU's) Documentation on Metis](https://www.niu.edu/crcd/current-users/getting-started/queue-commands-job-management.shtml)
+- [(My) Documentation on Metis](helper::metis)
+
 # Table of Contents
 - [1](#1---api) - API
   - [1.1](#11---layout-and-explanation) - Layout and Explanation
