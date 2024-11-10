@@ -50,8 +50,8 @@ async fn main() -> Result<()> {
     tokio::spawn(work_queue(state));
 
     // Serve the API
-    print_be!(0, "Starting iGait Backend on 5000...");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await
+    print_be!(0, "Starting iGait Backend on 3000...");
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await
         .context("Couldn't start up listener!")?;
     axum::serve(listener, app).await
         .context("Could't serve the API!")?;
