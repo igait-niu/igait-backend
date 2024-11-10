@@ -317,7 +317,7 @@ impl Database {
 
         // Get the jobs as a mutable vector
         job_handle.get::<Vec<Job>>().await
-            .map_err(|e| anyhow!("{e:?}"))
+            .map_err(|e| anyhow!("Failed to parse jobs! Error: {e:#?}"))
             .context("Failed to get jobs!")
     }
 }

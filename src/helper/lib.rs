@@ -9,6 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use super::database::Database;
+use crate::print_be;
 
 /// The unique identifier for a job task.
 pub type JobTaskID = u128;
@@ -144,6 +145,18 @@ impl AppState {
 pub struct AppError(pub anyhow::Error);
 impl IntoResponse for AppError {
     fn into_response(self) -> Response<Body> {
+        print_be!(0, "Encountered an error: {self:#?}");
+        print_be!(0, "Returning an internal server error response.");
+        print_be!(0, "Please check the logs for more information.");
+
+        print_be!(0, "Printing the error chain...");
+        for (ind, cause) in self.0.chain().enumerate() {
+            eprintln!("[{ind}] {cause:#?}");
+        }
+
+        print_be!(0, "Printing the backtrace...");
+        eprintln!("{:#?}", self.0.backtrace());
+
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             format!("Something went wrong: {}", self.0),
