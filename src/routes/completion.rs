@@ -165,6 +165,16 @@ pub async fn completion_entrypoint (
         print_be!(task_number, "Job successful!");
         status.code = JobStatusCode::Complete;
 
+        // Update the status of the job
+        app.lock().await
+            .db.update_status(
+                &arguments.uid,
+                arguments.job_id,
+                status.clone(),
+                task_number
+            ).await
+            .context("Failed to update the status of the job! It was, however, successful.")?;
+
         // Extract the bytes from the extensions file
         let bytes: Vec<u8> = app.lock()
             .await
@@ -236,6 +246,16 @@ pub async fn completion_entrypoint (
         print_be!(task_number, "Job unsuccessful - status content: '{status_content}'");
         status.code = JobStatusCode::InferenceErr;
 
+        // Update the status of the job
+        app.lock().await
+            .db.update_status(
+                &arguments.uid,
+                arguments.job_id,
+                status.clone(),
+                task_number
+            ).await
+            .context("Failed to update the status of the job!")?;
+
         // Send the failure email
         send_failure_email(
             &recipient_email_address,
@@ -246,6 +266,18 @@ pub async fn completion_entrypoint (
             task_number
         ).await.context("Failed to send failure email!")?;
     } else {
+        status.code = JobStatusCode::InferenceErr;
+
+        // Update the status of the job
+        app.lock().await
+            .db.update_status(
+                &arguments.uid,
+                arguments.job_id,
+                status.clone(),
+                task_number
+            ).await
+            .context("Failed to update the status of the job!")?;
+
         // This is an invalid status code, probably a mistake or bad actor
         print_be!(task_number, "Invalid status code!");
         return Err(AppError(anyhow!("Invalid status code from completion endpoint!")));
