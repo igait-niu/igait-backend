@@ -10,6 +10,8 @@ RUN ["cargo", "build"]
 FROM ubuntu:22.04
 COPY --from=build /target/debug/igait-backend /igait-backend
 ARG DEBIAN_FRONTEND=noninteractive
+ARG RUST_BACKTRACE=1
+ARG RUST_LIB_BACKTRACE=1
 RUN apt update
 RUN apt install -y openssh-client openssl libssl-dev pkg-config
 VOLUME /data
