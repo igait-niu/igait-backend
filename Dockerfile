@@ -7,7 +7,7 @@ RUN apt-get install -y pkg-config curl
 RUN apt-get install -y libssl-dev openssl
 RUN ["cargo", "build"]
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 COPY --from=build /target/debug/igait-backend /igait-backend
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update
