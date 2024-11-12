@@ -9,8 +9,9 @@ RUN ["cargo", "build"]
 
 FROM ubuntu:20.04
 COPY --from=build /target/debug/igait-backend /igait-backend
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update
-RUN apt install -y openssl libssl-dev pkg-config
+RUN apt install -y openssh-client openssl libssl-dev pkg-config
 VOLUME /data
 VOLUME /root/.ssh
 CMD ["/igait-backend"]
