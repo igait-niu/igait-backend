@@ -9,6 +9,8 @@ RUN ["cargo", "build"]
 
 FROM ubuntu:22.04
 COPY --from=build /target/debug/igait-backend /igait-backend
+COPY --from=build /queue /queue
+COPY --from=build /pdf-handling /pdf-handling
 ARG DEBIAN_FRONTEND=noninteractive
 ARG RUST_BACKTRACE=1
 ARG RUST_LIB_BACKTRACE=1
