@@ -5,6 +5,7 @@ services:
       - "4000:4000"
   backend:
     image: ghcr.io/igait-niu/igait-backend:latest
+    network_mode: "host"
     ports:
       - "3000:3000"
     volumes:
