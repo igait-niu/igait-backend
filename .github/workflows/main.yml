@@ -32,27 +32,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Cache the nix store
-      - uses: nixbuild/nix-quick-install-action@v27
-      - name: Restore and cache Nix store
-        uses: nix-community/cache-nix-action@v5
-        with:
-          # restore and save a cache using this key
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix') }}
-          # if there's no cache hit, restore a cache by this prefix
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-          # collect garbage until Nix store size (in bytes) is at most this number
-          # before trying to save a new cache
-          gc-max-store-size-linux: 1073741824
-          # do purge caches
-          purge: true
-          # purge all versions of the cache
-          purge-prefixes: cache-${{ runner.os }}-
-          # created more than this number of seconds ago relative to the start of the `Post Restore` phase
-          purge-created: 0
-          # except the version with the `primary-key`, if it exists
-          purge-primary-key: never
           
       # This step uses [docker/metadata-action](https://github.com/docker/metadata-action#about) to extract tags and labels that will be applied to the specified image. The `id` "meta" allows the output of this step to be referenced in a subsequent step. The `images` value provides the base name for the tags and labels.
       - name: Extract metadata (tags, labels) for Docker
@@ -71,3 +50,5 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}:latest # ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
