@@ -103,7 +103,8 @@ pub struct Request {
 pub struct AppState {
     pub db: Database,
     pub bucket: Bucket,
-    pub task_number: JobTaskID
+    pub task_number: JobTaskID,
+    pub aws_ses_client: aws_sdk_sesv2::Client
 }
 impl AppState {
     /// Initializes the application state with a new database and S3 bucket.
@@ -120,6 +121,8 @@ impl AppState {
     /// * This function is typically called at the start of the application to initialize the state.
     /// * The environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set.
     pub async fn new() -> Result<Self> {
+        let aws_config = aws_config::load_from_env().await;
+
         Ok(Self {
             db: Database::init().await.context("Failed to initialize database while setting up app state!")?,
             bucket: Bucket::new(
@@ -127,7 +130,8 @@ impl AppState {
                 "us-east-2".parse().context("Improper region!")?,
                 Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
             ).context("Failed to initialize bucket!")?,
-            task_number: 0
+            task_number: 0,
+            aws_ses_client: aws_sdk_sesv2::Client::new(&aws_config)
         })
     }
 }

@@ -266,6 +266,7 @@ pub async fn upload_entrypoint(
 
     // Send the welcome email
     send_welcome_email(
+        app.clone(),
         &job,
         &arguments.uid,
         job_id,

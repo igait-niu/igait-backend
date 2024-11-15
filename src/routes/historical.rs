@@ -144,7 +144,7 @@ pub async fn historical_entrypoint (
         .as_secs();
 
     // Generate the PDF
-    let (email, pdf_link) = get_email_and_pdf_link(app, jobs, arguments.uid, timestamp, task_number)
+    let (email, pdf_link) = get_email_and_pdf_link(app.clone(), jobs, arguments.uid, timestamp, task_number)
         .await
         .context("Failed to generate the PDF file!")?;
 
@@ -157,11 +157,13 @@ pub async fn historical_entrypoint (
     //  (This is a bit of a hack, but it's the easiest way
     //   to send an email while maintaining flexibility)
     send_email(
+        app,
         &email,
         "Your iGait Submission History",
         &email_body,
         task_number
-    ).context("Failed to send email!")?;
+    ).await
+        .context("Failed to send email!")?;
     
 
     Ok("OK")

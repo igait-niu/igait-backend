@@ -4,8 +4,13 @@ use std::time::SystemTime;
 
 use anyhow::{ Context, Result };
 use chrono::{ DateTime, Utc };
+use tokio::sync::Mutex;
+use aws_sdk_sesv2::types::{
+    Content, Destination, EmailContent, Body, Message
+};
 
 use crate::print_be;
+use crate::{ Arc, AppState };
 
 use super::lib::{Job, JobStatus, JobTaskID};
 
@@ -26,7 +31,8 @@ use super::lib::{Job, JobStatus, JobTaskID};
 /// # Notes
 /// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
-pub fn send_email (
+pub async fn send_email (
+    app:     Arc<Mutex<AppState>>,
     to:      &str,
     subject: &str,
     body:    &str,
@@ -35,14 +41,44 @@ pub fn send_email (
     print_be!(task_number, "Sending email to '{to}'...");
 
     // Post the form to the Cloudflare Worker
-    ureq::post("https://email-service.igaitniu.workers.dev/")
-        .send_form(&[
-            ( "API_KEY", &std::env::var("IGAIT_ACCESS_KEY").context("MISSING IGAIT_ACCESS_KEY!")? ),
-            ( "to",      to      ),
-            ( "subject", subject ),
-            ( "body",    body    )
-        ])
-        .context("Failed to send form to the Cloudllare Worker")?;
+    let destination = Destination::builder()
+        .set_to_addresses(Some(vec![to.into()]))
+        .build();
+    let content = EmailContent::builder()
+        .set_simple(
+            Some(Message::builder()
+                .set_subject(
+                    Some(Content::builder()
+                        .set_data(Some(subject.to_string()))
+                        .build()
+                        .context("Failed to build the subject line for email!")?
+                    )
+                )
+                .set_body(
+                    Some(Body::builder()
+                        .set_html(
+                            Some(Content::builder()
+                                .set_data(Some(body.to_string()))
+                                .build()
+                                .context("Failed to build body for email!")?
+                            )
+                        )
+                        .build()
+                    )
+                )
+                .build())
+        )
+        .build();
+
+    app.lock().await
+        .aws_ses_client.send_email()
+        .from_email_address("noreply@igaitapp.com")
+        .from_email_address_identity_arn("arn:aws:ses:us-east-2:851725269484:identity/noreply@igaitapp.com")
+        .destination(destination)
+        .content(content)
+        .send()
+        .await
+        .context("Failed to send email!")?;
     print_be!(task_number, "Successfully sent email to '{to}'!");
 
     Ok(())
@@ -70,6 +106,7 @@ pub fn send_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_success_email (
+    app:                     Arc<Mutex<AppState>>,
     recipient_email_address: &str,
     status:                  &JobStatus,
     dt_timestamp_utc:        &DateTime<Utc>,
@@ -100,7 +137,8 @@ pub async fn send_success_email (
     );
 
     // Send the email
-    send_email( recipient_email_address, &subject, &body, task_number )
+    send_email( app, recipient_email_address, &subject, &body, task_number )
+        .await
 }
 
 /// A wrapper around `send_email` that sends a failure email to the recipient.
@@ -122,6 +160,7 @@ pub async fn send_success_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_failure_email (
+    app:                     Arc<Mutex<AppState>>,
     recipient_email_address: &str,
     status:                  &JobStatus,
     dt_timestamp_utc:        &DateTime<Utc>,
@@ -140,7 +179,8 @@ pub async fn send_failure_email (
     );
 
     // Send the email
-    send_email( recipient_email_address, &subject, &body, task_number )
+    send_email( app, recipient_email_address, &subject, &body, task_number )
+        .await
 }
 
 /// A wrapper around `send_email` that sends a welcome email to the recipient.
@@ -160,6 +200,7 @@ pub async fn send_failure_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_welcome_email (
+    app:         Arc<Mutex<AppState>>,
     job:         &Job,
     uid:         &str,
     job_id:      usize,
@@ -182,5 +223,6 @@ pub async fn send_welcome_email (
     );
 
     // Send the email
-    send_email( &job.email, &subject, &body, task_number )
+    send_email( app, &job.email, &subject, &body, task_number )
+        .await
 }

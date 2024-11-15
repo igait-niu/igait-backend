@@ -230,6 +230,7 @@ pub async fn completion_entrypoint (
 
         // Send the success email
         send_success_email(
+            app.clone(),
             &recipient_email_address,
             &status,
             &dt_timestamp_utc,
@@ -258,6 +259,7 @@ pub async fn completion_entrypoint (
 
         // Send the failure email
         send_failure_email(
+            app.clone(),
             &recipient_email_address,
             &status,
             &dt_timestamp_utc,
