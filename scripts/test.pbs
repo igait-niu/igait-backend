@@ -1,0 +1,140 @@
+#!/bin/bash
+
+#PBS -N igait_prod
+#PBS -j oe
+#PBS -l select=1:ncpus=8:mpiprocs=1:ngpus=1:mem=251gb
+#PBS -l walltime=00:15:00
+#--PBS -m ae
+#--#PBS -M account@niu.edu
+
+
+
+mprint ( ) {
+	echo "[ :3 - $1 - :3 ]"
+}
+load_cuda ( ) {
+	# Add CUDA module for GPU inference
+	module purge; module load cuda/cuda-11.8-rocky8
+	module purge; module load openmpi/openmpi-4.1.5-gcc-11.4.0-cuda-11.8
+
+	# Ensure the NVIDIA GPU dev files are present
+	cd $PBS_O_WORKDIR
+	mpirun ./cudaMPI
+
+	# Change to temporary directory
+	cd $TMPDIR
+	loginctl enable-linger z1994244	
+}
+find_files ( ) {
+	INPUTS_DIR=/lstr/sahara/zwlab/data/inputs
+
+	FRONT_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__F_."*)
+	FRONT_NO_PATH=$(basename -- "$FRONT_FILE_PATH")
+	FRONT_EXT="${FRONT_NO_PATH##*.}"
+
+	SIDE_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__S_."*)
+	SIDE_NO_PATH=$(basename -- "$SIDE_FILE_PATH")
+	SIDE_EXT="${SIDE_NO_PATH##*.}"
+
+	if [ ! -r $FRONT_FILE_PATH ] || [ ! -r $SIDE_FILE_PATH ]; then
+		echo "[ Error ]: ID '$ID' doesn't exist!" >&2;
+		return 1;
+	fi
+
+	mprint "$FRONT_FILE_PATH ($FRONT_EXT)"
+	mprint "$SIDE_FILE_PATH ($SIDE_EXT)"
+}
+openpose ( ) {
+	CONTAINER_NAME="openpose_$(date +"%s")"
+	mprint "Container Name: '$CONTAINER_NAME'"
+
+	mprint "Starting Container"
+	/bin/podman run --name $CONTAINER_NAME \
+	       	-t \
+		-d \
+	       	--device nvidia.com/gpu=all \
+		--security-opt=label=disable \
+		ghcr.io/hiibolt/igait-openpose
+	mprint "Started!"
+
+	mprint "Building file structure in OpenPose container..."
+	/bin/podman exec $CONTAINER_NAME mkdir /inputs
+	/bin/podman exec $CONTAINER_NAME mkdir /outputs
+	/bin/podman exec $CONTAINER_NAME mkdir /outputs/videos
+	/bin/podman exec $CONTAINER_NAME mkdir /outputs/json
+	mprint "Build file structure in OpenPose container!"	
+
+	mprint "Importing video file inputs to OpenPose container..."
+	/bin/podman cp $FRONT_FILE_PATH $CONTAINER_NAME:/inputs/$FRONT_NO_PATH
+	/bin/podman cp $SIDE_FILE_PATH $CONTAINER_NAME:/inputs/$SIDE_NO_PATH
+	/bin/podman exec $CONTAINER_NAME ls /inputs
+	mprint "Imported video file inputs to OpenPose container!"
+
+	mprint "Starting OpenPose pose estimation..."
+	/bin/podman exec $CONTAINER_NAME \
+		./build/examples/openpose/openpose.bin \
+		--video /inputs/$FRONT_NO_PATH \
+		--display 0 \
+		--write_video /outputs/videos/$FRONT_NO_PATH \
+	       	--write_json /outputs/json/"$ID"__F_
+	/bin/podman exec $CONTAINER_NAME \
+		./build/examples/openpose/openpose.bin \
+		--video /inputs/$SIDE_NO_PATH \
+		--display 0 \
+		--write_video /outputs/videos/$SIDE_NO_PATH \
+	       	--write_json /outputs/json/"$ID"__S_
+	mprint "Pose estimation complete!"
+
+	mprint "Copying outputs..."
+	OPENPOSE_OUTPUT_PATH=/lstr/sahara/zwlab/data/outputs/$ID
+	mkdir $OPENPOSE_OUTPUT_PATH
+	/bin/podman cp $CONTAINER_NAME:/outputs $OPENPOSE_OUTPUT_PATH
+	mv $OPENPOSE_OUTPUT_PATH/outputs/* $OPENPOSE_OUTPUT_PATH
+	rmdir $OPENPOSE_OUTPUT_PATH/outputs
+	mprint "Finished copying outputs!"
+
+	mprint "Killing OpenPose...\n"
+	/bin/podman kill $CONTAINER_NAME
+	/bin/podman rm $CONTAINER_NAME
+	mprint "Finished killing OpenPose!\n"
+}
+inference ( ) {
+	# Move to the tmpfs and build folder structure
+	cd $TMPDIR
+	DATA_DIR=/lstr/sahara/zwlab/data
+	IO_DIR=$DATA_DIR/outputs/$ID
+
+	mprint "Copying files for inference..."
+	cp -r $DATA_DIR/scripts/Model .
+	cp $DATA_DIR/scripts/main.py .
+	cp $DATA_DIR/scripts/requirements.txt .
+	cp -r $IO_DIR/json .
+	mprint "Done copying files!"
+
+	mprint "Loading Python environment..."
+	module purge
+	module load python/python-3.12.4
+	python3 -m pip install -U pip --user
+	pip3 install --upgrade pip
+	pip3 install -r requirements.txt --user
+	mprint "Done loading Python environment!"
+
+	mprint "Starting script..."
+	python3 main.py . $IO_DIR
+	mprint "Done running inference!"
+}
+remove_files ( ) {
+	mprint "Removing files..."
+	rm $FRONT_FILE_PATH $SIDE_FILE_PATH
+	mprint "Done removing files!"
+}
+main ( ) {
+	find_files || return 1;
+	load_cuda || return 1;
+	openpose || return 1;
+	inference || return 1;
+}
+
+main;
+remove_files;
+mprint "Done ^^";
