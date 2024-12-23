@@ -1,0 +1,152 @@
+[ :3 - /lstr/sahara/zwlab/data/inputs/123456789__F_.MOV () - :3 ]
+[ :3 - /lstr/sahara/zwlab/data/inputs/123456789__S_.MOV (MOV) - :3 ]
+[ :3 - Container Name: 'openpose_1734921724' - :3 ]
+[ :3 - Building file structure... - :3 ]
+mkdir: cannot create directory ‘/lstr/sahara/zwlab/data/outputs/123456789’: File exists
+mkdir: cannot create directory ‘/lstr/sahara/zwlab/data/outputs/123456789/json’: File exists
+mkdir: cannot create directory ‘/lstr/sahara/zwlab/data/outputs/123456789/videos’: File exists
+[ :3 - Build file structure! - :3 ]
+[ :3 - Startinig OpenPose pose estimation... - :3 ]
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 11.3.1
+
+Container image Copyright (c) 2016-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+Starting OpenPose demo...
+Configuring OpenPose...
+Starting thread(s)...
+Auto-detecting all available GPUs... Detected 1 GPU(s), using 1 of them starting at GPU 0.
+
+Error:
+Could not create directory: /outputs/json/123456789__F_/. Status error = -1. Does the parent folder exist and/or do you have writing access to that path?
+
+Coming from:
+- /openpose/src/openpose/utilities/fileSystem.cpp:makeDirectory():85
+- /openpose/src/openpose/utilities/fileSystem.cpp:makeDirectory():91
+- /openpose/src/openpose/filestream/fileSaver.cpp:FileSaver():15
+- /openpose/include/openpose/wrapper/wrapperAuxiliary.hpp:configureThreadManager():1221
+- /openpose/include/openpose/wrapper/wrapper.hpp:exec():424
+
+==========
+== CUDA ==
+==========
+
+CUDA Version 11.3.1
+
+Container image Copyright (c) 2016-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+By pulling and using the container, you accept the terms and conditions of this license:
+https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+
+A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+
+Starting OpenPose demo...
+Configuring OpenPose...
+Starting thread(s)...
+Auto-detecting all available GPUs... Detected 1 GPU(s), using 1 of them starting at GPU 0.
+
+Error:
+Could not create directory: /outputs/json/123456789__S_/. Status error = -1. Does the parent folder exist and/or do you have writing access to that path?
+
+Coming from:
+- /openpose/src/openpose/utilities/fileSystem.cpp:makeDirectory():85
+- /openpose/src/openpose/utilities/fileSystem.cpp:makeDirectory():91
+- /openpose/src/openpose/filestream/fileSaver.cpp:FileSaver():15
+- /openpose/include/openpose/wrapper/wrapperAuxiliary.hpp:configureThreadManager():1221
+- /openpose/include/openpose/wrapper/wrapper.hpp:exec():424
+[ :3 - Finished killing OpenPose!\n - :3 ]
+[ :3 - Copying files for inference... - :3 ]
+[ :3 - Done copying files! - :3 ]
+[ :3 - Loading Python environment... - :3 ]
+Requirement already satisfied: pip in /home/z1994244/.local/lib/python3.12/site-packages (24.3.1)
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: pip in /home/z1994244/.local/lib/python3.12/site-packages (24.3.1)
+Requirement already satisfied: numpy in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 1)) (1.26.4)
+Requirement already satisfied: pandas in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 2)) (2.2.3)
+Requirement already satisfied: scikit-learn==1.5.2 in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 3)) (1.5.2)
+Requirement already satisfied: scikeras==0.13.0 in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 4)) (0.13.0)
+Requirement already satisfied: scipy==1.11.4 in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 5)) (1.11.4)
+Requirement already satisfied: tensorflow==2.16.2 in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 6)) (2.16.2)
+Requirement already satisfied: matplotlib==3.9.2 in /home/z1994244/.local/lib/python3.12/site-packages (from -r requirements.txt (line 8)) (3.9.2)
+Requirement already satisfied: joblib>=1.2.0 in /home/z1994244/.local/lib/python3.12/site-packages (from scikit-learn==1.5.2->-r requirements.txt (line 3)) (1.4.2)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /home/z1994244/.local/lib/python3.12/site-packages (from scikit-learn==1.5.2->-r requirements.txt (line 3)) (3.5.0)
+Requirement already satisfied: keras>=3.2.0 in /home/z1994244/.local/lib/python3.12/site-packages (from scikeras==0.13.0->-r requirements.txt (line 4)) (3.7.0)
+Requirement already satisfied: absl-py>=1.0.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (2.1.0)
+Requirement already satisfied: astunparse>=1.6.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (1.6.3)
+Requirement already satisfied: flatbuffers>=23.5.26 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (24.3.25)
+Requirement already satisfied: gast!=0.5.0,!=0.5.1,!=0.5.2,>=0.2.1 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (0.6.0)
+Requirement already satisfied: google-pasta>=0.1.1 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (0.2.0)
+Requirement already satisfied: h5py>=3.10.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (3.12.1)
+Requirement already satisfied: libclang>=13.0.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (18.1.1)
+Requirement already satisfied: ml-dtypes~=0.3.1 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (0.3.2)
+Requirement already satisfied: opt-einsum>=2.3.2 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (3.4.0)
+Requirement already satisfied: packaging in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (24.2)
+Requirement already satisfied: protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.20.3 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (4.25.5)
+Requirement already satisfied: requests<3,>=2.21.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (2.32.3)
+Requirement already satisfied: setuptools in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (75.6.0)
+Requirement already satisfied: six>=1.12.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (1.17.0)
+Requirement already satisfied: termcolor>=1.1.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (2.5.0)
+Requirement already satisfied: typing-extensions>=3.6.6 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (4.12.2)
+Requirement already satisfied: wrapt>=1.11.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (1.17.0)
+Requirement already satisfied: grpcio<2.0,>=1.24.3 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (1.68.1)
+Requirement already satisfied: tensorboard<2.17,>=2.16 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorflow==2.16.2->-r requirements.txt (line 6)) (2.16.2)
+Requirement already satisfied: contourpy>=1.0.1 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (1.3.1)
+Requirement already satisfied: cycler>=0.10 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (4.55.2)
+Requirement already satisfied: kiwisolver>=1.3.1 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (1.4.7)
+Requirement already satisfied: pillow>=8 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (11.0.0)
+Requirement already satisfied: pyparsing>=2.3.1 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (3.2.0)
+Requirement already satisfied: python-dateutil>=2.7 in /home/z1994244/.local/lib/python3.12/site-packages (from matplotlib==3.9.2->-r requirements.txt (line 8)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /home/z1994244/.local/lib/python3.12/site-packages (from pandas->-r requirements.txt (line 2)) (2024.2)
+Requirement already satisfied: tzdata>=2022.7 in /home/z1994244/.local/lib/python3.12/site-packages (from pandas->-r requirements.txt (line 2)) (2024.2)
+Requirement already satisfied: wheel<1.0,>=0.23.0 in /home/z1994244/.local/lib/python3.12/site-packages (from astunparse>=1.6.0->tensorflow==2.16.2->-r requirements.txt (line 6)) (0.45.1)
+Requirement already satisfied: rich in /home/z1994244/.local/lib/python3.12/site-packages (from keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (13.9.4)
+Requirement already satisfied: namex in /home/z1994244/.local/lib/python3.12/site-packages (from keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (0.0.8)
+Requirement already satisfied: optree in /home/z1994244/.local/lib/python3.12/site-packages (from keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (0.13.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in /home/z1994244/.local/lib/python3.12/site-packages (from requests<3,>=2.21.0->tensorflow==2.16.2->-r requirements.txt (line 6)) (3.4.0)
+Requirement already satisfied: idna<4,>=2.5 in /home/z1994244/.local/lib/python3.12/site-packages (from requests<3,>=2.21.0->tensorflow==2.16.2->-r requirements.txt (line 6)) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /home/z1994244/.local/lib/python3.12/site-packages (from requests<3,>=2.21.0->tensorflow==2.16.2->-r requirements.txt (line 6)) (2.2.3)
+Requirement already satisfied: certifi>=2017.4.17 in /home/z1994244/.local/lib/python3.12/site-packages (from requests<3,>=2.21.0->tensorflow==2.16.2->-r requirements.txt (line 6)) (2024.8.30)
+Requirement already satisfied: markdown>=2.6.8 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorboard<2.17,>=2.16->tensorflow==2.16.2->-r requirements.txt (line 6)) (3.7)
+Requirement already satisfied: tensorboard-data-server<0.8.0,>=0.7.0 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorboard<2.17,>=2.16->tensorflow==2.16.2->-r requirements.txt (line 6)) (0.7.2)
+Requirement already satisfied: werkzeug>=1.0.1 in /home/z1994244/.local/lib/python3.12/site-packages (from tensorboard<2.17,>=2.16->tensorflow==2.16.2->-r requirements.txt (line 6)) (3.1.3)
+Requirement already satisfied: MarkupSafe>=2.1.1 in /home/z1994244/.local/lib/python3.12/site-packages (from werkzeug>=1.0.1->tensorboard<2.17,>=2.16->tensorflow==2.16.2->-r requirements.txt (line 6)) (3.0.2)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /home/z1994244/.local/lib/python3.12/site-packages (from rich->keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (3.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /home/z1994244/.local/lib/python3.12/site-packages (from rich->keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (2.18.0)
+Requirement already satisfied: mdurl~=0.1 in /home/z1994244/.local/lib/python3.12/site-packages (from markdown-it-py>=2.2.0->rich->keras>=3.2.0->scikeras==0.13.0->-r requirements.txt (line 4)) (0.1.2)
+[ :3 - Done loading Python environment! - :3 ]
+[ :3 - Starting script... - :3 ]
+2024-12-22 20:42:15.528232: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:479] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2024-12-22 20:42:15.541094: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:10575] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2024-12-22 20:42:15.541115: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1442] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2024-12-22 20:42:15.549664: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-12-22 20:42:16.220866: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2024-12-22 20:42:16.817734: W tensorflow/core/common_runtime/gpu/gpu_device.cc:2251] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+.
+Processing complete!
+Output directory ensured: ./Combined_front_side_columns
+Grouping files by shared parts...
+Grouped files:
+
+Processing complete.
+Traceback (most recent call last):
+  File "/scratch/pbs.29153.cm/main.py", line 503, in <module>
+    f.write(str(results[0]["Score"][0][0]))
+                ~~~~~~~^^^
+IndexError: list index out of range
+[ :3 - Done running inference! - :3 ]
+[ :3 - Done ^^ - :3 ]
