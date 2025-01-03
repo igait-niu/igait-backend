@@ -1,12 +1,13 @@
 use std::time::SystemTime;
 
 use s3::{creds::Credentials, Bucket};
-use anyhow::{ Result, Context };
+use anyhow::{ Result, Context, bail };
 use axum::{
     body::Body,
     response::{IntoResponse, Response}
 };
 use serde::{Deserialize, Serialize};
+use tokio::process::Command;
 
 use super::database::Database;
 use crate::print_be;
@@ -175,4 +176,64 @@ where
     fn from(err: E) -> Self {
         Self(err.into())
     }
+}
+
+pub enum SSHPath<'a> {
+    Local  (&'a str),
+    Remote (&'a str)
+}
+pub async fn copy_file<'a> (
+    username:         &str,
+    hostname:         &str,
+
+    source:           SSHPath<'a>,
+    destination:      SSHPath<'a>,
+    directory:        bool
+) -> Result<String> {
+    let mut command = Command::new("scp");
+
+    if directory {
+        command.arg("-r");
+    }
+
+    match source {
+        SSHPath::Remote(remote_file_path) => {
+            match destination {
+                SSHPath::Local(local_file_path) => {
+                    command
+                        .arg(format!("{username}@{hostname}:{}", remote_file_path ))
+                        .arg(local_file_path);
+                },
+                SSHPath::Remote(new_remote_file_path) => {
+                    command
+                        .arg(format!("{username}@{hostname}:{}", remote_file_path ))
+                        .arg(format!("{username}@{hostname}:{}", new_remote_file_path ));
+                }
+            }
+        },
+        SSHPath::Local(local_file_path) => {
+            if let SSHPath::Remote(remote_file_path) = destination {
+                command
+                    .arg(local_file_path)
+                    .arg(format!("{username}@{hostname}:{}", remote_file_path));
+            } else {
+                bail!("Must have differing SSHPath types!");
+            }
+        }
+    }
+
+    let output = command.output()
+        .await
+        .context("Failed to execute `scp` command!")?;
+
+    let stdout: String = String::from_utf8 ( output.stdout )
+        .context("Standard output contained invalid UTF-8!")?;
+    let stderr: String = String::from_utf8 ( output.stderr )
+        .context("Standard error contained invalid UTF-8!")?;
+
+    if !stderr.is_empty() {
+        bail!("Got error output: {stderr}");
+    }
+
+    Ok(stdout)
 }

@@ -37,7 +37,6 @@ async fn main() -> Result<()> {
     // Build the V1 API router
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
-        .route("/completion", post(crate::routes::completion::completion_entrypoint))
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
         .with_state(state.clone());
 

@@ -4,7 +4,12 @@ use axum::{body::Bytes, extract::{Multipart, State}};
 use tokio::{io::AsyncWriteExt, sync::Mutex};
 use anyhow::{ Result, Context, anyhow };
 
-use crate::{helper::{email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be, print_s3};
+use crate::{
+    helper::{
+        email::send_welcome_email, 
+        lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, copy_file}
+    }, print_be, print_s3
+};
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
@@ -383,6 +388,11 @@ async fn save_upload_files<'a> (
     
     // Return as successful
     print_be!(task_number, "Successfully saved all files physically and to S3!");
+
+    // Copy files to Metis
+    print_be!(task_number, "Copying files to Metis...");
+
+    // Physically write the files to exist
 
     Ok(())
 }

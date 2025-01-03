@@ -2,30 +2,6 @@
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
 
-/// This module contains the completion endpoint for the API.
-/// 
-/// # Arguments
-/// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
-/// * `job_id`: The ID of the job to update.
-/// * `status_code`: The status code of the job. Either `OK` or `ERROR`.
-/// * `status_content`: The content of the status. This is a human-readable string.
-/// * `igait_access_key`: The access key to the iGait API.
-/// 
-/// # Example cURL Request
-/// ```sh
-/// curl -v -F user_id=curlplaceholder -F job_id=0 -F status_code=OK /
-///     -F status_content="Job completed successfully!" -F igait_access_key /
-///    http://api.igaitapp.com/api/v1/completion
-/// ```
-/// 
-/// # Potential Reasons for Failure
-/// See each individual function for potential reasons for failure.
-/// 
-/// # Notes
-/// * Only for use by **Metis**. Do not use this endpoint for the iGait API.
-/// * To find the API key, check the `.env` file on the AWS deployment.
-pub mod completion;
-
 /// This module contains the historical submissions endpoint for the API.
 /// 
 /// # Arguments
