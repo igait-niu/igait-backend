@@ -7,9 +7,13 @@ use anyhow::{ Result, Context, anyhow };
 use crate::{
     helper::{
         email::send_welcome_email, 
-        lib::{copy_file, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}
+        lib::{copy_file, metis_qsub, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}
     }, print_be, print_s3
 };
+
+const METIS_USERNAME: &'static str = "z1994244";
+const METIS_HOSTNAME: &'static str = "metis.niu.edu";
+const METIS_PBS_PATH: &'static str = "/lstr/sahara/zwlab/data/scripts/test.pbs";
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
@@ -243,7 +247,6 @@ pub async fn upload_entrypoint(
             arguments.side_file,
             &arguments.uid, 
             job_id,
-            job.clone(),
             task_number
         ).await 
     {
@@ -311,7 +314,6 @@ async fn save_upload_files<'a> (
     side_file:        UploadRequestFile,
     user_id:          &str,
     job_id:           usize,
-    job:              Job,
     task_number:      JobTaskID
 ) -> Result<()> {
     // Unpack the extensions
@@ -404,8 +406,7 @@ async fn save_upload_files<'a> (
     ).await
         .context("Couldn't move file from local to Metis!")?;
     copy_file(
-        "z1994244",
-        "metis.niu.edu",
+        METIS_USERNAME, METIS_HOSTNAME,
         SSHPath::Local(&side_file_path),
         SSHPath::Remote(
             &format!(
@@ -419,6 +420,17 @@ async fn save_upload_files<'a> (
     ).await
         .context("Couldn't move file from local to Metis!")?;
     print_be!(task_number, "Successfully copied files to Metis!");
+
+    // Launch the Metis inference
+    print_be!(task_number, "Launching PBS batchfile on Metis");
+    let pbs_job_id = metis_qsub(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        METIS_PBS_PATH,
+        vec!("-v", &format!("ID={}", job_file_identifier))
+    ).await
+        .map_err(|e| anyhow!("Couldn't launch PBS batchfile on Metis! Full error: {e:?}"))?;
+    print_be!(task_number, "Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
 
     // Return as successful
     Ok(())
