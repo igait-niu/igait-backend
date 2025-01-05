@@ -7,7 +7,7 @@ use anyhow::{ Result, Context, anyhow };
 use crate::{
     helper::{
         email::send_welcome_email, 
-        lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, copy_file}
+        lib::{copy_file, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}
     }, print_be, print_s3
 };
 
@@ -323,7 +323,8 @@ async fn save_upload_files<'a> (
         .context("Must have a file extension!")?;
     
     // Ensure a directory exists for this file ID
-    let dir_path = format!("queue/{}_{}", user_id, job_id);
+    let job_file_identifier = format!("{}-{}", user_id, job_id);
+    let dir_path = format!("queue/{}", job_file_identifier);
     if tokio::fs::read_dir(&dir_path).await.is_err() {
         // If it doesn't exist, create it
         tokio::fs::create_dir(&dir_path).await
@@ -332,49 +333,40 @@ async fn save_upload_files<'a> (
         print_be!(task_number, "Created directory for queue file: {dir_path}");
     }
 
-    // Build path ID and file handle, and write the files to the queue
-    let queue_file_path = format!("{}/data.json", dir_path);
-    let mut queue_ext_file_handle = tokio::fs::File::create(queue_file_path)
-        .await
-        .context("Unable to open queue file!")?;
-    let mut front_file_handle = tokio::fs::File::create(&format!("{}/front.{}", dir_path, front_extension))
+    // Build path ID and file handles
+    let front_file_path = format!("{}/{}__F_.{}", dir_path, job_file_identifier, front_extension);
+    let side_file_path = format!("{}/{}__S_.{}", dir_path, job_file_identifier, side_extension);
+    let mut front_file_handle = tokio::fs::File::create(&front_file_path)
         .await
         .context("Could not create front file!")?;
-    let mut side_file_handle = tokio::fs::File::create(&format!("{}/side.{}", dir_path, side_extension))
+    let mut side_file_handle = tokio::fs::File::create(&side_file_path)
         .await
         .context("Could not save side file!")?;
+
+    // Write files to the queue folder
     front_file_handle.write_all(&front_file.bytes.clone())
         .await
         .context("Couldn't write the byte contents of the front video file to a physical file!")?;
+    front_file_handle.flush()
+        .await
+        .context("Unable to flush queue file!")?;
     side_file_handle.write_all(&side_file.bytes.clone())
         .await
         .context("Couldn't write the byte contents of the side video file to a physical file!")?;
-
-    // Serialize the job data to soon write to the file
-    let job_data = serde_json::to_string(&job)
-        .context("Unable to serialize data!")?;
-
-    // Write data
-    queue_ext_file_handle.write_all(job_data.as_bytes())
-        .await
-        .context("Unable to write queue file!")?;
-    queue_ext_file_handle.flush()
+    side_file_handle.flush()
         .await
         .context("Unable to flush queue file!")?;
 
     // Build byte vectors
     let mut front_byte_vec: Vec<u8> = Vec::new();
+    let mut side_byte_vec: Vec<u8> = Vec::new();
     front_byte_vec.write_all(&front_file.bytes)
         .await
         .context("Failed to build u8 vector from the front file's Bytes object!")?;
-    let mut side_byte_vec: Vec<u8> = Vec::new();
     side_byte_vec.write_all(&side_file.bytes)
         .await
         .context("Failed to build u8 vector from side file's Bytes object!")?;
 
-    // Serialize the data to write to the extensions file
-    let serialized_extensions = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
-    
     // Upload the all three files to S3
     app.lock()
         .await
@@ -390,21 +382,44 @@ async fn save_upload_files<'a> (
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded side file to S3!");
-    app.lock()
-        .await
-        .bucket
-        .put_object(format!("{}/{}/extensions.json", user_id, job_id), serialized_extensions.as_bytes())
-        .await
-        .context("Failed to upload front extensions JSON data to S3! Continuing regardless.")?;
-    print_s3!(task_number, "Successfully uploaded extensions JSON datafile to S3!");
-    
-    // Return as successful
     print_be!(task_number, "Successfully saved all files physically and to S3!");
+    
 
     // Copy files to Metis
     print_be!(task_number, "Copying files to Metis...");
+    let metis_inputs_dir_path = "/lstr/sahara/zwlab/data/inputs";
+    copy_file(
+        "z1994244",
+        "metis.niu.edu",
+        SSHPath::Local(&front_file_path),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}__F_.{}",
+                metis_inputs_dir_path,
+                job_file_identifier,
+                front_extension
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    copy_file(
+        "z1994244",
+        "metis.niu.edu",
+        SSHPath::Local(&side_file_path),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}__S_.{}",
+                metis_inputs_dir_path,
+                job_file_identifier,
+                side_extension
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    print_be!(task_number, "Successfully copied files to Metis!");
 
-    // Physically write the files to exist
-
+    // Return as successful
     Ok(())
 }

@@ -10,110 +10,110 @@
 
 
 mprint ( ) {
-	echo "[ :3 - $1 - :3 ]"
+        echo "[ :3 - $1 - :3 ]"
 }
 #load_cuda ( ) {
-	# Add CUDA module for GPU inference
-	# module purge; module load cuda/cuda-11.8-rocky8
-	# module purge; module load openmpi/openmpi-4.1.5-gcc-11.4.0-cuda-11.8
+        # Add CUDA module for GPU inference
+        # module purge; module load cuda/cuda-11.8-rocky8
+        # module purge; module load openmpi/openmpi-4.1.5-gcc-11.4.0-cuda-11.8
 
-	# Ensure the NVIDIA GPU dev files are present
-	# mpirun /lstr/sahara/zwlab/data/scripts/cudaMPI
+        # Ensure the NVIDIA GPU dev files are present
+        # mpirun /lstr/sahara/zwlab/data/scripts/cudaMPI
 
-	# loginctl enable-linger z1994244	
+        # loginctl enable-linger z1994244
 #}
 find_files ( ) {
-	INPUTS_DIR=/lstr/sahara/zwlab/data/inputs
+        INPUTS_DIR=/lstr/sahara/zwlab/data/inputs
 
-	FRONT_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__F_."*)
-	FRONT_NO_PATH=$(basename -- "$FRONT_FILE_PATH")
-	FRONT_EXT="${FRONT_NO_PATH##*.}"
+        FRONT_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__F_."*)
+        FRONT_NO_PATH=$(basename -- "$FRONT_FILE_PATH")
+        FRONT_EXT="${FRONT_NO_PATH##*.}"
 
-	SIDE_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__S_."*)
-	SIDE_NO_PATH=$(basename -- "$SIDE_FILE_PATH")
-	SIDE_EXT="${SIDE_NO_PATH##*.}"
+        SIDE_FILE_PATH=$(echo "$INPUTS_DIR/$ID""__S_."*)
+        SIDE_NO_PATH=$(basename -- "$SIDE_FILE_PATH")
+        SIDE_EXT="${SIDE_NO_PATH##*.}"
 
-	if [ ! -r $FRONT_FILE_PATH ] || [ ! -r $SIDE_FILE_PATH ]; then
-		echo "[ Error ]: ID '$ID' doesn't exist!" >&2;
-		return 1;
-	fi
+        if [ ! -r $FRONT_FILE_PATH ] || [ ! -r $SIDE_FILE_PATH ]; then
+                echo "[ Error ]: ID '$ID' doesn't exist!" >&2;
+                return 1;
+        fi
 
-	mprint "$FRONT_FILE_PATH ($FRONT_uEXT)"
-	mprint "$SIDE_FILE_PATH ($SIDE_EXT)"
+        mprint "$FRONT_FILE_PATH ($FRONT_uEXT)"
+        mprint "$SIDE_FILE_PATH ($SIDE_EXT)"
 }
 openpose ( ) {
-	CONTAINER_NAME="openpose_$(date +"%s")"
-	mprint "Container Name: '$CONTAINER_NAME'"
+        CONTAINER_NAME="openpose_$(date +"%s")"
+        mprint "Container Name: '$CONTAINER_NAME'"
 
-	mprint "Building file structure..."
-	mkdir /lstr/sahara/zwlab/data/outputs/$ID
-	mkdir /lstr/sahara/zwlab/data/outputs/$ID/json
-	mkdir /lstr/sahara/zwlab/data/outputs/$ID/videos
-	mprint "Build file structure!"	
+        mprint "Building file structure..."
+        mkdir /lstr/sahara/zwlab/data/outputs/$ID
+        mkdir /lstr/sahara/zwlab/data/outputs/$ID/json
+        mkdir /lstr/sahara/zwlab/data/outputs/$ID/videos
+        mprint "Build file structure!"
 
-	mprint "Startinig OpenPose pose estimation..."
-	#apptainer run \
-	#	--nv \
-	#	--bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
-	#	/lstr/sahara/zwlab/data/scripts/output_image.sif ls
-	apptainer run \
-		--nv \
-		--pwd /openpose \
-		--bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
-		/lstr/sahara/zwlab/data/scripts/output_image.sif \
-		./build/examples/openpose/openpose.bin \
-		--video /inputs/$FRONT_NO_PATH \
-		--display 0 \
-		--write_video /outputs/"$ID"/videos/$FRONT_NO_PATH \
-	      	--write_json /outputs/"$ID"/json/"$ID"__F_
-	apptainer run \
-		--nv \
-		--pwd /openpose \
-		--bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
-		/lstr/sahara/zwlab/data/scripts/output_image.sif \
-		./build/examples/openpose/openpose.bin \
-		--video /inputs/$SIDE_NO_PATH \
-		--display 0 \
-		--write_video /outputs/"$ID"/videos/$SIDE_NO_PATH \
-	      	--write_json /outputs/"$ID"/json/"$ID"__S_
+        mprint "Starting OpenPose pose estimation..."
+        #apptainer run \
+        #       --nv \
+        #       --bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
+        #       /lstr/sahara/zwlab/data/scripts/output_image.sif ls
+        apptainer run \
+                --nv \
+                --pwd /openpose \
+                --bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
+                /lstr/sahara/zwlab/data/scripts/output_image.sif \
+                ./build/examples/openpose/openpose.bin \
+                --video /inputs/$FRONT_NO_PATH \
+                --display 0 \
+                --write_video /outputs/"$ID"/videos/$FRONT_NO_PATH \
+                --write_json /outputs/"$ID"/json/"$ID"__F_
+        apptainer run \
+                --nv \
+                --pwd /openpose \
+                --bind /lstr/sahara/zwlab/data/inputs:/inputs,/lstr/sahara/zwlab/data/outputs:/outputs \
+                /lstr/sahara/zwlab/data/scripts/output_image.sif \
+                ./build/examples/openpose/openpose.bin \
+                --video /inputs/$SIDE_NO_PATH \
+                --display 0 \
+                --write_video /outputs/"$ID"/videos/$SIDE_NO_PATH \
+                --write_json /outputs/"$ID"/json/"$ID"__S_
 
-	mprint "Finished killing OpenPose!\n"
+        mprint "Finished killing OpenPose!\n"
 }
 inference ( ) {
-	# Move to the tmpfs and build folder structure
-	cd $TMPDIR
-	DATA_DIR=/lstr/sahara/zwlab/data
-	IO_DIR=$DATA_DIR/outputs/$ID
+        # Move to the tmpfs and build folder structure
+        cd $TMPDIR
+        DATA_DIR=/lstr/sahara/zwlab/data
+        IO_DIR=$DATA_DIR/outputs/$ID
 
-	mprint "Copying files for inference..."
-	cp -r $DATA_DIR/scripts/Model .
-	cp $DATA_DIR/scripts/main.py .
-	cp $DATA_DIR/scripts/requirements.txt .
-	cp -r $IO_DIR/json .
-	mprint "Done copying files!"
+        mprint "Copying files for inference..."
+        cp -r $DATA_DIR/scripts/Model .
+        cp $DATA_DIR/scripts/main.py .
+        cp $DATA_DIR/scripts/requirements.txt .
+        cp -r $IO_DIR/json .
+        mprint "Done copying files!"
 
-	mprint "Loading Python environment..."
-	module purge
-	module load python/python-3.12.4
-	python3 -m pip install -U pip --user
-	pip3 install --upgrade pip
-	pip3 install -r requirements.txt --user
-	mprint "Done loading Python environment!"
+        mprint "Loading Python environment..."
+        module purge
+        module load python/python-3.12.4
+        python3 -m pip install -U pip --user
+        pip3 install --upgrade pip
+        pip3 install -r requirements.txt --user
+        mprint "Done loading Python environment!"
 
-	mprint "Starting script..."
-	python3 main.py . $IO_DIR
-	mprint "Done running inference!"
+        mprint "Starting script..."
+        python3 main.py . $IO_DIR
+        mprint "Done running inference!"
 }
 remove_files ( ) {
-	mprint "Removing files..."
-	rm $FRONT_FILE_PATH $SIDE_FILE_PATH
-	mprint "Done removing files!"
+        mprint "Removing files..."
+        rm $FRONT_FILE_PATH $SIDE_FILE_PATH
+        mprint "Done removing files!"
 }
 main ( ) {
-	find_files || return 1;
-	# load_cuda || return 1;
-	openpose || return 1;
-	inference || return 1;
+        find_files || return 1;
+        # load_cuda || return 1;
+        openpose || return 1;
+        inference || return 1;
 }
 
 main;
