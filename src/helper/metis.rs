@@ -7,6 +7,11 @@ use anyhow::{ Context, Result };
 
 use super::lib::JobTaskID;
 
+pub const METIS_USERNAME:    &'static str = "z1994244";
+pub const METIS_HOSTNAME:    &'static str = "metis.niu.edu";
+pub const METIS_PBS_PATH:    &'static str = "/lstr/sahara/zwlab/data/scripts/test.pbs";
+pub const METIS_OUTPUT_NAME: &'static str = "igait_prod";
+
 /// Queries METIS for the specified job.
 /// 
 /// # Arguments

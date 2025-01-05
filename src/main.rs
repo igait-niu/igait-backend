@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
         .layer(DefaultBodyLimit::max(500000000));
 
     // Start the queue worker
-    //tokio::spawn(work_queue(state));
+    tokio::spawn(work_queue(state));
 
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());

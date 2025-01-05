@@ -6,14 +6,11 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{
     helper::{
-        email::send_welcome_email, 
-        lib::{copy_file, metis_qsub, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}
-    }, print_be, print_s3
+        email::send_welcome_email, lib::{copy_file, metis_qsub, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}, metis::{
+            METIS_HOSTNAME, METIS_PBS_PATH, METIS_USERNAME
+        }
+    }, print_be, print_s3,
 };
-
-const METIS_USERNAME: &'static str = "z1994244";
-const METIS_HOSTNAME: &'static str = "metis.niu.edu";
-const METIS_PBS_PATH: &'static str = "/lstr/sahara/zwlab/data/scripts/test.pbs";
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
@@ -431,6 +428,18 @@ async fn save_upload_files<'a> (
     ).await
         .map_err(|e| anyhow!("Couldn't launch PBS batchfile on Metis! Full error: {e:?}"))?;
     print_be!(task_number, "Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
+
+    // Write the job ID to a file
+    let pbs_job_id_file_path = format!("{}/pbs_job_id", dir_path);
+    let mut pbs_job_id_file_handle = tokio::fs::File::create(&pbs_job_id_file_path)
+        .await
+        .context("Could not create front file!")?;
+    pbs_job_id_file_handle.write_all(&pbs_job_id.as_bytes())
+        .await
+        .context("Couldn't write the PBS Job ID to a physical file!")?;
+    pbs_job_id_file_handle.flush()
+        .await
+        .context("Unable to flush PBS Job ID file!")?;
 
     // Return as successful
     Ok(())
