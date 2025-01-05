@@ -4,7 +4,8 @@
 /.direnv
 
 # Development files
-test.mp4
+*.mp4
+*.MOV
 
 # Build files
 /target

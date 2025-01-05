@@ -332,21 +332,33 @@ async fn save_upload_files<'a> (
         print_be!(task_number, "Created directory for queue file: {dir_path}");
     }
 
-    // Build path ID and file handle
+    // Build path ID and file handle, and write the files to the queue
     let queue_file_path = format!("{}/data.json", dir_path);
-    let mut queue_side_file_handle = tokio::fs::File::create(queue_file_path)
+    let mut queue_ext_file_handle = tokio::fs::File::create(queue_file_path)
         .await
         .context("Unable to open queue file!")?;
+    let mut front_file_handle = tokio::fs::File::create(&format!("{}/front.{}", dir_path, front_extension))
+        .await
+        .context("Could not create front file!")?;
+    let mut side_file_handle = tokio::fs::File::create(&format!("{}/side.{}", dir_path, side_extension))
+        .await
+        .context("Could not save side file!")?;
+    front_file_handle.write_all(&front_file.bytes.clone())
+        .await
+        .context("Couldn't write the byte contents of the front video file to a physical file!")?;
+    side_file_handle.write_all(&side_file.bytes.clone())
+        .await
+        .context("Couldn't write the byte contents of the side video file to a physical file!")?;
 
     // Serialize the job data to soon write to the file
     let job_data = serde_json::to_string(&job)
         .context("Unable to serialize data!")?;
 
     // Write data
-    queue_side_file_handle.write_all(job_data.as_bytes())
+    queue_ext_file_handle.write_all(job_data.as_bytes())
         .await
         .context("Unable to write queue file!")?;
-    queue_side_file_handle.flush()
+    queue_ext_file_handle.flush()
         .await
         .context("Unable to flush queue file!")?;
 
