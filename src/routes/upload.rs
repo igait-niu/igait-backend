@@ -7,7 +7,7 @@ use anyhow::{ Result, Context, anyhow };
 use crate::{
     helper::{
         email::send_welcome_email, lib::{copy_file, metis_qsub, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}, metis::{
-            METIS_HOSTNAME, METIS_PBS_PATH, METIS_USERNAME
+            METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
         }
     }, print_be, print_s3,
 };
@@ -386,7 +386,6 @@ async fn save_upload_files<'a> (
 
     // Copy files to Metis
     print_be!(task_number, "Copying files to Metis...");
-    let metis_inputs_dir_path = "/lstr/sahara/zwlab/data/inputs";
     copy_file(
         "z1994244",
         "metis.niu.edu",
@@ -394,7 +393,7 @@ async fn save_upload_files<'a> (
         SSHPath::Remote(
             &format!(
                 "{}/{}__F_.{}",
-                metis_inputs_dir_path,
+                METIS_INPUTS_DIR,
                 job_file_identifier,
                 front_extension
             )
@@ -408,7 +407,7 @@ async fn save_upload_files<'a> (
         SSHPath::Remote(
             &format!(
                 "{}/{}__S_.{}",
-                metis_inputs_dir_path,
+                METIS_INPUTS_DIR,
                 job_file_identifier,
                 side_extension
             )

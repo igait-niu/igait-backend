@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 
-use crate::{helper::{lib::{metis_output_exists, AppState, JobStatus, JobStatusCode}, metis::{query_metis, METIS_HOSTNAME, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be};
+use crate::{helper::{lib::{copy_file, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{query_metis, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -46,30 +46,51 @@ async fn check_dir(
         return Ok(());
     }
 
+    let pbs_job_id;
     match tokio::fs::read_to_string(&format!("queue/{}/pbs_job_id", dir_name)).await {
-        Ok(pbs_job_id) => { 
+        Ok(pbs_job_id_full) => { 
             if metis_output_exists(
                 METIS_USERNAME,
                 METIS_HOSTNAME, 
                 METIS_OUTPUT_NAME,
-                &pbs_job_id
+                &pbs_job_id_full
             ).await
                 .context("Couldn't check if the Metis output existed!")?
             {
+                pbs_job_id = pbs_job_id_full
+                    .split(".")
+                    .next()
+                    .context("Must at least have a period and some characters in job ID! (Probably unreachable)")?
+                    .to_owned();
                 print_be!(0, "Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3");
             } else {
-                print_be!(0, "Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id}')...");
+                print_be!(0, "[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_full}')...");
                 return Ok(());
             }
         },
         Err(e) => {
-            print_be!(0, "Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'");
+            print_be!(0, "[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'");
             return Ok(());
         }
     }
 
-    print_be!(0, "Preparing to migrate files from Metis to local storage...");
-        
+    print_be!(0, "Copying file from Metis home directory to output directory...");
+    copy_file(
+        "z1994244",
+        "metis.niu.edu",
+        SSHPath::Remote(&format!("{METIS_OUTPUT_NAME}.o{pbs_job_id}")),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}",
+                METIS_OUTPUTS_DIR,
+                dir_name
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    print_be!(0, "Copied PBS logfile to output directory successfully!");
+    
     // Update the status of the job to 'Processing'
     /*
     app.lock().await.db.update_status(

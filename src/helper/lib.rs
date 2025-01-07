@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{path::Path, time::SystemTime};
 
 use openssh::{KnownHosts, Session};
 use s3::{creds::Credentials, Bucket};
@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response}
 };
 use serde::{Deserialize, Serialize};
-use tokio::process::Command;
+use tokio::{io::AsyncWriteExt, process::Command};
 
 use super::database::Database;
 use crate::print_be;
