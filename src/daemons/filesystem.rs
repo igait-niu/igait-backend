@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 
-use crate::{helper::{lib::{copy_file, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{query_metis, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be};
+use crate::{helper::{lib::{copy_file, delete_logfile, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{query_metis, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -46,25 +46,21 @@ async fn check_dir(
         return Ok(());
     }
 
-    let pbs_job_id;
+    let pbs_job_id: String;
     match tokio::fs::read_to_string(&format!("queue/{}/pbs_job_id", dir_name)).await {
-        Ok(pbs_job_id_full) => { 
+        Ok(pbs_job_id_inner) => { 
             if metis_output_exists(
                 METIS_USERNAME,
                 METIS_HOSTNAME, 
                 METIS_OUTPUT_NAME,
-                &pbs_job_id_full
+                &pbs_job_id_inner
             ).await
                 .context("Couldn't check if the Metis output existed!")?
             {
-                pbs_job_id = pbs_job_id_full
-                    .split(".")
-                    .next()
-                    .context("Must at least have a period and some characters in job ID! (Probably unreachable)")?
-                    .to_owned();
+                pbs_job_id = pbs_job_id_inner;
                 print_be!(0, "Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3");
             } else {
-                print_be!(0, "[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_full}')...");
+                print_be!(0, "[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')...");
                 return Ok(());
             }
         },
@@ -75,10 +71,15 @@ async fn check_dir(
     }
 
     print_be!(0, "Copying file from Metis home directory to output directory...");
+    let job_id_no_system_postfix = pbs_job_id
+        .split(".")
+        .next()
+        .context("Must at least have a period and some characters in job ID! (Probably unreachable)")?
+        .to_owned();
     copy_file(
         "z1994244",
         "metis.niu.edu",
-        SSHPath::Remote(&format!("{METIS_OUTPUT_NAME}.o{pbs_job_id}")),
+        SSHPath::Remote(&format!("{METIS_OUTPUT_NAME}.o{job_id_no_system_postfix}")),
         SSHPath::Remote(
             &format!(
                 "{}/{}",
@@ -90,6 +91,17 @@ async fn check_dir(
     ).await
         .context("Couldn't move file from local to Metis!")?;
     print_be!(0, "Copied PBS logfile to output directory successfully!");
+
+    print_be!(0, "Cleaning logfile from home directory on Metis...");
+    delete_logfile( 
+        METIS_USERNAME,
+        METIS_HOSTNAME, 
+        METIS_OUTPUT_NAME,
+        &pbs_job_id
+    ).await
+        .context("Failed to clean up PBS logfile from Metis home directory!")?;
+    print_be!(0, "Done!");
+
     
     // Update the status of the job to 'Processing'
     /*

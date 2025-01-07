@@ -322,3 +322,46 @@ pub async fn metis_output_exists (
     // Return as successful
     Ok(stderr.is_empty())
 }
+
+pub async fn delete_logfile (
+    username:  &str,
+    hostname:  &str,
+
+    pbs_job_name: &str,
+    pbs_job_id:   &str
+) -> Result<()> {
+    // Extract the job number since there's additional information in the job ID
+    let pbs_job_number = pbs_job_id
+        .split('.')
+        .next()
+        .ok_or(anyhow!("Missing job number! Ensure the Job ID is in the form <n>.cm!"))?;
+
+    // Attempt to connect to METIS
+    let session = Session::connect_mux(&format!("{username}@{hostname}"), KnownHosts::Strict)
+        .await
+        .map_err(|e| anyhow::anyhow!("Error starting Metis connection! See below:\n{:#?}", e))?;
+
+    // Add our path and run the command
+    let output = session
+        .command("rm")
+        .arg(format!("{pbs_job_name}.o{pbs_job_number}"))
+        .output().await
+        .context("Failed to run openpose command!")?;
+
+    // Extract the output from stdout
+    let _stdout = String::from_utf8(output.stdout)
+        .context("Server `stdout` was not valid UTF-8")?;
+    let stderr = String::from_utf8(output.stderr)
+        .context("Server `stderr` was not valid UTF-8")?;
+
+    // Close the SSH session
+    session.close().await
+        .context("Failed to close SSH session - probably fine.")?;
+
+    if !stderr.is_empty() {
+        bail!("Likely failed to delete logfile - full error: {stderr}");
+    }
+
+    // Return as successful
+    Ok(())
+}
