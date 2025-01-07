@@ -102,6 +102,27 @@ async fn check_dir(
         .context("Failed to clean up PBS logfile from Metis home directory!")?;
     print_be!(0, "Done!");
 
+    print_be!(0, "Deleting local output folder...");
+    tokio::fs::remove_dir_all(&format!("queue/{dir_name}"))
+        .await
+        .context("Couldn't remove local output folder!")?;
+    print_be!(0, "Success!");
+
+    print_be!(0, "Copying output results from Metis to local...");
+    copy_file(
+        "z1994244",
+        "metis.niu.edu",
+        SSHPath::Remote(
+            &format!(
+                "{}/{}",
+                METIS_OUTPUTS_DIR,
+                dir_name
+            )),
+        SSHPath::Local("outputs"),
+        true
+    ).await
+        .context("Couldn't move the outputs from Metis to local outputs directory!")?;
+    print_be!(0, "Successfully copied output from Metis to local!");
     
     // Update the status of the job to 'Processing'
     /*
