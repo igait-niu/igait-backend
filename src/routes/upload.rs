@@ -323,13 +323,13 @@ async fn save_upload_files<'a> (
     
     // Ensure a directory exists for this file ID
     let job_file_identifier = format!("{}-{}", user_id, job_id);
-    let dir_path = format!("queue/{}", job_file_identifier);
+    let dir_path = format!("inputs/{}", job_file_identifier);
     if tokio::fs::read_dir(&dir_path).await.is_err() {
         // If it doesn't exist, create it
         tokio::fs::create_dir(&dir_path).await
-            .context("Unable to create directory for queue file!")?;
+            .context("Unable to create directory for inputs file!")?;
 
-        print_be!(task_number, "Created directory for queue file: {dir_path}");
+        print_be!(task_number, "Created directory for inputs file: {dir_path}");
     }
 
     // Build path ID and file handles
@@ -342,19 +342,19 @@ async fn save_upload_files<'a> (
         .await
         .context("Could not save side file!")?;
 
-    // Write files to the queue folder
+    // Write files to the inputs folder
     front_file_handle.write_all(&front_file.bytes.clone())
         .await
         .context("Couldn't write the byte contents of the front video file to a physical file!")?;
     front_file_handle.flush()
         .await
-        .context("Unable to flush queue file!")?;
+        .context("Unable to flush inputs file!")?;
     side_file_handle.write_all(&side_file.bytes.clone())
         .await
         .context("Couldn't write the byte contents of the side video file to a physical file!")?;
     side_file_handle.flush()
         .await
-        .context("Unable to flush queue file!")?;
+        .context("Unable to flush inputs file!")?;
 
     // Build byte vectors
     let mut front_byte_vec: Vec<u8> = Vec::new();

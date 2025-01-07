@@ -22,16 +22,7 @@ use crate::{helper::{lib::{copy_file, delete_logfile, metis_output_exists, AppSt
 /// 
 /// # Returns
 /// * A successful result if the directory was checked
-/// 
-/// # Notes
-/// * If the status is 'Processing' or 'Submitting', the function will return early
-/// * If the status is 'InferenceErr', 'SubmissionErr', or 'Complete', the directory will be purged
-/// * If the status is 'Queue', the status will be updated to 'Processing' and the METIS query will be fired
-/// * If the METIS query fails, the status will be updated to 'InferenceErr'
-/// * The directory name must be in the format '\<id\>_\<job-id\>'
-/// * The directory name must not be '.gitignore'
-/// * This function is used in a loop to check the queue directory for new jobs
-async fn check_dir(
+async fn check_inputs_dir(
     app:         Arc<Mutex<AppState>>,
     entry:       &DirEntry
 ) -> Result<()> {
@@ -47,7 +38,7 @@ async fn check_dir(
     }
 
     let pbs_job_id: String;
-    match tokio::fs::read_to_string(&format!("queue/{}/pbs_job_id", dir_name)).await {
+    match tokio::fs::read_to_string(&format!("inputs/{}/pbs_job_id", dir_name)).await {
         Ok(pbs_job_id_inner) => { 
             if metis_output_exists(
                 METIS_USERNAME,
@@ -103,7 +94,7 @@ async fn check_dir(
     print_be!(0, "Done!");
 
     print_be!(0, "Deleting local output folder...");
-    tokio::fs::remove_dir_all(&format!("queue/{dir_name}"))
+    tokio::fs::remove_dir_all(&format!("inputs/{dir_name}"))
         .await
         .context("Couldn't remove local output folder!")?;
     print_be!(0, "Success!");
@@ -141,32 +132,32 @@ async fn check_dir(
     Ok(())
 }
 
-/// The work queue daemon, which checks the queue directory for new jobs.
+/// The work inputs daemon, which checks the inputs directory for new jobs.
 /// 
 /// # Arguments
 /// * `app` - The application state
 /// 
 /// # Fails
-/// * If the queue directory couldn't be read
-/// * If the queue directory couldn't be iterated over
+/// * If the inputs directory couldn't be read
+/// * If the inputs directory couldn't be iterated over
 /// * If the directory couldn't be checked
 /// 
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
-pub async fn work_queue(
+pub async fn work_inputs(
     app: Arc<Mutex<AppState>>
 ) -> () {
     loop {
-        match tokio::fs::read_dir("queue").await {
+        match tokio::fs::read_dir("inputs").await {
             Ok(mut dir) => {
                 while let Ok(Some(entry)) = dir.next_entry().await {
-                    if let Err(e) = check_dir(app.clone(), &entry).await {
+                    if let Err(e) = check_inputs_dir(app.clone(), &entry).await {
                         print_be!(0, "Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
                     }
                 }
             },
             Err(why) => {
-                print_be!(0, "Couldn't read from queue directory!");
+                print_be!(0, "Couldn't read from inputs directory!");
                 print_be!(0, "{why:?}\n\nContinuing as usual...");
                 continue;
             }

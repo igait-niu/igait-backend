@@ -7,7 +7,7 @@ use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-use daemons::filesystem::work_queue;
+use daemons::filesystem::work_inputs;
 use helper::lib::AppState;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -45,8 +45,8 @@ async fn main() -> Result<()> {
         .nest("/api/v1", api_v1)
         .layer(DefaultBodyLimit::max(500000000));
 
-    // Start the queue worker
-    tokio::spawn(work_queue(state));
+    // Start the inputs worker
+    tokio::spawn(work_inputs(state));
 
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
