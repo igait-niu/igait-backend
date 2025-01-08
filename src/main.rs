@@ -7,7 +7,7 @@ use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-use daemons::filesystem::work_inputs;
+use daemons::filesystem::{work_inputs, work_outputs};
 use helper::lib::AppState;
 use std::sync::Arc;
 use tokio::sync::Mutex;
