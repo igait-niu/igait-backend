@@ -107,6 +107,7 @@ inference ( ) {
 remove_files ( ) {
         mprint "Removing files..."
         rm $FRONT_FILE_PATH $SIDE_FILE_PATH
+        rm -rf /lstr/sahara/zwlab/outputs/"$ID"/json
         mprint "Done removing files!"
 }
 main ( ) {
@@ -117,5 +118,5 @@ main ( ) {
 }
 
 main;
-#remove_files;
+remove_files;
 mprint "Done ^^";
