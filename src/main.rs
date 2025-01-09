@@ -7,8 +7,8 @@ use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-use daemons::filesystem::{work_inputs, work_outputs};
-use helper::lib::AppState;
+use daemons::filesystem::work_inputs;
+use helper::{lib::{copy_file, AppState, SSHPath}, metis::{METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -44,6 +44,18 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .nest("/api/v1", api_v1)
         .layer(DefaultBodyLimit::max(500000000));
+
+    // Copy scripts to Metis
+    print_metis!(0, "Copying scripts from local to Metis...");
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Local("scripts"),
+        SSHPath::Remote(METIS_DATA_DIR),
+        true
+    ).await
+        .context("Couldn't move the outputs from Metis to local outputs directory!")?;
+    print_metis!(0, "Successfully copied scripts from local to Metis!");
 
     // Start the inputs worker
     tokio::spawn(work_inputs(state));

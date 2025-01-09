@@ -4,7 +4,7 @@ use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
 
-use crate::{helper::{lib::{copy_file, delete_logfile, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{query_metis, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_s3};
+use crate::{helper::{lib::{copy_file, delete_logfile, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -62,15 +62,15 @@ async fn check_inputs_dir(
         }
     }
 
-    print_be!(0, "Copying file from Metis home directory to output directory...");
+    print_metis!(0, "Copying file from Metis home directory to output directory...");
     let job_id_no_system_postfix = pbs_job_id
         .split(".")
         .next()
         .context("Must at least have a period and some characters in job ID! (Probably unreachable)")?
         .to_owned();
     copy_file(
-        "z1994244",
-        "metis.niu.edu",
+        METIS_USERNAME,
+        METIS_HOSTNAME,
         SSHPath::Remote(&format!("{METIS_OUTPUT_NAME}.o{job_id_no_system_postfix}")),
         SSHPath::Remote(
             &format!(
@@ -82,9 +82,9 @@ async fn check_inputs_dir(
         false
     ).await
         .context("Couldn't move file from local to Metis!")?;
-    print_be!(0, "Copied PBS logfile to output directory successfully!");
+    print_metis!(0, "Copied PBS logfile to output directory successfully!");
 
-    print_be!(0, "Cleaning logfile from home directory on Metis...");
+    print_metis!(0, "Cleaning logfile from home directory on Metis...");
     delete_logfile( 
         METIS_USERNAME,
         METIS_HOSTNAME, 
@@ -92,18 +92,18 @@ async fn check_inputs_dir(
         &pbs_job_id
     ).await
         .context("Failed to clean up PBS logfile from Metis home directory!")?;
-    print_be!(0, "Done!");
+    print_metis!(0, "Done!");
 
     print_be!(0, "Deleting local input folder...");
     tokio::fs::remove_dir_all(&format!("inputs/{dir_name}"))
         .await
         .context("Couldn't remove local input folder!")?;
     print_be!(0, "Successfully deleted local input folder!");
-
-    print_be!(0, "Copying output results from Metis to local...");
+    
+    print_metis!(0, "Copying output results from Metis to local...");
     copy_file(
-        "z1994244",
-        "metis.niu.edu",
+        METIS_USERNAME,
+        METIS_HOSTNAME,
         SSHPath::Remote(
             &format!(
                 "{}/{}",
@@ -114,7 +114,7 @@ async fn check_inputs_dir(
         true
     ).await
         .context("Couldn't move the outputs from Metis to local outputs directory!")?;
-    print_be!(0, "Successfully copied output from Metis to local!");
+    print_metis!(0, "Successfully copied output from Metis to local!");
     
     // Update the status of the job to 'Processing'
     /*

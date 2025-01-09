@@ -387,8 +387,8 @@ async fn save_upload_files<'a> (
     // Copy files to Metis
     print_be!(task_number, "Copying files to Metis...");
     copy_file(
-        "z1994244",
-        "metis.niu.edu",
+        METIS_USERNAME,
+        METIS_HOSTNAME,
         SSHPath::Local(&front_file_path),
         SSHPath::Remote(
             &format!(
