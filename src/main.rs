@@ -8,9 +8,11 @@ use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
 use daemons::filesystem::work_inputs;
-use helper::{lib::{copy_file, AppState, SSHPath}, metis::{METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
+use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 
 /// The main entrypoint for the iGait backend.
 /// 

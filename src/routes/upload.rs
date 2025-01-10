@@ -6,8 +6,8 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{
     helper::{
-        email::send_welcome_email, lib::{copy_file, metis_qsub, AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID, SSHPath}, metis::{
-            METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
+        email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
+            copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
         }
     }, print_be, print_s3,
 };
@@ -322,7 +322,7 @@ async fn save_upload_files<'a> (
         .context("Must have a file extension!")?;
     
     // Ensure a directory exists for this file ID
-    let job_file_identifier = format!("{}-{}", user_id, job_id);
+    let job_file_identifier = format!("{};{}", user_id, job_id);
     let dir_path = format!("inputs/{}", job_file_identifier);
     if tokio::fs::read_dir(&dir_path).await.is_err() {
         // If it doesn't exist, create it

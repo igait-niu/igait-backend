@@ -4,7 +4,7 @@ use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
 
-use crate::{helper::{lib::{copy_file, delete_logfile, metis_output_exists, AppState, JobStatus, JobStatusCode, SSHPath}, metis::{METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3};
+use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::{copy_file, SSHPath, delete_logfile, metis_output_exists, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -115,20 +115,6 @@ async fn check_inputs_dir(
     ).await
         .context("Couldn't move the outputs from Metis to local outputs directory!")?;
     print_metis!(0, "Successfully copied output from Metis to local!");
-    
-    // Update the status of the job to 'Processing'
-    /*
-    app.lock().await.db.update_status(
-            uid,
-            job_id,
-            JobStatus {
-                code: JobStatusCode::Processing,
-                value: String::from("Querying METIS and awaiting response...")
-            },
-            0
-        ).await
-        .context("Failed to update status to 'Processing'!")?;
-     */
 
     Ok(())
 }
@@ -146,11 +132,6 @@ async fn upload_output_dir (
                     .file_name()
                     .into_string()
                     .map_err(|e| anyhow!("{e:?}"))?;
-
-                if &file_name == "json" {
-                    print_be!(0, "Skipping JSON upload...");
-                    continue;
-                }
                     
                 if entry.file_type()
                     .await
@@ -190,6 +171,93 @@ async fn upload_output_dir (
     Ok(())
 }
 
+async fn work_output_helper (
+    app: &Arc<Mutex<AppState>>,
+    entry: DirEntry
+) -> Result<()> {
+    let file_name = entry
+        .file_name()
+        .into_string()
+        .map_err(|_| anyhow!("Output directory is invalidly named!"))?;
+
+    if &file_name == ".gitignore" {
+        return Ok(());
+    }
+
+    let user_id = file_name.split(";")
+        .next()
+        .context("[ ERROR ] Output directory `{file_name}` is invalidly named!")?
+        .to_owned();
+    
+    print_s3!(0, "Uploading directory `{file_name}` to S3...");
+    upload_output_dir(
+        app.clone(),
+        user_id,
+        file_name.to_string()
+    ).await
+        .map_err(|e| anyhow!("[ WARN ] Encountered error uploading outputs directory `{file_name}`! Error: {e:?}"))?;
+    print_s3!(0, "Successfully uploaded directory `{file_name}` to S3!");
+
+    // Get the user and job IDs
+    let uid = file_name.split(";")
+        .next()
+        .context("Directory name was missing user ID!")?;
+    let job_id = file_name.split(";")
+        .nth(1)
+        .context("Directory name was missing user ID!")?
+        .parse::<usize>()
+        .context("Job ID was not a valid `usize`!")?;
+
+    print_s3!(0, "Checking whether `final_score` file exists!");
+    if tokio::fs::try_exists(&format!("outputs/{file_name}/final_score")).await
+        .map_err(|e| anyhow!("Encountered error trying to find `final_score` file! Error: {e:?}"))?
+    {
+        let score = tokio::fs::read_to_string(
+            &format!("outputs/{file_name}/final_score"))
+            .await
+            .context("Couldn't read `final_score` file. (likely unreachable)")?
+            .parse::<f32>()
+            .context("Final score was not a valid `f32`!")?;
+
+        let classification = if score > ASD_CLASSIFICATION_THRESHOLD {
+            "ASD"
+        } else {
+            "NO ASD"
+        };
+
+
+        app.lock().await.db.update_status(
+            uid,
+            job_id,
+            JobStatus {
+                code: JobStatusCode::Complete,
+                value: String::from(classification)
+            },
+            0
+        ).await
+            .context("Failed to update status to 'Processing'!")?;
+    } else {
+        app.lock().await.db.update_status(
+            uid,
+            job_id,
+            JobStatus {
+                code: JobStatusCode::InferenceErr,
+                value: String::from("There was an error on our end! Please contact support via the instructions in the email containing these results.")
+            },
+            0
+        ).await
+            .context("Failed to update status to 'Processing'!")?;
+    }
+    
+    print_be!(0, "Deleting local output folder...");
+    if let Err(e) = tokio::fs::remove_dir_all(&format!("outputs/{file_name}")).await {
+        println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
+    }
+    print_be!(0, "Successfully deleted local output folder!");
+    
+    Ok(())
+}
+
 /// The work inputs daemon, which checks the inputs directory for new jobs.
 /// 
 /// # Arguments
@@ -208,44 +276,9 @@ pub async fn work_outputs(
     match tokio::fs::read_dir("outputs").await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
-                let file_name = if let Ok(file_name) = entry
-                    .file_name()
-                    .into_string()
-                {
-                    file_name
-                } else {
-                    let file_name = entry.file_name();
-                    println!("[ ERROR ] Output directory `{file_name:?}` is invalidly named!");
-                    continue;
-                };
-
-                if &file_name == ".gitignore" {
-                    continue;
+                if let Err(e) = work_output_helper(&app, entry).await {
+                    println!("Encountered error in output worker! Error: {e:?}");
                 }
-
-                let user_id = if let Some(user_id) = file_name.split("-").next() {
-                    user_id.to_owned()
-                } else {
-                    println!("[ ERROR ] Output directory `{file_name}` is invalidly named!");
-                    continue;
-                };
-                
-                print_s3!(0, "Uploading directory `{file_name}` to S3...");
-                if let Err(e) = upload_output_dir(
-                    app.clone(),
-                    user_id,
-                    file_name.to_string()
-                ).await {
-                    println!("[ WARN ] Encountered error uploading outputs directory `{file_name}`! Error: {e:?}");
-                }
-                print_s3!(0, "Successfully uploaded directory `{file_name}` to S3!");
-                
-                print_be!(0, "Deleting local output folder...");
-                if let Err(e) = tokio::fs::remove_dir_all(&format!("outputs/{file_name}")).await {
-                    println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
-                    continue;
-                }
-                print_be!(0, "Successfully deleted local output folder!");
             }
         },
         Err(e) => {

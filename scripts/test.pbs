@@ -107,8 +107,11 @@ inference ( ) {
 remove_files ( ) {
         mprint "Removing files..."
         rm $FRONT_FILE_PATH $SIDE_FILE_PATH
-        rm -rf /lstr/sahara/zwlab/outputs/"$ID"/json
         mprint "Done removing files!"
+}
+zip_and_delete_json ( ) {
+        zip -9 -r /lstr/sahara/zwlab/data/outputs/"$ID"/json.zip /lstr/sahara/zwlab/data/outputs/"$ID"/json
+        rm -rf /lstr/sahara/zwlab/data/outputs/"$ID"/json
 }
 main ( ) {
         find_files || return 1;
@@ -119,4 +122,5 @@ main ( ) {
 
 main;
 remove_files;
+zip_and_delete_json;
 mprint "Done ^^";
