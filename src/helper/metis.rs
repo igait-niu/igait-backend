@@ -4,7 +4,7 @@ use openssh::{KnownHosts, Session};
 use anyhow::{ Result, Context, bail, anyhow };
 use tokio::process::Command;
 
-pub const METIS_USERNAME:    &'static str = "z1994244";
+pub const METIS_USERNAME:    &'static str = "igait";
 pub const METIS_HOSTNAME:    &'static str = "metis.niu.edu";
 pub const METIS_PBS_PATH:    &'static str = "/lstr/sahara/zwlab/data/scripts/test.pbs";
 pub const METIS_OUTPUT_NAME: &'static str = "igait_prod";
@@ -235,3 +235,39 @@ pub async fn delete_output_folder (
     // Return as successful
     Ok(())
 }
+
+/*
+pub async fn delete_scripts_folder (
+    username:  &str,
+    hostname:  &str
+) -> Result<()> {
+    // Attempt to connect to METIS
+    let session = Session::connect_mux(&format!("{username}@{hostname}"), KnownHosts::Strict)
+        .await
+        .map_err(|e| anyhow::anyhow!("Error starting Metis connection! See below:\n{:#?}", e))?;
+
+    // Add our path and run the command
+    let output = session
+        .command("rm")
+        .args(vec!("-rf", METIS_SCRIPTS_DIR))
+        .output().await
+        .context("Failed to run openpose command!")?;
+
+    // Extract the output from stdout
+    let _stdout = String::from_utf8(output.stdout)
+        .context("Server `stdout` was not valid UTF-8")?;
+    let stderr = String::from_utf8(output.stderr)
+        .context("Server `stderr` was not valid UTF-8")?;
+
+    // Close the SSH session
+    session.close().await
+        .context("Failed to close SSH session - probably fine.")?;
+
+    if !stderr.is_empty() {
+        bail!("Likely failed to delete logfile - full error: {stderr}");
+    }
+
+    // Return as successful
+    Ok(())
+}
+*/
