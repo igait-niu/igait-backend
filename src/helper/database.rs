@@ -1,4 +1,6 @@
-use crate::{helper::lib::User, print_db};
+use std::time::{Duration, SystemTime};
+
+use crate::{helper::lib::{JobStatusCode, User}, print_db};
 
 use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
@@ -64,8 +66,24 @@ impl Database {
             // Create a new user
             user_handle.update(&User {
                 uid: String::from(uid),
-                jobs: Vec::new()
-            }).await.map_err(|e| anyhow!("{e:?}")).context("Failed to create a new user while ensuring they existed!")?;
+                jobs: vec!(
+                    Job {
+                        age: 1,
+                        email: String::from("placeholder@placeholder.com"),
+                        ethnicity: String::from("placeholder"),
+                        height: String::from("placeholder"),
+                        sex: 'p',
+                        status: JobStatus {
+                            code: JobStatusCode::Submitting,
+                            value: String::from("placeholder")
+                        },
+                        timestamp: SystemTime::now(),
+                        weight: 1
+                    }
+                )
+            }).await
+                .map_err(|e| anyhow!("{e:?}"))
+                .context("Failed to create a new user while ensuring they existed!")?;
             print_db!(task_number, "Successfully created new user!");
         }
 
