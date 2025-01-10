@@ -7,10 +7,12 @@ use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-use daemons::filesystem::work_queue;
-use helper::lib::AppState;
+use daemons::filesystem::work_inputs;
+use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 
 /// The main entrypoint for the iGait backend.
 /// 
@@ -37,7 +39,6 @@ async fn main() -> Result<()> {
     // Build the V1 API router
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
-        .route("/completion", post(crate::routes::completion::completion_entrypoint))
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
         .with_state(state.clone());
 
@@ -46,8 +47,20 @@ async fn main() -> Result<()> {
         .nest("/api/v1", api_v1)
         .layer(DefaultBodyLimit::max(500000000));
 
-    // Start the queue worker
-    tokio::spawn(work_queue(state));
+    // Copy scripts to Metis
+    print_metis!(0, "Copying scripts from local to Metis...");
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Local("scripts"),
+        SSHPath::Remote(METIS_DATA_DIR),
+        true
+    ).await
+        .context("Couldn't move the outputs from Metis to local outputs directory!")?;
+    print_metis!(0, "Successfully copied scripts from local to Metis!");
+
+    // Start the inputs worker
+    tokio::spawn(work_inputs(state));
 
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());

@@ -1,9 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
+use chrono::{DateTime, Utc};
 use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
+use async_recursion::async_recursion;
 
-use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::query_metis}, print_be};
+use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -22,17 +24,8 @@ use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::query_met
 /// 
 /// # Returns
 /// * A successful result if the directory was checked
-/// 
-/// # Notes
-/// * If the status is 'Processing' or 'Submitting', the function will return early
-/// * If the status is 'InferenceErr', 'SubmissionErr', or 'Complete', the directory will be purged
-/// * If the status is 'Queue', the status will be updated to 'Processing' and the METIS query will be fired
-/// * If the METIS query fails, the status will be updated to 'InferenceErr'
-/// * The directory name must be in the format '\<id\>_\<job-id\>'
-/// * The directory name must not be '.gitignore'
-/// * This function is used in a loop to check the queue directory for new jobs
-async fn check_dir(
-    app:         Arc<Mutex<AppState>>,
+async fn check_inputs_dir(
+    _app:         Arc<Mutex<AppState>>,
     entry:       &DirEntry
 ) -> Result<()> {
     // Read dir name to prepare to extract data
@@ -46,129 +39,342 @@ async fn check_dir(
         return Ok(());
     }
 
-    // Split it into various chunks to be able to
-    //  extract the user and job ID.
-    let mut dir_name_chunks = dir_name
+    let pbs_job_id: String;
+    match tokio::fs::read_to_string(&format!("inputs/{}/pbs_job_id", dir_name)).await {
+        Ok(pbs_job_id_inner) => { 
+            if metis_output_exists(
+                METIS_USERNAME,
+                METIS_HOSTNAME, 
+                METIS_OUTPUT_NAME,
+                &pbs_job_id_inner
+            ).await
+                .context("Couldn't check if the Metis output existed!")?
+            {
+                pbs_job_id = pbs_job_id_inner;
+                print_be!(0, "Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3");
+            } else {
+                print_be!(0, "[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')...");
+                return Ok(());
+            }
+        },
+        Err(e) => {
+            print_be!(0, "[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'");
+            return Ok(());
+        }
+    }
+
+    print_metis!(0, "Copying file from Metis home directory to output directory...");
+    let job_id_no_system_postfix = pbs_job_id
         .split(".")
         .next()
-        .context("Parser found a malformed file name!")?
-        .split("_");
+        .context("Must at least have a period and some characters in job ID! (Probably unreachable)")?
+        .to_owned();
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Remote(&format!("{METIS_OUTPUT_NAME}.o{job_id_no_system_postfix}")),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}",
+                METIS_OUTPUTS_DIR,
+                dir_name
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    print_metis!(0, "Copied PBS logfile to output directory successfully!");
 
-    // Extract the user and job ID from the dir name
-    let uid = dir_name_chunks
-        .next()
-        .context("Must have valid folder name in format '<id>_<job-id>'!")?;
-    let job_id = dir_name_chunks
-        .next()
-        .context("Must have valid folder name in format '<id>_<job-id>'!")?
-        .parse::<usize>().context("File had invalid job ID!")?;
+    print_metis!(0, "Cleaning logfile from home directory on Metis...");
+    delete_logfile( 
+        METIS_USERNAME,
+        METIS_HOSTNAME, 
+        METIS_OUTPUT_NAME,
+        &pbs_job_id
+    ).await
+        .context("Failed to clean up PBS logfile from Metis home directory!")?;
+    print_metis!(0, "Done!");
 
-    // Ping the database for the status of the job using 
-    //  the user ID and job ID.
-    let status = app.lock().await
-        .db.get_status(
-            uid,
-            job_id,
-            0
-        )
+    print_be!(0, "Deleting local input folder...");
+    tokio::fs::remove_dir_all(&format!("inputs/{dir_name}"))
         .await
-        .or_else(|_| {
-            // Purge that directory
-            std::fs::remove_dir_all(format!("queue/{}", dir_name))
-                .context("Failed to remove directory!")?;
-
-            Err(anyhow!("\t\tJob didn't exist - Purging files accordingly."))
-        })?;
-
-    // If the status is processing or submitting, we don't need to do anything,
-    //  the backend is already working on it.
-    if status.code == JobStatusCode::Processing || status.code == JobStatusCode::Submitting {
-        print_be!(0, "Status is 'Processing' or 'Submitting', skipping...");
-        return Ok(());
-    }
-
-    // If we're here, we have an unusual status code that we need to handle,
-    //  we'll purge the directory and update the status accordingly.
-    if status.code == JobStatusCode::InferenceErr || status.code == JobStatusCode::SubmissionErr || status.code == JobStatusCode::Complete {
-        print_be!(0, "\n----- [ State Update ] -----");
-        let code = status.code;
-        print_be!(0, "Unusual status code detected, purging accordingly: {code:#?}");
+        .context("Couldn't remove local input folder!")?;
+    print_be!(0, "Successfully deleted local input folder!");
     
-        // Purge that directory
-        std::fs::remove_dir_all(format!("queue/{}", dir_name))
-            .context(format!("FAILED TO REMOVE 'queue/{}'!", dir_name))?;
-    }
+    print_metis!(0, "Copying output results from Metis to local...");
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Remote(
+            &format!(
+                "{}/{}",
+                METIS_OUTPUTS_DIR,
+                dir_name
+            )),
+        SSHPath::Local("outputs"),
+        true
+    ).await
+        .context("Couldn't move the outputs from Metis to local outputs directory!")?;
+    print_metis!(0, "Successfully copied output from Metis to local!");
 
-    // If it's in the queue, and we're at this state in the code, we
-    //  can go ahead and post the request to METIS.
-    print_be!(0, "\n----- [ State Update ] -----");
-    print_be!(0, "Top option (Job {job_id} for '{uid}') not processing! Firing inference job request...");
-        
-    // Update the status of the job to 'Processing'
-    app.lock().await.db.update_status(
-            uid,
-            job_id,
-            JobStatus {
-                code: JobStatusCode::Processing,
-                value: String::from("Querying METIS and awaiting response...")
-            },
-            0
-        ).await
-        .context("Failed to update status to 'Processing'!")?;
-    
-    // Query METIS and handle any errors.
-    let query_result = query_metis(uid, job_id, 0).await;
-    
-    // If the query failed, we'll update the status of the job to reflect that.
-    if let Err(reason) = query_result {
-        app.lock().await.db.update_status(
-                uid,
-                job_id,
-                JobStatus {
-                    code: JobStatusCode::InferenceErr,
-                    value: format!("Couldn't query METIS for reason '{reason}'!")
-                },
-                0
-            ).await
-            .context("Failed to update status to 'InferenceErr'!")?;
+    Ok(())
+}
 
-        Err(anyhow!("Couldn't query METIS for reason '{reason}'!"))?
+#[async_recursion]
+async fn upload_output_dir (
+    app: Arc<Mutex<AppState>>,
+    user_id: String,
+    path: String
+) -> Result<()> {
+    match tokio::fs::read_dir(&format!("outputs/{path}")).await {
+        Ok(mut dir) => {
+            while let Ok(Some(entry)) = dir.next_entry().await {
+                let file_name = entry
+                    .file_name()
+                    .into_string()
+                    .map_err(|e| anyhow!("{e:?}"))?;
+                    
+                if entry.file_type()
+                    .await
+                    .context("Couldn't get the file type!")?
+                    .is_file()
+                {
+                    let contents = tokio::fs::read(&format!("outputs/{path}/{}", file_name.as_str()))
+                        .await
+                        .map_err(|e| anyhow!("Couldn't read file `{file_name}`! Error: {e:?}"))?;
+                    let size = contents.len();
+
+                    print_s3!(0, "Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3...");
+                    app.lock()
+                        .await
+                        .bucket
+                        .put_object(format!("{user_id}/outputs/{path}/{file_name}"), &contents)
+                        .await 
+                        .expect("Failed to upload file to S3! Continuing regardless.");
+                    print_s3!(0, "Successfully uploaded file `{file_name}` to S3!");
+                } else {
+                    print_be!(0, "Recursing through sub-directory `{file_name}`");
+                    upload_output_dir (
+                        app.clone(),
+                        user_id.clone(),
+                        path.clone() + "/" + file_name.as_str() 
+                    ).await
+                        .map_err(|e| anyhow!("Failed to recurse `{file_name}` {e:?}"))?
+                }
+            }
+        },
+        Err(why) => {
+            print_be!(0, "Couldn't read from directory path {path}!");
+            print_be!(0, "{why:?}\n\nContinuing as usual...");
+        }
     }
 
     Ok(())
 }
 
-/// The work queue daemon, which checks the queue directory for new jobs.
+async fn work_output_helper (
+    app: &Arc<Mutex<AppState>>,
+    entry: DirEntry
+) -> Result<()> {
+    let file_name = entry
+        .file_name()
+        .into_string()
+        .map_err(|_| anyhow!("Output directory is invalidly named!"))?;
+
+    if &file_name == ".gitignore" {
+        return Ok(());
+    }
+
+    let user_id = file_name.split(";")
+        .next()
+        .context("[ ERROR ] Output directory `{file_name}` is invalidly named!")?
+        .to_owned();
+    
+    print_s3!(0, "Uploading directory `{file_name}` to S3...");
+    upload_output_dir(
+        app.clone(),
+        user_id,
+        file_name.to_string()
+    ).await
+        .map_err(|e| anyhow!("[ WARN ] Encountered error uploading outputs directory `{file_name}`! Error: {e:?}"))?;
+    print_s3!(0, "Successfully uploaded directory `{file_name}` to S3!");
+
+    // Get the user and job IDs
+    let uid = file_name.split(";")
+        .next()
+        .context("Directory name was missing user ID!")?;
+    let job_id = file_name.split(";")
+        .nth(1)
+        .context("Directory name was missing user ID!")?
+        .parse::<usize>()
+        .context("Job ID was not a valid `usize`!")?;
+
+    // Grab the job it references
+    let job: Job = app.lock().await
+        .db
+        .get_job(
+            &uid,
+            job_id,
+            0
+        ).await
+        .context("The job targeted by the completion request doesn't exist!")?; 
+
+    // Extract the email address and timestamp
+    let recipient_email_address = job.email.clone();
+    let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
+
+    print_s3!(0, "Checking whether `final_score` file exists!");
+    if tokio::fs::try_exists(&format!("outputs/{file_name}/final_score")).await
+        .map_err(|e| anyhow!("Encountered error trying to find `final_score` file! Error: {e:?}"))?
+    {
+        let score = tokio::fs::read_to_string(
+            &format!("outputs/{file_name}/final_score"))
+            .await
+            .context("Couldn't read `final_score` file. (likely unreachable)")?
+            .parse::<f32>()
+            .context("Final score was not a valid `f32`!")?;
+
+        let classification = if score > ASD_CLASSIFICATION_THRESHOLD {
+            "ASD"
+        } else {
+            "NO ASD"
+        };
+
+        let status = JobStatus {
+            code: JobStatusCode::Complete,
+            value: String::from(classification)
+        };
+
+        app.lock().await.db.update_status(
+            uid,
+            job_id,
+            status.clone(),
+            0
+        ).await
+            .context("Failed to update status to 'Processing'!")?;
+        
+        // Send the success email
+        send_success_email(
+            app.clone(),
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &job,
+            &uid,
+            job_id,
+            0
+        ).await.context("Failed to send success email!")?;
+    } else {
+        let status = JobStatus {
+            code: JobStatusCode::InferenceErr,
+            value: String::from("There was an error on our end! Please contact support via the instructions in the email containing these results.")
+        };
+
+        app.lock().await.db.update_status(
+            uid,
+            job_id,
+            status.clone(),
+            0
+        ).await
+            .context("Failed to update status to 'Processing'!")?;
+
+        // Send the success email
+        send_failure_email(
+            app.clone(),
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &uid,
+            job_id,
+            0
+        ).await.context("Failed to send success email!")?;
+    }
+    
+    print_be!(0, "Deleting local output folder...");
+    if let Err(e) = tokio::fs::remove_dir_all(&format!("outputs/{file_name}")).await {
+        println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
+    }
+    print_be!(0, "Successfully deleted local output folder!");
+
+    print_be!(0, "Deleting output folder off Metis...");
+    delete_output_folder(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+
+        uid,
+        &job_id.to_string()
+    ).await
+        .context("Failed to delete the output folder off Metis!")?;
+    print_be!(0, "Successfully deleted output folder off Metis!");
+    
+    Ok(())
+}
+
+/// The work inputs daemon, which checks the inputs directory for new jobs.
 /// 
 /// # Arguments
 /// * `app` - The application state
 /// 
 /// # Fails
-/// * If the queue directory couldn't be read
-/// * If the queue directory couldn't be iterated over
+/// * If the inputs directory couldn't be read
+/// * If the inputs directory couldn't be iterated over
 /// * If the directory couldn't be checked
 /// 
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
-pub async fn work_queue(
+pub async fn work_outputs(
     app: Arc<Mutex<AppState>>
 ) -> () {
-    loop {
-        sleep(Duration::from_secs(5)).await;
+    match tokio::fs::read_dir("outputs").await {
+        Ok(mut dir) => {
+            while let Ok(Some(entry)) = dir.next_entry().await {
+                if let Err(e) = work_output_helper(&app, entry).await {
+                    println!("Encountered error in output worker! Error: {e:?}");
+                }
+            }
+        },
+        Err(e) => {
+            print_be!(0, "Encountered error trying to work output directory! Error: {e:?}");
+        }
+    }
+}
 
-        match tokio::fs::read_dir("queue").await {
+/// The work inputs daemon, which checks the inputs directory for new jobs.
+/// 
+/// # Arguments
+/// * `app` - The application state
+/// 
+/// # Fails
+/// * If the inputs directory couldn't be read
+/// * If the inputs directory couldn't be iterated over
+/// * If the directory couldn't be checked
+/// 
+/// # Notes
+/// * This function never returns, ideally it should be run in a separate thread.
+pub async fn work_inputs(
+    app: Arc<Mutex<AppState>>
+) {
+    loop {
+        print_be!(0, "Scanning inputs...");
+
+        match tokio::fs::read_dir("inputs").await {
             Ok(mut dir) => {
                 while let Ok(Some(entry)) = dir.next_entry().await {
-                    if let Err(e) = check_dir(app.clone(), &entry).await {
+                    if let Err(e) = check_inputs_dir(app.clone(), &entry).await {
                         print_be!(0, "Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
                     }
                 }
             },
             Err(why) => {
-                print_be!(0, "Couldn't read from queue directory!");
+                print_be!(0, "Couldn't read from inputs directory!");
                 print_be!(0, "{why:?}\n\nContinuing as usual...");
                 continue;
             }
         }
+
+        print_be!(0, "Scanning outputs...");
+        work_outputs(app.clone()).await;
+
+        sleep(Duration::from_secs(15)).await;
     }
 }

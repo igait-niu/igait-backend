@@ -72,7 +72,7 @@ macro_rules! print_s3{
 macro_rules! print_metis{
     ($a:expr, $b:expr) => {
         let message = format!($b);
-        let to_print = format!("[METIS] [Task {}]", $a);
+        let to_print = format!("[Metis] [Task {}]", $a);
 
         println!("{} {}", <&str as colored::Colorize>::magenta(&to_print), message);
     }

@@ -206,7 +206,7 @@ impl Database {
         // Return as successful
         let code = status.code;
         let value = status.value;
-        print_db!(task_number, "Updated status successfully to {code:#?} with message {value}!");
+        print_db!(task_number, "Updated status successfully to {code:#?} with message '{value}'!");
         Ok(())
     }
 
@@ -226,7 +226,7 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
-    pub async fn get_status (
+    pub async fn _get_status (
         &self, 
         uid:         &str,
         job_id:      usize,

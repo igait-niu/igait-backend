@@ -4,7 +4,13 @@ use axum::{body::Bytes, extract::{Multipart, State}};
 use tokio::{io::AsyncWriteExt, sync::Mutex};
 use anyhow::{ Result, Context, anyhow };
 
-use crate::{helper::{email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be, print_s3};
+use crate::{
+    helper::{
+        email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
+            copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
+        }
+    }, print_be, print_s3,
+};
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
@@ -238,7 +244,6 @@ pub async fn upload_entrypoint(
             arguments.side_file,
             &arguments.uid, 
             job_id,
-            job.clone(),
             task_number
         ).await 
     {
@@ -306,7 +311,6 @@ async fn save_upload_files<'a> (
     side_file:        UploadRequestFile,
     user_id:          &str,
     job_id:           usize,
-    job:              Job,
     task_number:      JobTaskID
 ) -> Result<()> {
     // Unpack the extensions
@@ -318,71 +322,124 @@ async fn save_upload_files<'a> (
         .context("Must have a file extension!")?;
     
     // Ensure a directory exists for this file ID
-    let dir_path = format!("queue/{}_{}", user_id, job_id);
+    let job_file_identifier = format!("{};{}", user_id, job_id);
+    let dir_path = format!("inputs/{}", job_file_identifier);
     if tokio::fs::read_dir(&dir_path).await.is_err() {
         // If it doesn't exist, create it
         tokio::fs::create_dir(&dir_path).await
-            .context("Unable to create directory for queue file!")?;
+            .context("Unable to create directory for inputs file!")?;
 
-        print_be!(task_number, "Created directory for queue file: {dir_path}");
+        print_be!(task_number, "Created directory for inputs file: {dir_path}");
     }
 
-    // Build path ID and file handle
-    let queue_file_path = format!("{}/data.json", dir_path);
-    let mut queue_side_file_handle = tokio::fs::File::create(queue_file_path)
+    // Build path ID and file handles
+    let front_file_path = format!("{}/{}__F_.{}", dir_path, job_file_identifier, front_extension);
+    let side_file_path = format!("{}/{}__S_.{}", dir_path, job_file_identifier, side_extension);
+    let mut front_file_handle = tokio::fs::File::create(&front_file_path)
         .await
-        .context("Unable to open queue file!")?;
+        .context("Could not create front file!")?;
+    let mut side_file_handle = tokio::fs::File::create(&side_file_path)
+        .await
+        .context("Could not save side file!")?;
 
-    // Serialize the job data to soon write to the file
-    let job_data = serde_json::to_string(&job)
-        .context("Unable to serialize data!")?;
-
-    // Write data
-    queue_side_file_handle.write_all(job_data.as_bytes())
+    // Write files to the inputs folder
+    front_file_handle.write_all(&front_file.bytes.clone())
         .await
-        .context("Unable to write queue file!")?;
-    queue_side_file_handle.flush()
+        .context("Couldn't write the byte contents of the front video file to a physical file!")?;
+    front_file_handle.flush()
         .await
-        .context("Unable to flush queue file!")?;
+        .context("Unable to flush inputs file!")?;
+    side_file_handle.write_all(&side_file.bytes.clone())
+        .await
+        .context("Couldn't write the byte contents of the side video file to a physical file!")?;
+    side_file_handle.flush()
+        .await
+        .context("Unable to flush inputs file!")?;
 
     // Build byte vectors
     let mut front_byte_vec: Vec<u8> = Vec::new();
+    let mut side_byte_vec: Vec<u8> = Vec::new();
     front_byte_vec.write_all(&front_file.bytes)
         .await
         .context("Failed to build u8 vector from the front file's Bytes object!")?;
-    let mut side_byte_vec: Vec<u8> = Vec::new();
     side_byte_vec.write_all(&side_file.bytes)
         .await
         .context("Failed to build u8 vector from side file's Bytes object!")?;
 
-    // Serialize the data to write to the extensions file
-    let serialized_extensions = format!("{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}");
-    
     // Upload the all three files to S3
     app.lock()
         .await
         .bucket
-        .put_object(format!("{}/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
+        .put_object(format!("{}/inputs/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded front file to S3!");
     app.lock()
         .await
         .bucket
-        .put_object(format!("{}/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
+        .put_object(format!("{}/inputs/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded side file to S3!");
-    app.lock()
-        .await
-        .bucket
-        .put_object(format!("{}/{}/extensions.json", user_id, job_id), serialized_extensions.as_bytes())
-        .await
-        .context("Failed to upload front extensions JSON data to S3! Continuing regardless.")?;
-    print_s3!(task_number, "Successfully uploaded extensions JSON datafile to S3!");
-    
-    // Return as successful
     print_be!(task_number, "Successfully saved all files physically and to S3!");
+    
 
+    // Copy files to Metis
+    print_be!(task_number, "Copying files to Metis...");
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Local(&front_file_path),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}__F_.{}",
+                METIS_INPUTS_DIR,
+                job_file_identifier,
+                front_extension
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    copy_file(
+        METIS_USERNAME, METIS_HOSTNAME,
+        SSHPath::Local(&side_file_path),
+        SSHPath::Remote(
+            &format!(
+                "{}/{}__S_.{}",
+                METIS_INPUTS_DIR,
+                job_file_identifier,
+                side_extension
+            )
+        ),
+        false
+    ).await
+        .context("Couldn't move file from local to Metis!")?;
+    print_be!(task_number, "Successfully copied files to Metis!");
+
+    // Launch the Metis inference
+    print_be!(task_number, "Launching PBS batchfile on Metis");
+    let pbs_job_id = metis_qsub(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        METIS_PBS_PATH,
+        vec!("-v", &format!("ID={}", job_file_identifier))
+    ).await
+        .map_err(|e| anyhow!("Couldn't launch PBS batchfile on Metis! Full error: {e:?}"))?;
+    print_be!(task_number, "Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
+
+    // Write the job ID to a file
+    let pbs_job_id_file_path = format!("{}/pbs_job_id", dir_path);
+    let mut pbs_job_id_file_handle = tokio::fs::File::create(&pbs_job_id_file_path)
+        .await
+        .context("Could not create front file!")?;
+    pbs_job_id_file_handle.write_all(&pbs_job_id.as_bytes())
+        .await
+        .context("Couldn't write the PBS Job ID to a physical file!")?;
+    pbs_job_id_file_handle.flush()
+        .await
+        .context("Unable to flush PBS Job ID file!")?;
+
+    // Return as successful
     Ok(())
 }

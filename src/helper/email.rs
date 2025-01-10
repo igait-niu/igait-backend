@@ -111,15 +111,13 @@ pub async fn send_success_email (
     status:                  &JobStatus,
     dt_timestamp_utc:        &DateTime<Utc>,
     job:                     &Job,
-    front_keyframed_url:     &str,
-    side_keyframed_url:      &str,
     uid:                     &str,
     job_id:                  usize,
     task_number:             JobTaskID
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App has completed!");
-    let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>Front Video: {}<br>Side Video: {}<br>These videos will remain downloadable for 7 days from the date of this email. If they expire, contact GaitStudy@niu.edu to have new files issued. If you recieve an error message viewing these videos, please use a different browser such as Chrome.<br><br>User ID: {}<br>Job ID: {}", 
+    let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
         status.value,
         dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
 
@@ -128,9 +126,6 @@ pub async fn send_success_email (
         job.sex,
         job.height,
         job.weight,
-
-        front_keyframed_url,
-        side_keyframed_url,
 
         uid,
         job_id
