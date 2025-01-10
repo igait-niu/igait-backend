@@ -226,7 +226,7 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
-    pub async fn get_status (
+    pub async fn _get_status (
         &self, 
         uid:         &str,
         job_id:      usize,

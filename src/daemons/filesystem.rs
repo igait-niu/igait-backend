@@ -1,10 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
+use chrono::{DateTime, Utc};
 use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
 
-use crate::{helper::{lib::{AppState, JobStatus, JobStatusCode}, metis::{copy_file, SSHPath, delete_logfile, metis_output_exists, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
+use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
 
 /// Checks the directory for a given entry and updates the status of the job accordingly.
 /// 
@@ -208,6 +209,20 @@ async fn work_output_helper (
         .parse::<usize>()
         .context("Job ID was not a valid `usize`!")?;
 
+    // Grab the job it references
+    let job: Job = app.lock().await
+        .db
+        .get_job(
+            &uid,
+            job_id,
+            0
+        ).await
+        .context("The job targeted by the completion request doesn't exist!")?; 
+
+    // Extract the email address and timestamp
+    let recipient_email_address = job.email.clone();
+    let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
+
     print_s3!(0, "Checking whether `final_score` file exists!");
     if tokio::fs::try_exists(&format!("outputs/{file_name}/final_score")).await
         .map_err(|e| anyhow!("Encountered error trying to find `final_score` file! Error: {e:?}"))?
@@ -225,28 +240,54 @@ async fn work_output_helper (
             "NO ASD"
         };
 
+        let status = JobStatus {
+            code: JobStatusCode::Complete,
+            value: String::from(classification)
+        };
 
         app.lock().await.db.update_status(
             uid,
             job_id,
-            JobStatus {
-                code: JobStatusCode::Complete,
-                value: String::from(classification)
-            },
+            status.clone(),
             0
         ).await
             .context("Failed to update status to 'Processing'!")?;
+        
+        // Send the success email
+        send_success_email(
+            app.clone(),
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &job,
+            &uid,
+            job_id,
+            0
+        ).await.context("Failed to send success email!")?;
     } else {
+        let status = JobStatus {
+            code: JobStatusCode::InferenceErr,
+            value: String::from("There was an error on our end! Please contact support via the instructions in the email containing these results.")
+        };
+
         app.lock().await.db.update_status(
             uid,
             job_id,
-            JobStatus {
-                code: JobStatusCode::InferenceErr,
-                value: String::from("There was an error on our end! Please contact support via the instructions in the email containing these results.")
-            },
+            status.clone(),
             0
         ).await
             .context("Failed to update status to 'Processing'!")?;
+
+        // Send the success email
+        send_failure_email(
+            app.clone(),
+            &recipient_email_address,
+            &status,
+            &dt_timestamp_utc,
+            &uid,
+            job_id,
+            0
+        ).await.context("Failed to send success email!")?;
     }
     
     print_be!(0, "Deleting local output folder...");
@@ -254,6 +295,17 @@ async fn work_output_helper (
         println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
     }
     print_be!(0, "Successfully deleted local output folder!");
+
+    print_be!(0, "Deleting output folder off Metis...");
+    delete_output_folder(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+
+        uid,
+        &job_id.to_string()
+    ).await
+        .context("Failed to delete the output folder off Metis!")?;
+    print_be!(0, "Successfully deleted output folder off Metis!");
     
     Ok(())
 }

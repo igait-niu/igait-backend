@@ -198,3 +198,40 @@ pub async fn delete_logfile (
     // Return as successful
     Ok(())
 }
+
+pub async fn delete_output_folder (
+    username:  &str,
+    hostname:  &str,
+
+    uid: &str,
+    job_id:   &str
+) -> Result<()> {
+    // Attempt to connect to METIS
+    let session = Session::connect_mux(&format!("{username}@{hostname}"), KnownHosts::Strict)
+        .await
+        .map_err(|e| anyhow::anyhow!("Error starting Metis connection! See below:\n{:#?}", e))?;
+
+    // Add our path and run the command
+    let output = session
+        .command("rm")
+        .args(vec!("-rf", &format!("{METIS_OUTPUTS_DIR}/{uid};{job_id}")))
+        .output().await
+        .context("Failed to run openpose command!")?;
+
+    // Extract the output from stdout
+    let _stdout = String::from_utf8(output.stdout)
+        .context("Server `stdout` was not valid UTF-8")?;
+    let stderr = String::from_utf8(output.stderr)
+        .context("Server `stderr` was not valid UTF-8")?;
+
+    // Close the SSH session
+    session.close().await
+        .context("Failed to close SSH session - probably fine.")?;
+
+    if !stderr.is_empty() {
+        bail!("Likely failed to delete logfile - full error: {stderr}");
+    }
+
+    // Return as successful
+    Ok(())
+}
