@@ -59,6 +59,12 @@ async fn unpack_historical_arguments(
                         .context("Field 'user_id' wasn't readable as text!")?
                         .parse::<usize>()
                         .context("Field 'entries' didn't contain a valid integer!")?);
+
+                    if let Some(entries) = &entries_option {
+                        if *entries == 0 {
+                            bail!("Field 'entries' must be greater than 0!");
+                        }
+                    }
             },
             Some("result_type") => {
                 result_type_option = Some(field
@@ -144,7 +150,7 @@ pub async fn historical_entrypoint (
         .context("Failed to unpack historical arguments!")?;
 
     // Get all jobs
-    let jobs = app.lock().await
+    let mut jobs = app.lock().await
         .db
         .get_all_jobs(
             &arguments.uid,
@@ -153,11 +159,81 @@ pub async fn historical_entrypoint (
         .await
         .context("Failed to get jobs!")?;
 
+    // Remove the template job
+    jobs.remove(0);
+
+    // Filter by result type and start/end date
+    jobs = jobs.into_iter()
+        .filter(|job| {
+            // Filter by result type
+            if let Some(result_type) = &arguments.result_type {
+                if result_type == "ASD" {
+                    if job.status.code != JobStatusCode::Complete ||
+                       job.status.value != "ASD"
+                    {
+                        return false;
+                    }
+                } else if result_type == "NO ASD" {
+                    if job.status.code != JobStatusCode::Complete || 
+                       job.status.value != "NO ASD"
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            // Make sure it's after the start date
+            if let Some(start_date) = arguments.date_range.0 {
+                if job.timestamp < start_date {
+                    return false;
+                }
+            }
+
+            // Make sure it's before the end date
+            if let Some(end_date) = arguments.date_range.1 {
+                if job.timestamp > end_date {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .collect();
+
+    jobs.reverse();
+
+    // Lastly, only the return the number of entries requested
+    if let Some(num_entries) = arguments.entries {
+        jobs.truncate(num_entries);
+    }
+
     // Generate the body
     let mut email_body = concat!(
         "<h1>Thank you for contacting iGait!</h1>",
-        "You recently requested a complete history of your submissions. Located below can be found, in chronological order, all past submissions.<br>"
-        ).to_string();
+        "You recently requested a history of your submissions. Located below can be found, in chronological order, your past submissions.<br><br>",
+        "You selected the following filters:"
+    ).to_string();
+    email_body += &format!(
+        "<ul>\
+        <li>Entries: {}</li>\
+        <li>Result Type: {}</li>\
+        <li>Start Date: {}</li>\
+        <li>End Date: {}</li>\
+        <li>Include Original: {}</li>\
+        <li>Include Skeleton: {}</li>\
+        </ul><br>",
+        arguments.entries.map(|n| n.to_string()).unwrap_or(String::from("All")),
+        arguments.result_type.as_deref().unwrap_or("Any"),
+        arguments.date_range.0.map(|d| DateTime::<Utc>::from(d).format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or("Any".to_string()),
+        arguments.date_range.1.map(|d| DateTime::<Utc>::from(d).format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or("Any".to_string()),
+        if arguments.include_original { "Yes" } else { "No" },
+        if arguments.include_skeleton { "Yes" } else { "No" }
+    );
+
+    if jobs.is_empty() {
+        return Err(AppError(anyhow!("There were no jobs that matched your query!")));
+    }
+
     for job in jobs.iter() {
         // Add a condensed version of the job to the shortened body
         let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
@@ -169,11 +245,8 @@ pub async fn historical_entrypoint (
             JobStatusCode::Complete => {
                 email_body.push_str(
                     &format!(
-                        "- Status: Complete<br>- Confidence: {:.2}%", 
+                        "- Status: Complete<br>- Result: {}", 
                         job.status.value
-                            .parse::<f64>()
-                            .context("Failed to parse confidence value!")? 
-                            * 100.0
                     )
                 );
             },
@@ -203,7 +276,7 @@ pub async fn historical_entrypoint (
     //  and attach the link to the shortened body
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("Unreachable - We are not time travelers ^^`")
+        .context("Unreachable - We are not time travelers ^^`")?
         .as_secs();
 
     // Generate the PDF
@@ -227,7 +300,6 @@ pub async fn historical_entrypoint (
         task_number
     ).await
         .context("Failed to send email!")?;
-    
 
     Ok(())
 }
@@ -292,19 +364,14 @@ async fn get_email_and_pdf_link(
         let title = genpdf::style::StyledString::new("iGait - Complete Historical Results".to_owned(), genpdf::style::Effect::Bold);
         doc.push(genpdf::elements::Paragraph::new(title));
 
-
-
         // Add each result as its own paragraph
         for (index, job) in jobs_arc.iter().enumerate() {
             let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
             let status = match job.status.code {
                 JobStatusCode::Complete => {
                     format!(
-                        "Complete - Confidence: {:.2}%", 
+                        "Complete - Result: {}", 
                         job.status.value
-                            .parse::<f64>()
-                            .expect("Closure - Failed to parse confidence value!")
-                            * 100.0
                     )
                 },
                 _ => {
