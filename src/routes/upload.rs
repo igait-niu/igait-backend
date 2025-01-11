@@ -370,14 +370,14 @@ async fn save_upload_files<'a> (
     app.lock()
         .await
         .bucket
-        .put_object(format!("{}/inputs/{}/front.{}", user_id, job_id, front_extension), &front_byte_vec)
+        .put_object(format!("{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded front file to S3!");
     app.lock()
         .await
         .bucket
-        .put_object(format!("{}/inputs/{}/side.{}", user_id, job_id, side_extension), &side_byte_vec)
+        .put_object(format!("{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded side file to S3!");

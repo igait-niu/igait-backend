@@ -4,7 +4,7 @@ use anyhow::{ Result, Context, anyhow, bail };
 use axum::extract::{Multipart, State};
 use chrono::{DateTime, Utc};
 use tokio::sync::Mutex;
-use time_util::system_time_from_millis;
+use time_util::system_time_from_secs;
 
 use crate::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
 
@@ -77,19 +77,25 @@ async fn unpack_historical_arguments(
                     }
                 }
             },
-            Some("start_date") => {
-                date_range.0 = Some(system_time_from_millis(
-                    serde_json::Value::String(field
+            Some("start_timestamp") => {
+                date_range.0 = Some(system_time_from_secs(
+                    serde_json::Value::Number(field
                     .text().await
-                    .context("Field 'start_date' wasn't readable as text!")?
-                )).context("Field 'start_date' was an integer, but not a valid UNIX timestamp!")?);
+                    .context("Field 'start_timestamp' wasn't readable as text!")?
+                    .parse::<u64>()
+                    .context("Couldn't parse field 'start_timestamp' into a 64-bit integer!")?
+                    .into()
+                )).context("Field 'start_timestamp' was an integer, but not a valid UNIX timestamp!")?);
             },
-            Some("end_date") => {
-                date_range.1 = Some(system_time_from_millis(
-                    serde_json::Value::String(field
-                    .text().await
-                    .context("Field 'end_date' wasn't readable as text!")?
-                )).context("Field 'end_date' was an integer, but not a valid UNIX timestamp!")?);
+            Some("end_timestamp") => {
+                date_range.1 = Some(system_time_from_secs(
+                    serde_json::Value::Number(field
+                        .text().await
+                        .context("Field 'end_timestamp' wasn't readable as text!")?
+                        .parse::<u64>()
+                        .context("Couldn't parse field 'end_timestamp' into a 64-bit integer!")?
+                        .into()
+                )).context("Field 'end_timestamp' was an integer, but not a valid UNIX timestamp!")?);
             },
             Some("include_original") => {
                 include_original_option = Some(
@@ -150,21 +156,24 @@ pub async fn historical_entrypoint (
         .context("Failed to unpack historical arguments!")?;
 
     // Get all jobs
-    let mut jobs = app.lock().await
+    let mut jobs: Vec<(usize, Job)> = app.lock().await
         .db
         .get_all_jobs(
             &arguments.uid,
             task_number
         )
         .await
-        .context("Failed to get jobs!")?;
+        .context("Failed to get jobs!")?
+        .into_iter()
+        .enumerate()
+        .collect();
 
     // Remove the template job
     jobs.remove(0);
 
     // Filter by result type and start/end date
     jobs = jobs.into_iter()
-        .filter(|job| {
+        .filter(|(_, job)| {
             // Filter by result type
             if let Some(result_type) = &arguments.result_type {
                 if result_type == "ASD" {
@@ -230,25 +239,79 @@ pub async fn historical_entrypoint (
         if arguments.include_skeleton { "Yes" } else { "No" }
     );
 
+    // Make sure that we have at least some results
     if jobs.is_empty() {
         return Err(AppError(anyhow!("There were no jobs that matched your query!")));
     }
 
-    for job in jobs.iter() {
+    for (job_id, job) in jobs.iter() {
         // Add a condensed version of the job to the shortened body
         let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
         email_body.push_str(&format!(
             "<h2>{}</h2>",
             dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S UTC")
         ));
+        
         match job.status.code {
             JobStatusCode::Complete => {
                 email_body.push_str(
                     &format!(
-                        "- Status: Complete<br>- Result: {}", 
+                        "- Status: Complete<br>- Result: {}<br>", 
                         job.status.value
                     )
                 );
+                if arguments.include_skeleton {
+                    print_s3!(task_number, "Preparing to grab pre-signed URLs for the skeleton-overlaid videos...");
+
+                    let inputs_prefix = format!(
+                        "{}/outputs/{};{}/videos/",
+                        arguments.uid,
+                        arguments.uid, job_id
+                    );
+        
+                    // List the available files (since we don't know the extensions)
+                    let results = app.lock()
+                        .await
+                        .bucket
+                        .list(inputs_prefix, Some("/".to_string())).await?;
+                    let mut front_file_key = None;
+                    let mut side_file_key = None;
+                    for object in &results[0].contents {
+                        let file = object.key
+                            .split("/")
+                            .last()
+                            .context("Missing filename! (Likely unreachable?)")?;
+                        let file_name = file.split(".")
+                            .next()
+                            .context("Empty filename! (Likely unreachable?)")?;
+                        print_s3!(task_number, "Found file `{file}` with name `{file_name}`");
+        
+                        if file_name.contains("__F_") {
+                            front_file_key = Some(object.key.clone());
+                        } else if file_name.contains("__S_") {
+                            side_file_key = Some(object.key.clone());
+                        }
+                    }
+        
+                    let front_skeleton_video_link = app.lock()
+                        .await
+                        .bucket
+                        .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
+                        .context("Failed to get the front keyframed URL!")?;
+                    let side_skeleton_video_link = app.lock()
+                        .await
+                        .bucket
+                        .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
+                        .context("Failed to get the front keyframed URL!")?;
+        
+                    email_body.push_str(&format!(
+                        "- <a href=\"{}\">Skeleton Front Video</a><br>- <a href=\"{}\">Skeleton Side Video</a><br>",
+                        front_skeleton_video_link,
+                        side_skeleton_video_link
+                    ));
+
+                    print_s3!(task_number, "Grabbed pre-signed URLs for the skeleton-overlaid videos!");
+                }
             },
             _ => {
                 email_body.push_str(&format!(
@@ -256,8 +319,66 @@ pub async fn historical_entrypoint (
                     job.status.code,
                     job.status.value
                 ));
+
+                if arguments.include_skeleton {
+                    email_body.push_str("Since this job does not have a complete result, we are unable to provide a skeletonized video.<br>");
+                }
             }
         }
+        
+        // Add the original videos, if requested
+        if arguments.include_original {
+            print_s3!(task_number, "Preparing to grab pre-signed URLs for the original videos...");
+            let inputs_prefix = format!(
+                "{}/inputs/{};{}/",
+                arguments.uid,
+                arguments.uid, job_id
+            );
+
+            // List the available files (since we don't know the extensions)
+            let results = app.lock()
+                .await
+                .bucket
+                .list(inputs_prefix, Some("/".to_string())).await?;
+            let mut front_file_key = None;
+            let mut side_file_key = None;
+            for object in &results[0].contents {
+                let file = object.key
+                    .split("/")
+                    .last()
+                    .context("Missing filename! (Likely unreachable?)")?;
+                let file_name = file.split(".")
+                    .next()
+                    .context("Empty filename! (Likely unreachable?)")?;
+                print_s3!(task_number, "Found file `{file}` with name `{file_name}`");
+
+                if file_name == "front" {
+                    front_file_key = Some(object.key.clone());
+                } else if file_name == "side" {
+                    side_file_key = Some(object.key.clone());
+                }
+            }
+
+            let front_original_video_link = app.lock()
+                .await
+                .bucket
+                .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
+                .context("Failed to get the front keyframed URL!")?;
+            let side_original_video_link = app.lock()
+                .await
+                .bucket
+                .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
+                .context("Failed to get the front keyframed URL!")?;
+
+            email_body.push_str(&format!(
+                "- <a href=\"{}\">Original Front Video</a><br>- <a href=\"{}\">Original Side Video</a><br>",
+                front_original_video_link,
+                side_original_video_link
+            ));
+
+            print_s3!(task_number, "Grabbed pre-signed URLs for the original videos!");
+        }
+
         /*
         body.push_str(&format!(
             "<h3>Patient Information:</h3>- Age: {}<br>- Ethnicity: {}<br>- Sex: {}<br>- Height: {}<br>- Weight: {}<br><br>",
@@ -286,7 +407,7 @@ pub async fn historical_entrypoint (
 
     
     // Add the link to the email body
-    email_body += &format!("<br><br><h3>Complete Historical Data:</h3>{}<br>", pdf_link);
+    email_body += &format!("<br><br><h3>Complete Historical Data</h3><p>If you would like to see patient data for each submission, please click <a href=\"{}\">here</a></p><br>", pdf_link);
     email_body += "<br><br><h2>Please contact &lt;contact email here&gt; with any additional questions!</h2>";
 
     // Send the email to the email in the first job
@@ -334,7 +455,7 @@ pub async fn historical_entrypoint (
 /// </div>
 async fn get_email_and_pdf_link(
     app: Arc<Mutex<AppState>>,
-    jobs: Vec<Job>,
+    jobs: Vec<(usize, Job)>,
     uid: String,
     timestamp: u64,
     task_number: JobTaskID
@@ -365,7 +486,7 @@ async fn get_email_and_pdf_link(
         doc.push(genpdf::elements::Paragraph::new(title));
 
         // Add each result as its own paragraph
-        for (index, job) in jobs_arc.iter().enumerate() {
+        for (index, job) in jobs_arc.iter() {
             let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
             let status = match job.status.code {
                 JobStatusCode::Complete => {
@@ -481,6 +602,7 @@ async fn get_email_and_pdf_link(
         .iter()
         .next()
         .ok_or(anyhow!("User has no jobs!"))?
+        .1
         .email
         .clone();
     Ok((email, extended_body_url))
