@@ -1,15 +1,21 @@
 use std::{sync::Arc, time::SystemTime};
 
-use anyhow::{ Result, Context, anyhow };
+use anyhow::{ Result, Context, anyhow, bail };
 use axum::extract::{Multipart, State};
 use chrono::{DateTime, Utc};
 use tokio::sync::Mutex;
+use time_util::system_time_from_millis;
 
 use crate::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
 
 /// The request arguments for the historical submissions endpoint.
 struct HistoricalRequestArguments {
-    uid: String
+    uid: String,
+    entries:          Option<usize>,
+    result_type:      Option<String>,
+    date_range:      (Option<SystemTime>, Option<SystemTime>),
+    include_original: bool,
+    include_skeleton: bool
 }
 
 
@@ -25,9 +31,14 @@ async fn unpack_historical_arguments(
     mut multipart: Multipart,
     task_number:   JobTaskID
 ) -> Result<HistoricalRequestArguments> {
-    // Unwrap all fields, which, in this case,
-    //  is just the user ID.
+    // Create placeholders for all fields
     let mut uid_option: Option<String> = None;
+    let mut entries_option: Option<usize> = None;
+    let mut result_type_option: Option<String> = None;
+    let mut date_range: (Option<SystemTime>, Option<SystemTime>) = (None, None);
+    let mut include_original_option = None;
+    let mut include_skeleton_option = None;
+
     while let Some(field) = multipart
         .next_field().await
         .context("Bad request! Is it possible you submitted a file over the size limit?")?
@@ -37,20 +48,72 @@ async fn unpack_historical_arguments(
         match field.name() {
             Some("user_id") => {
                 uid_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'user_id' wasn't readable as text!")?
-                            .to_string());
+                    field
+                        .text().await
+                        .context("Field 'user_id' wasn't readable as text!")?);
+            },
+            Some("entries") => {
+                entries_option = Some(
+                    field
+                        .text().await
+                        .context("Field 'user_id' wasn't readable as text!")?
+                        .parse::<usize>()
+                        .context("Field 'entries' didn't contain a valid integer!")?);
+            },
+            Some("result_type") => {
+                result_type_option = Some(field
+                    .text().await
+                    .context("Field 'result_type' wasn't readable as text!")?);
+
+                if let Some(result_type) = &result_type_option {
+                    if result_type != "ASD" && result_type != "NO ASD" {
+                        bail!("Field 'result_type' must be either 'ASD' or 'NO ASD'!");
+                    }
+                }
+            },
+            Some("start_date") => {
+                date_range.0 = Some(system_time_from_millis(
+                    serde_json::Value::String(field
+                    .text().await
+                    .context("Field 'start_date' wasn't readable as text!")?
+                )).context("Field 'start_date' was an integer, but not a valid UNIX timestamp!")?);
+            },
+            Some("end_date") => {
+                date_range.1 = Some(system_time_from_millis(
+                    serde_json::Value::String(field
+                    .text().await
+                    .context("Field 'end_date' wasn't readable as text!")?
+                )).context("Field 'end_date' was an integer, but not a valid UNIX timestamp!")?);
+            },
+            Some("include_original") => {
+                include_original_option = Some(
+                    field
+                        .text().await
+                        .context("Field 'include_original' wasn't readable as text!")?
+                        .parse::<bool>()
+                        .context("Field 'include_original' didn't contain a valid boolean!")?);
+            },
+            Some("include_skeleton") => {
+                include_skeleton_option = Some(
+                    field
+                        .text().await
+                        .context("Field 'include_skeleton' wasn't readable as text!")?
+                        .parse::<bool>()
+                        .context("Field 'include_skeleton' didn't contain a valid boolean!")?);
             },
             _ => {
                 print_be!(task_number, "Which had an unknown/no field name...");
             }
         }
     }
-    let uid = uid_option.ok_or(anyhow!("Missing 'user_id' in request!"))?;
 
     Ok(HistoricalRequestArguments {
-        uid
+        uid: uid_option.ok_or(anyhow!("Missing 'user_id' in request!"))?,
+        entries: entries_option,
+        result_type: result_type_option,
+        date_range: date_range,
+        include_original: include_original_option.unwrap_or(false),
+        include_skeleton: include_skeleton_option.unwrap_or(false)
     })
 }
 
@@ -67,7 +130,7 @@ async fn unpack_historical_arguments(
 pub async fn historical_entrypoint ( 
     State(app): State<Arc<Mutex<AppState>>>,
     multipart: Multipart
-) -> Result<&'static str, AppError> {
+) -> Result<(), AppError> {
     // Allocate a new task number
     app.lock().await
         .task_number += 1;
@@ -166,7 +229,7 @@ pub async fn historical_entrypoint (
         .context("Failed to send email!")?;
     
 
-    Ok("OK")
+    Ok(())
 }
 
 /// Generates a PDF file containing the complete history of the user's submissions.
