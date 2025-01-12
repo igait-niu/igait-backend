@@ -215,7 +215,7 @@ pub async fn historical_entrypoint (
     if let Some(num_entries) = arguments.entries {
         jobs.truncate(num_entries);
     }
-
+    
     // Generate the body
     let mut email_body = concat!(
         "<h1>Thank you for contacting iGait!</h1>",
@@ -233,8 +233,8 @@ pub async fn historical_entrypoint (
         </ul><br>",
         arguments.entries.map(|n| n.to_string()).unwrap_or(String::from("All")),
         arguments.result_type.as_deref().unwrap_or("Any"),
-        arguments.date_range.0.map(|d| DateTime::<Utc>::from(d).format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or("Any".to_string()),
-        arguments.date_range.1.map(|d| DateTime::<Utc>::from(d).format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or("Any".to_string()),
+        arguments.date_range.0.map(|d| DateTime::<Utc>::from(d).with_timezone(&chrono_tz::US::Central).to_string()).unwrap_or("Any".to_string()),
+        arguments.date_range.1.map(|d| DateTime::<Utc>::from(d).with_timezone(&chrono_tz::US::Central).to_string()).unwrap_or("Any".to_string()),
         if arguments.include_original { "Yes" } else { "No" },
         if arguments.include_skeleton { "Yes" } else { "No" }
     );
@@ -247,9 +247,10 @@ pub async fn historical_entrypoint (
     for (job_id, job) in jobs.iter() {
         // Add a condensed version of the job to the shortened body
         let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
+        let dt_timestamp_cst = dt_timestamp_utc.with_timezone(&chrono_tz::US::Central);
         email_body.push_str(&format!(
             "<h2>{}</h2>",
-            dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S UTC")
+            dt_timestamp_cst.to_string()
         ));
         
         match job.status.code {
@@ -488,6 +489,7 @@ async fn get_email_and_pdf_link(
         // Add each result as its own paragraph
         for (index, job) in jobs_arc.iter() {
             let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
+            let dt_timestamp_cst = dt_timestamp_utc.with_timezone(&chrono_tz::US::Central);
             let status = match job.status.code {
                 JobStatusCode::Complete => {
                     format!(
@@ -510,7 +512,7 @@ async fn get_email_and_pdf_link(
                 genpdf::style::Style::new()
             )));
             doc.push(genpdf::elements::Text::new(genpdf::style::StyledString::new(
-                format!("Submitted on: {}", dt_timestamp_utc.format("%Y-%m-%d %H:%M:%S")),
+                format!("Submitted on: {}", dt_timestamp_cst.to_string()),
                 genpdf::style::Style::new()
             )));
             doc.push(genpdf::elements::Paragraph::new(genpdf::style::StyledString::new(

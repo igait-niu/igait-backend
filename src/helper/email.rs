@@ -4,6 +4,7 @@ use std::time::SystemTime;
 
 use anyhow::{ Context, Result };
 use chrono::{ DateTime, Utc };
+use chrono_tz::Tz;
 use tokio::sync::Mutex;
 use aws_sdk_sesv2::types::{
     Content, Destination, EmailContent, Body, Message
@@ -89,7 +90,7 @@ pub async fn send_email (
 /// # Arguments
 /// * `recipient_email_address` - The email address to send the email to
 /// * `status` - The status of the job
-/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `datetime` - The timestamp of the job
 /// * `job` - The job that was submitted
 /// * `front_keyframed_url` - The URL to the front keyframed video
 /// * `side_keyframed_url` - The URL to the side keyframed video
@@ -109,7 +110,7 @@ pub async fn send_success_email (
     app:                     Arc<Mutex<AppState>>,
     recipient_email_address: &str,
     status:                  &JobStatus,
-    dt_timestamp_utc:        &DateTime<Utc>,
+    datetime:                &DateTime<Tz>,
     job:                     &Job,
     uid:                     &str,
     job_id:                  usize,
@@ -117,9 +118,9 @@ pub async fn send_success_email (
 ) -> Result<()> {
     // Build the email
     let subject = format!("Your recent submission to iGait App has completed!");
-    let body = format!("We deteremined a likelyhood score of {} for your submission on {} (UTC)!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+    let body = format!("We deteremined a likelyhood score of {} for your submission on {}!<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
         status.value,
-        dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
+        datetime.to_string(),
 
         job.age,
         job.ethnicity,
@@ -141,7 +142,7 @@ pub async fn send_success_email (
 /// # Arguments
 /// * `recipient_email_address` - The email address to send the email to
 /// * `status` - The status of the job
-/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `datetime` - The timestamp of the job
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
 /// * `task_number` - The task number of the job
@@ -158,7 +159,7 @@ pub async fn send_failure_email (
     app:                     Arc<Mutex<AppState>>,
     recipient_email_address: &str,
     status:                  &JobStatus,
-    dt_timestamp_utc:        &DateTime<Utc>,
+    datetime:                &DateTime<Tz>,
     uid:                     &str,
     job_id:                  usize,
     task_number:             JobTaskID
@@ -166,7 +167,7 @@ pub async fn send_failure_email (
     // Build the email
     let subject = format!("Your recent submission to iGait App failed!");
     let body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
-        dt_timestamp_utc.format("%m/%d/%Y at %H:%M"),
+        datetime.to_string(),
 
         status.code, status.value, 
         uid,
@@ -203,9 +204,10 @@ pub async fn send_welcome_email (
 ) -> Result<()> {
     // Build the email
     let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+    let dt_now_cst = dt_now_utc.with_timezone(&chrono_tz::US::Central);
     let subject = format!("Welcome to iGait!");
-    let body = format!("Your job submission on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
-        dt_now_utc.format("%m/%d/%Y at %H:%M"),
+    let body = format!("Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+        dt_now_cst.to_string(),
 
         job.age,
         job.ethnicity,

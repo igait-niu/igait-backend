@@ -222,6 +222,7 @@ async fn work_output_helper (
     // Extract the email address and timestamp
     let recipient_email_address = job.email.clone();
     let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
+    let cst = dt_timestamp_utc.with_timezone(&chrono_tz::US::Central);
 
     print_s3!(0, "Checking whether `final_score` file exists!");
     if tokio::fs::try_exists(&format!("outputs/{file_name}/final_score")).await
@@ -258,7 +259,7 @@ async fn work_output_helper (
             app.clone(),
             &recipient_email_address,
             &status,
-            &dt_timestamp_utc,
+            &cst,
             &job,
             &uid,
             job_id,
@@ -283,7 +284,7 @@ async fn work_output_helper (
             app.clone(),
             &recipient_email_address,
             &status,
-            &dt_timestamp_utc,
+            &cst,
             &uid,
             job_id,
             0
