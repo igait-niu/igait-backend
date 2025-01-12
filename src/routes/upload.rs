@@ -63,11 +63,11 @@ async fn unpack_upload_arguments(
     // Loop through the fields
     while let Some(field) = multipart
         .next_field().await
-        .context("Bad uploadrequest! Is it possible you submitted a file over the size limit?")?
+        .context("Bad upload request! Is it possible you submitted a file over the size limit?")?
     {
         let name = field.name();
         let field_name = field.file_name();
-        print_be!(task_number, "Field Incoming: {name:#?} - File Attached: {field_name:?}");
+        print_be!(task_number, "Field Incoming: {name:?} - File Attached: {field_name:?}");
         
         match field.name() {
             Some("fileuploadfront") => {
