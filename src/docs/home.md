@@ -193,12 +193,17 @@ Because we need to fit a ton of stuff into one file, it's important to have a cl
 **Inputs**
 * A front-facing walking video
 * A side-facing walking video
+
+
 **Outputs**
 * A skeletonized front and side-facing video
 * A confidence score representing the possibility of ASD
+
+
 **Dependencies**
 * TONS of Python dependancies
 * OpenPose (the worst example of dependency hell i've ever laid eyes on)
+
 
 Looking at this, there's some things we can decide to do. Firstly, we'll create a folder structure that makes sense:
 ```text
