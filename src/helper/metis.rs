@@ -1,5 +1,3 @@
-#![doc = include_str!("../docs/metis.md")]
-
 use openssh::{KnownHosts, Session};
 use anyhow::{ Result, Context, bail, anyhow };
 use tokio::process::Command;

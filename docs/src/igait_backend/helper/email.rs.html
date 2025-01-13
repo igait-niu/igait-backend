@@ -221,11 +221,7 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-</pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../docs/email.md"</span>)]
-
-</span><span class="kw">use </span>std::time::SystemTime;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
 <span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result </span>};
 <span class="kw">use </span>chrono::{ DateTime, Utc };
@@ -447,4 +443,5 @@
     <span class="comment">// Send the email
     </span>send_email( app, <span class="kw-2">&amp;</span>job.email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
         .<span class="kw">await
-</span>}</code></pre></div></section></main></body></html>
+</span>}
+</code></pre></div></section></main></body></html>

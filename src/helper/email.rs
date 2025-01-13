@@ -1,5 +1,3 @@
-#![doc = include_str!("../docs/email.md")]
-
 use std::time::SystemTime;
 
 use anyhow::{ Context, Result };
