@@ -7,26 +7,21 @@ use async_recursion::async_recursion;
 
 use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
 
-/// Checks the directory for a given entry and updates the status of the job accordingly.
+/// Checks the a directory entry from the `inputs` folder, and preforms the following:
+///
+/// - 1.) Waits for a successful output
+/// - 2.) Copies logfile to output directory (on Metis)
+/// - 3.) Deletes the original logfile (on Metis)
+/// - 4.) Deletes the local `inputs` folder
+/// - 5.) Copies the output folder from Metis to the local `outputs` folder
 /// 
 /// # Arguments
-/// * `app` - The application state
 /// * `entry` - The directory entry to check
-/// 
-/// # Fails
-/// * If the path is invalid Unicode
-/// * If the parser finds a malformed file name
-/// * If the directory couldn't be removed
-/// * If the job didn't exist
-/// * If the status couldn't be updated to 'Processing'
-/// * If the status couldn't be updated to 'InferenceErr'
-/// * If the query to METIS failed
 /// 
 /// # Returns
 /// * A successful result if the directory was checked
 async fn check_inputs_dir(
-    _app:         Arc<Mutex<AppState>>,
-    entry:       &DirEntry
+    entry: &DirEntry
 ) -> Result<()> {
     // Read dir name to prepare to extract data
     let dir_name = entry.file_name()
@@ -120,6 +115,16 @@ async fn check_inputs_dir(
     Ok(())
 }
 
+/// Recursively uploads a given folder to AWS.
+///
+/// This function will recursive if it encounters a sub-directory, otherwise,
+/// it will simply upload directly to AWS based on the current key path that
+/// has been built thus far.
+///
+/// # Arguments
+/// - `app`: Handle to the general app state
+/// - `user_id`: The user ID the files should be uploaded to on AWS
+/// - `path`: The path that the function should base upon (built through recursion)
 #[async_recursion]
 async fn upload_output_dir (
     app: Arc<Mutex<AppState>>,
@@ -172,6 +177,18 @@ async fn upload_output_dir (
     Ok(())
 }
 
+/// Similar to the input helper, this processes one DirEntry from the `outputs` directory.
+///
+/// This function does the following:
+/// - 1.) Uploads the folder to S3
+/// - 2.) Checks if there was output
+/// - 3.) Sends an email depending on whether or not there was a successful result
+/// - 4.) Deletes the entry from the local `outputs` folder
+/// - 5.) Deletes the entry from the `outputs` folder on Metis
+///
+/// # Arguments
+/// * `app`: A handle to the app state
+/// * `entry`: The entry to check from the `outputs` directory
 async fn work_output_helper (
     app: &Arc<Mutex<AppState>>,
     entry: DirEntry
@@ -185,7 +202,7 @@ async fn work_output_helper (
         return Ok(());
     }
 
-    let user_id = file_name.split(";")
+    let user_id = file_name.split(';')
         .next()
         .context("[ ERROR ] Output directory `{file_name}` is invalidly named!")?
         .to_owned();
@@ -200,10 +217,10 @@ async fn work_output_helper (
     print_s3!(0, "Successfully uploaded directory `{file_name}` to S3!");
 
     // Get the user and job IDs
-    let uid = file_name.split(";")
+    let uid = file_name.split(';')
         .next()
         .context("Directory name was missing user ID!")?;
-    let job_id = file_name.split(";")
+    let job_id = file_name.split(';')
         .nth(1)
         .context("Directory name was missing user ID!")?
         .parse::<usize>()
@@ -213,7 +230,7 @@ async fn work_output_helper (
     let job: Job = app.lock().await
         .db
         .get_job(
-            &uid,
+            uid,
             job_id,
             0
         ).await
@@ -221,7 +238,7 @@ async fn work_output_helper (
 
     // Extract the email address and timestamp
     let recipient_email_address = job.email.clone();
-    let dt_timestamp_utc: DateTime<Utc> = job.timestamp.clone().into();
+    let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
     let cst = dt_timestamp_utc.with_timezone(&chrono_tz::US::Central);
 
     print_s3!(0, "Checking whether `final_score` file exists!");
@@ -261,7 +278,7 @@ async fn work_output_helper (
             &status,
             &cst,
             &job,
-            &uid,
+            uid,
             job_id,
             0
         ).await.context("Failed to send success email!")?;
@@ -285,7 +302,7 @@ async fn work_output_helper (
             &recipient_email_address,
             &status,
             &cst,
-            &uid,
+            uid,
             job_id,
             0
         ).await.context("Failed to send success email!")?;
@@ -325,7 +342,7 @@ async fn work_output_helper (
 /// * This function never returns, ideally it should be run in a separate thread.
 pub async fn work_outputs(
     app: Arc<Mutex<AppState>>
-) -> () {
+) {
     match tokio::fs::read_dir("outputs").await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
@@ -361,7 +378,7 @@ pub async fn work_inputs(
         match tokio::fs::read_dir("inputs").await {
             Ok(mut dir) => {
                 while let Ok(Some(entry)) = dir.next_entry().await {
-                    if let Err(e) = check_inputs_dir(app.clone(), &entry).await {
+                    if let Err(e) = check_inputs_dir(&entry).await {
                         print_be!(0, "Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
                     }
                 }

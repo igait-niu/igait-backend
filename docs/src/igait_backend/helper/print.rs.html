@@ -151,7 +151,7 @@
 </span><span class="macro">macro_rules!</span> print_metis{
     (<span class="macro-nonterminal">$a</span>:expr, <span class="macro-nonterminal">$b</span>:expr) =&gt; {
         <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="macro-nonterminal">$b</span>);
-        <span class="kw">let </span>to_print = <span class="macro">format!</span>(<span class="string">"[METIS] [Task {}]"</span>, <span class="macro-nonterminal">$a</span>);
+        <span class="kw">let </span>to_print = <span class="macro">format!</span>(<span class="string">"[Metis] [Task {}]"</span>, <span class="macro-nonterminal">$a</span>);
 
         <span class="macro">println!</span>(<span class="string">"{} {}"</span>, &lt;<span class="kw-2">&amp;</span>str <span class="kw">as </span>colored::Colorize&gt;::magenta(<span class="kw-2">&amp;</span>to_print), message);
     }

@@ -321,7 +321,27 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{helper::lib::User, print_db};
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
+
+<span class="kw">use crate</span>::{helper::lib::{JobStatusCode, User}, print_db};
 
 <span class="kw">use </span>firebase_rs::<span class="kw-2">*</span>;
 <span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result</span>, anyhow };
@@ -387,8 +407,24 @@
             <span class="comment">// Create a new user
             </span>user_handle.update(<span class="kw-2">&amp;</span>User {
                 uid: String::from(uid),
-                jobs: Vec::new()
-            }).<span class="kw">await</span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"{e:?}"</span>)).context(<span class="string">"Failed to create a new user while ensuring they existed!"</span>)<span class="question-mark">?</span>;
+                jobs: <span class="macro">vec!</span>(
+                    Job {
+                        age: <span class="number">1</span>,
+                        email: String::from(<span class="string">"placeholder@placeholder.com"</span>),
+                        ethnicity: String::from(<span class="string">"placeholder"</span>),
+                        height: String::from(<span class="string">"placeholder"</span>),
+                        sex: <span class="string">'p'</span>,
+                        status: JobStatus {
+                            code: JobStatusCode::Submitting,
+                            value: String::from(<span class="string">"placeholder"</span>)
+                        },
+                        timestamp: SystemTime::now(),
+                        weight: <span class="number">1
+                    </span>}
+                )
+            }).<span class="kw">await
+                </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"{e:?}"</span>))
+                .context(<span class="string">"Failed to create a new user while ensuring they existed!"</span>)<span class="question-mark">?</span>;
             <span class="macro">print_db!</span>(task_number, <span class="string">"Successfully created new user!"</span>);
         }
 
@@ -529,7 +565,7 @@
         <span class="comment">// Return as successful
         </span><span class="kw">let </span>code = status.code;
         <span class="kw">let </span>value = status.value;
-        <span class="macro">print_db!</span>(task_number, <span class="string">"Updated status successfully to {code:#?} with message {value}!"</span>);
+        <span class="macro">print_db!</span>(task_number, <span class="string">"Updated status successfully to {code:#?} with message '{value}'!"</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -549,7 +585,7 @@
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
-    </span><span class="kw">pub async fn </span>get_status (
+    </span><span class="kw">pub async fn </span>_get_status (
         <span class="kw-2">&amp;</span><span class="self">self</span>, 
         uid:         <span class="kw-2">&amp;</span>str,
         job_id:      usize,
@@ -640,7 +676,7 @@
 
         <span class="comment">// Get the jobs as a mutable vector
         </span>job_handle.get::&lt;Vec&lt;Job&gt;&gt;().<span class="kw">await
-            </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"{e:?}"</span>))
+            </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"Failed to parse jobs! Error: {e:#?}"</span>))
             .context(<span class="string">"Failed to get jobs!"</span>)
     }
 }</code></pre></div></section></main></body></html>

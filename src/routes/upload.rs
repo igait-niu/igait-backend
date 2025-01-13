@@ -72,14 +72,14 @@ async fn unpack_upload_arguments(
         match field.name() {
             Some("fileuploadfront") => {
                 front_file_name_option = field
-                    .file_name().and_then(|x| Some(String::from(x)));
+                    .file_name().map(|x| String::from(x));
                 front_file_bytes_option = Some(field.bytes()
                     .await
                     .context("Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?")?);
             },
             Some("fileuploadside") => {
                 side_file_name_option = field
-                    .file_name().and_then(|x| Some(String::from(x)));
+                    .file_name().map(|x| String::from(x));
                 side_file_bytes_option = Some(field.bytes()
                     .await
                     .context("Could not unpack bytes from field 'fileuploadside'! Was there no file attached?")?);
@@ -117,7 +117,7 @@ async fn unpack_upload_arguments(
                             .text().await
                             .context("Field 'sex' wasn't readable as text!")?
                             .chars()
-                            .nth(0)
+                            .next()
                             .context("Field 'sex' didn't have a vaild entry! Was it empty?")?
                     );
             },
@@ -314,10 +314,10 @@ async fn save_upload_files<'a> (
     task_number:      JobTaskID
 ) -> Result<()> {
     // Unpack the extensions
-    let front_extension = front_file.name.split(".")
+    let front_extension = front_file.name.split('.')
         .nth(1)
         .context("Must have a file extension!")?;
-    let side_extension = side_file.name.split(".")
+    let side_extension = side_file.name.split('.')
         .nth(1)
         .context("Must have a file extension!")?;
     

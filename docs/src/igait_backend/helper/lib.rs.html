@@ -159,6 +159,24 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
 <span class="kw">use </span>s3::{creds::Credentials, Bucket};
@@ -170,6 +188,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="kw">super</span>::database::Database;
+<span class="kw">use </span><span class="kw">crate</span>::print_be;
 
 <span class="doccomment">/// The unique identifier for a job task.
 </span><span class="kw">pub type </span>JobTaskID = u128;
@@ -263,7 +282,8 @@
 </span><span class="kw">pub struct </span>AppState {
     <span class="kw">pub </span>db: Database,
     <span class="kw">pub </span>bucket: Bucket,
-    <span class="kw">pub </span>task_number: JobTaskID
+    <span class="kw">pub </span>task_number: JobTaskID,
+    <span class="kw">pub </span>aws_ses_client: aws_sdk_sesv2::Client
 }
 <span class="kw">impl </span>AppState {
     <span class="doccomment">/// Initializes the application state with a new database and S3 bucket.
@@ -280,6 +300,8 @@
     /// * This function is typically called at the start of the application to initialize the state.
     /// * The environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set.
     </span><span class="kw">pub async fn </span>new() -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>aws_config = aws_config::load_from_env().<span class="kw">await</span>;
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             db: Database::init().<span class="kw">await</span>.context(<span class="string">"Failed to initialize database while setting up app state!"</span>)<span class="question-mark">?</span>,
             bucket: Bucket::new(
@@ -287,8 +309,9 @@
                 <span class="string">"us-east-2"</span>.parse().context(<span class="string">"Improper region!"</span>)<span class="question-mark">?</span>,
                 Credentials::default().context(<span class="string">"Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment."</span>)<span class="question-mark">?</span>,
             ).context(<span class="string">"Failed to initialize bucket!"</span>)<span class="question-mark">?</span>,
-            task_number: <span class="number">0
-        </span>})
+            task_number: <span class="number">0</span>,
+            aws_ses_client: aws_sdk_sesv2::Client::new(<span class="kw-2">&amp;</span>aws_config)
+        })
     }
 }
 
@@ -305,6 +328,18 @@
 </span><span class="kw">pub struct </span>AppError(<span class="kw">pub </span>anyhow::Error);
 <span class="kw">impl </span>IntoResponse <span class="kw">for </span>AppError {
     <span class="kw">fn </span>into_response(<span class="self">self</span>) -&gt; Response&lt;Body&gt; {
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Encountered an error: {self:#?}"</span>);
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Returning an internal server error response."</span>);
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Please check the logs for more information."</span>);
+
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Printing the error chain..."</span>);
+        <span class="kw">for </span>(ind, cause) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.chain().enumerate() {
+            <span class="macro">eprintln!</span>(<span class="string">"[{ind}] {cause:#?}"</span>);
+        }
+
+        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Printing the backtrace..."</span>);
+        <span class="macro">eprintln!</span>(<span class="string">"{:#?}"</span>, <span class="self">self</span>.<span class="number">0</span>.backtrace());
+
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             <span class="macro">format!</span>(<span class="string">"Something went wrong: {}"</span>, <span class="self">self</span>.<span class="number">0</span>),
@@ -319,4 +354,6 @@
     <span class="kw">fn </span>from(err: E) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(err.into())
     }
-}</code></pre></div></section></main></body></html>
+}
+
+</code></pre></div></section></main></body></html>

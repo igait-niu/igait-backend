@@ -385,13 +385,77 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::SystemTime};
 
 <span class="kw">use </span>axum::{body::Bytes, extract::{Multipart, State}};
 <span class="kw">use </span>tokio::{io::AsyncWriteExt, sync::Mutex};
 <span class="kw">use </span>anyhow::{ <span class="prelude-ty">Result</span>, Context, anyhow };
 
-<span class="kw">use crate</span>::{helper::{email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}}, print_be, print_s3};
+<span class="kw">use crate</span>::{
+    helper::{
+        email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
+            copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
+        }
+    }, print_be, print_s3,
+};
 
 <span class="doccomment">/// The required arguments for the upload request.
 </span><span class="kw">struct </span>UploadRequestArguments {
@@ -444,23 +508,23 @@
     <span class="comment">// Loop through the fields
     </span><span class="kw">while let </span><span class="prelude-val">Some</span>(field) = multipart
         .next_field().<span class="kw">await
-        </span>.context(<span class="string">"Bad uploadrequest! Is it possible you submitted a file over the size limit?"</span>)<span class="question-mark">?
+        </span>.context(<span class="string">"Bad upload request! Is it possible you submitted a file over the size limit?"</span>)<span class="question-mark">?
     </span>{
         <span class="kw">let </span>name = field.name();
         <span class="kw">let </span>field_name = field.file_name();
-        <span class="macro">print_be!</span>(task_number, <span class="string">"Field Incoming: {name:#?} - File Attached: {field_name:?}"</span>);
+        <span class="macro">print_be!</span>(task_number, <span class="string">"Field Incoming: {name:?} - File Attached: {field_name:?}"</span>);
         
         <span class="kw">match </span>field.name() {
             <span class="prelude-val">Some</span>(<span class="string">"fileuploadfront"</span>) =&gt; {
                 front_file_name_option = field
-                    .file_name().and_then(|x| <span class="prelude-val">Some</span>(String::from(x)));
+                    .file_name().map(|x| String::from(x));
                 front_file_bytes_option = <span class="prelude-val">Some</span>(field.bytes()
                     .<span class="kw">await
                     </span>.context(<span class="string">"Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?"</span>)<span class="question-mark">?</span>);
             },
             <span class="prelude-val">Some</span>(<span class="string">"fileuploadside"</span>) =&gt; {
                 side_file_name_option = field
-                    .file_name().and_then(|x| <span class="prelude-val">Some</span>(String::from(x)));
+                    .file_name().map(|x| String::from(x));
                 side_file_bytes_option = <span class="prelude-val">Some</span>(field.bytes()
                     .<span class="kw">await
                     </span>.context(<span class="string">"Could not unpack bytes from field 'fileuploadside'! Was there no file attached?"</span>)<span class="question-mark">?</span>);
@@ -498,7 +562,7 @@
                             .text().<span class="kw">await
                             </span>.context(<span class="string">"Field 'sex' wasn't readable as text!"</span>)<span class="question-mark">?
                             </span>.chars()
-                            .nth(<span class="number">0</span>)
+                            .next()
                             .context(<span class="string">"Field 'sex' didn't have a vaild entry! Was it empty?"</span>)<span class="question-mark">?
                     </span>);
             },
@@ -625,7 +689,6 @@
             arguments.side_file,
             <span class="kw-2">&amp;</span>arguments.uid, 
             job_id,
-            job.clone(),
             task_number
         ).<span class="kw">await 
     </span>{
@@ -653,6 +716,7 @@
 
     <span class="comment">// Send the welcome email
     </span>send_welcome_email(
+        app.clone(),
         <span class="kw-2">&amp;</span>job,
         <span class="kw-2">&amp;</span>arguments.uid,
         job_id,
@@ -692,83 +756,136 @@
     side_file:        UploadRequestFile,
     user_id:          <span class="kw-2">&amp;</span>str,
     job_id:           usize,
-    job:              Job,
     task_number:      JobTaskID
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Unpack the extensions
-    </span><span class="kw">let </span>front_extension = front_file.name.split(<span class="string">"."</span>)
+    </span><span class="kw">let </span>front_extension = front_file.name.split(<span class="string">'.'</span>)
         .nth(<span class="number">1</span>)
         .context(<span class="string">"Must have a file extension!"</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>side_extension = side_file.name.split(<span class="string">"."</span>)
+    <span class="kw">let </span>side_extension = side_file.name.split(<span class="string">'.'</span>)
         .nth(<span class="number">1</span>)
         .context(<span class="string">"Must have a file extension!"</span>)<span class="question-mark">?</span>;
     
     <span class="comment">// Ensure a directory exists for this file ID
-    </span><span class="kw">let </span>dir_path = <span class="macro">format!</span>(<span class="string">"queue/{}_{}"</span>, user_id, job_id);
+    </span><span class="kw">let </span>job_file_identifier = <span class="macro">format!</span>(<span class="string">"{};{}"</span>, user_id, job_id);
+    <span class="kw">let </span>dir_path = <span class="macro">format!</span>(<span class="string">"inputs/{}"</span>, job_file_identifier);
     <span class="kw">if </span>tokio::fs::read_dir(<span class="kw-2">&amp;</span>dir_path).<span class="kw">await</span>.is_err() {
         <span class="comment">// If it doesn't exist, create it
         </span>tokio::fs::create_dir(<span class="kw-2">&amp;</span>dir_path).<span class="kw">await
-            </span>.context(<span class="string">"Unable to create directory for queue file!"</span>)<span class="question-mark">?</span>;
+            </span>.context(<span class="string">"Unable to create directory for inputs file!"</span>)<span class="question-mark">?</span>;
 
-        <span class="macro">print_be!</span>(task_number, <span class="string">"Created directory for queue file: {dir_path}"</span>);
+        <span class="macro">print_be!</span>(task_number, <span class="string">"Created directory for inputs file: {dir_path}"</span>);
     }
 
-    <span class="comment">// Build path ID and file handle
-    </span><span class="kw">let </span>queue_file_path = <span class="macro">format!</span>(<span class="string">"{}/data.json"</span>, dir_path);
-    <span class="kw">let </span><span class="kw-2">mut </span>queue_side_file_handle = tokio::fs::File::create(queue_file_path)
+    <span class="comment">// Build path ID and file handles
+    </span><span class="kw">let </span>front_file_path = <span class="macro">format!</span>(<span class="string">"{}/{}__F_.{}"</span>, dir_path, job_file_identifier, front_extension);
+    <span class="kw">let </span>side_file_path = <span class="macro">format!</span>(<span class="string">"{}/{}__S_.{}"</span>, dir_path, job_file_identifier, side_extension);
+    <span class="kw">let </span><span class="kw-2">mut </span>front_file_handle = tokio::fs::File::create(<span class="kw-2">&amp;</span>front_file_path)
         .<span class="kw">await
-        </span>.context(<span class="string">"Unable to open queue file!"</span>)<span class="question-mark">?</span>;
+        </span>.context(<span class="string">"Could not create front file!"</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>side_file_handle = tokio::fs::File::create(<span class="kw-2">&amp;</span>side_file_path)
+        .<span class="kw">await
+        </span>.context(<span class="string">"Could not save side file!"</span>)<span class="question-mark">?</span>;
 
-    <span class="comment">// Serialize the job data to soon write to the file
-    </span><span class="kw">let </span>job_data = serde_json::to_string(<span class="kw-2">&amp;</span>job)
-        .context(<span class="string">"Unable to serialize data!"</span>)<span class="question-mark">?</span>;
-
-    <span class="comment">// Write data
-    </span>queue_side_file_handle.write_all(job_data.as_bytes())
+    <span class="comment">// Write files to the inputs folder
+    </span>front_file_handle.write_all(<span class="kw-2">&amp;</span>front_file.bytes.clone())
         .<span class="kw">await
-        </span>.context(<span class="string">"Unable to write queue file!"</span>)<span class="question-mark">?</span>;
-    queue_side_file_handle.flush()
+        </span>.context(<span class="string">"Couldn't write the byte contents of the front video file to a physical file!"</span>)<span class="question-mark">?</span>;
+    front_file_handle.flush()
         .<span class="kw">await
-        </span>.context(<span class="string">"Unable to flush queue file!"</span>)<span class="question-mark">?</span>;
+        </span>.context(<span class="string">"Unable to flush inputs file!"</span>)<span class="question-mark">?</span>;
+    side_file_handle.write_all(<span class="kw-2">&amp;</span>side_file.bytes.clone())
+        .<span class="kw">await
+        </span>.context(<span class="string">"Couldn't write the byte contents of the side video file to a physical file!"</span>)<span class="question-mark">?</span>;
+    side_file_handle.flush()
+        .<span class="kw">await
+        </span>.context(<span class="string">"Unable to flush inputs file!"</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Build byte vectors
     </span><span class="kw">let </span><span class="kw-2">mut </span>front_byte_vec: Vec&lt;u8&gt; = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>side_byte_vec: Vec&lt;u8&gt; = Vec::new();
     front_byte_vec.write_all(<span class="kw-2">&amp;</span>front_file.bytes)
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to build u8 vector from the front file's Bytes object!"</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>side_byte_vec: Vec&lt;u8&gt; = Vec::new();
     side_byte_vec.write_all(<span class="kw-2">&amp;</span>side_file.bytes)
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to build u8 vector from side file's Bytes object!"</span>)<span class="question-mark">?</span>;
 
-    <span class="comment">// Serialize the data to write to the extensions file
-    </span><span class="kw">let </span>serialized_extensions = <span class="macro">format!</span>(<span class="string">"{{\"front\":\"{front_extension}\",\"side\":\"{side_extension}\"}}"</span>);
-    
     <span class="comment">// Upload the all three files to S3
     </span>app.lock()
         .<span class="kw">await
         </span>.bucket
-        .put_object(<span class="macro">format!</span>(<span class="string">"{}/{}/front.{}"</span>, user_id, job_id, front_extension), <span class="kw-2">&amp;</span>front_byte_vec)
+        .put_object(<span class="macro">format!</span>(<span class="string">"{}/inputs/{};{}/front.{}"</span>, user_id, user_id, job_id, front_extension), <span class="kw-2">&amp;</span>front_byte_vec)
         .<span class="kw">await 
         </span>.context(<span class="string">"Failed to upload front file to S3! Continuing regardless."</span>)<span class="question-mark">?</span>;
     <span class="macro">print_s3!</span>(task_number, <span class="string">"Successfully uploaded front file to S3!"</span>);
     app.lock()
         .<span class="kw">await
         </span>.bucket
-        .put_object(<span class="macro">format!</span>(<span class="string">"{}/{}/side.{}"</span>, user_id, job_id, side_extension), <span class="kw-2">&amp;</span>side_byte_vec)
+        .put_object(<span class="macro">format!</span>(<span class="string">"{}/inputs/{};{}/side.{}"</span>, user_id, user_id, job_id, side_extension), <span class="kw-2">&amp;</span>side_byte_vec)
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to upload front side to S3! Continuing regardless."</span>)<span class="question-mark">?</span>;
     <span class="macro">print_s3!</span>(task_number, <span class="string">"Successfully uploaded side file to S3!"</span>);
-    app.lock()
-        .<span class="kw">await
-        </span>.bucket
-        .put_object(<span class="macro">format!</span>(<span class="string">"{}/{}/extensions.json"</span>, user_id, job_id), serialized_extensions.as_bytes())
-        .<span class="kw">await
-        </span>.context(<span class="string">"Failed to upload front extensions JSON data to S3! Continuing regardless."</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_s3!</span>(task_number, <span class="string">"Successfully uploaded extensions JSON datafile to S3!"</span>);
+    <span class="macro">print_be!</span>(task_number, <span class="string">"Successfully saved all files physically and to S3!"</span>);
     
-    <span class="comment">// Return as successful
-    </span><span class="macro">print_be!</span>(task_number, <span class="string">"Successfully saved all files physically and to S3!"</span>);
 
-    <span class="prelude-val">Ok</span>(())
-}</code></pre></div></section></main></body></html>
+    <span class="comment">// Copy files to Metis
+    </span><span class="macro">print_be!</span>(task_number, <span class="string">"Copying files to Metis..."</span>);
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Local(<span class="kw-2">&amp;</span>front_file_path),
+        SSHPath::Remote(
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">"{}/{}__F_.{}"</span>,
+                METIS_INPUTS_DIR,
+                job_file_identifier,
+                front_extension
+            )
+        ),
+        <span class="bool-val">false
+    </span>).<span class="kw">await
+        </span>.context(<span class="string">"Couldn't move file from local to Metis!"</span>)<span class="question-mark">?</span>;
+    copy_file(
+        METIS_USERNAME, METIS_HOSTNAME,
+        SSHPath::Local(<span class="kw-2">&amp;</span>side_file_path),
+        SSHPath::Remote(
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">"{}/{}__S_.{}"</span>,
+                METIS_INPUTS_DIR,
+                job_file_identifier,
+                side_extension
+            )
+        ),
+        <span class="bool-val">false
+    </span>).<span class="kw">await
+        </span>.context(<span class="string">"Couldn't move file from local to Metis!"</span>)<span class="question-mark">?</span>;
+    <span class="macro">print_be!</span>(task_number, <span class="string">"Successfully copied files to Metis!"</span>);
+
+    <span class="comment">// Launch the Metis inference
+    </span><span class="macro">print_be!</span>(task_number, <span class="string">"Launching PBS batchfile on Metis"</span>);
+    <span class="kw">let </span>pbs_job_id = metis_qsub(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        METIS_PBS_PATH,
+        <span class="macro">vec!</span>(<span class="string">"-v"</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"ID={}"</span>, job_file_identifier))
+    ).<span class="kw">await
+        </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"Couldn't launch PBS batchfile on Metis! Full error: {e:?}"</span>))<span class="question-mark">?</span>;
+    <span class="macro">print_be!</span>(task_number, <span class="string">"Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'"</span>);
+
+    <span class="comment">// Write the job ID to a file
+    </span><span class="kw">let </span>pbs_job_id_file_path = <span class="macro">format!</span>(<span class="string">"{}/pbs_job_id"</span>, dir_path);
+    <span class="kw">let </span><span class="kw-2">mut </span>pbs_job_id_file_handle = tokio::fs::File::create(<span class="kw-2">&amp;</span>pbs_job_id_file_path)
+        .<span class="kw">await
+        </span>.context(<span class="string">"Could not create front file!"</span>)<span class="question-mark">?</span>;
+    pbs_job_id_file_handle.write_all(<span class="kw-2">&amp;</span>pbs_job_id.as_bytes())
+        .<span class="kw">await
+        </span>.context(<span class="string">"Couldn't write the PBS Job ID to a physical file!"</span>)<span class="question-mark">?</span>;
+    pbs_job_id_file_handle.flush()
+        .<span class="kw">await
+        </span>.context(<span class="string">"Unable to flush PBS Job ID file!"</span>)<span class="question-mark">?</span>;
+
+    <span class="comment">// Return as successful
+    </span><span class="prelude-val">Ok</span>(())
+}
+</code></pre></div></section></main></body></html>

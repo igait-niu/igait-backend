@@ -184,14 +184,59 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../docs/email.md"</span>)]
 
 </span><span class="kw">use </span>std::time::SystemTime;
 
 <span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result </span>};
 <span class="kw">use </span>chrono::{ DateTime, Utc };
+<span class="kw">use </span>chrono_tz::Tz;
+<span class="kw">use </span>tokio::sync::Mutex;
+<span class="kw">use </span>aws_sdk_sesv2::types::{
+    Content, Destination, EmailContent, Body, Message
+};
 
 <span class="kw">use </span><span class="kw">crate</span>::print_be;
+<span class="kw">use crate</span>::{ Arc, AppState };
 
 <span class="kw">use </span><span class="kw">super</span>::lib::{Job, JobStatus, JobTaskID};
 
@@ -212,7 +257,8 @@
 /// # Notes
 /// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
-</span><span class="kw">pub fn </span>send_email (
+</span><span class="kw">pub async fn </span>send_email (
+    app:     Arc&lt;Mutex&lt;AppState&gt;&gt;,
     to:      <span class="kw-2">&amp;</span>str,
     subject: <span class="kw-2">&amp;</span>str,
     body:    <span class="kw-2">&amp;</span>str,
@@ -221,14 +267,44 @@
     <span class="macro">print_be!</span>(task_number, <span class="string">"Sending email to '{to}'..."</span>);
 
     <span class="comment">// Post the form to the Cloudflare Worker
-    </span>ureq::post(<span class="string">"https://email-service.igaitniu.workers.dev/"</span>)
-        .send_form(<span class="kw-2">&amp;</span>[
-            ( <span class="string">"API_KEY"</span>, <span class="kw-2">&amp;</span>std::env::var(<span class="string">"IGAIT_ACCESS_KEY"</span>).context(<span class="string">"MISSING IGAIT_ACCESS_KEY!"</span>)<span class="question-mark">? </span>),
-            ( <span class="string">"to"</span>,      to      ),
-            ( <span class="string">"subject"</span>, subject ),
-            ( <span class="string">"body"</span>,    body    )
-        ])
-        .context(<span class="string">"Failed to send form to the Cloudllare Worker"</span>)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>destination = Destination::builder()
+        .set_to_addresses(<span class="prelude-val">Some</span>(<span class="macro">vec!</span>[to.into()]))
+        .build();
+    <span class="kw">let </span>content = EmailContent::builder()
+        .set_simple(
+            <span class="prelude-val">Some</span>(Message::builder()
+                .set_subject(
+                    <span class="prelude-val">Some</span>(Content::builder()
+                        .set_data(<span class="prelude-val">Some</span>(subject.to_string()))
+                        .build()
+                        .context(<span class="string">"Failed to build the subject line for email!"</span>)<span class="question-mark">?
+                    </span>)
+                )
+                .set_body(
+                    <span class="prelude-val">Some</span>(Body::builder()
+                        .set_html(
+                            <span class="prelude-val">Some</span>(Content::builder()
+                                .set_data(<span class="prelude-val">Some</span>(body.to_string()))
+                                .build()
+                                .context(<span class="string">"Failed to build body for email!"</span>)<span class="question-mark">?
+                            </span>)
+                        )
+                        .build()
+                    )
+                )
+                .build())
+        )
+        .build();
+
+    app.lock().<span class="kw">await
+        </span>.aws_ses_client.send_email()
+        .from_email_address(<span class="string">"noreply@igaitapp.com"</span>)
+        .from_email_address_identity_arn(<span class="string">"arn:aws:ses:us-east-2:851725269484:identity/noreply@igaitapp.com"</span>)
+        .destination(destination)
+        .content(content)
+        .send()
+        .<span class="kw">await
+        </span>.context(<span class="string">"Failed to send email!"</span>)<span class="question-mark">?</span>;
     <span class="macro">print_be!</span>(task_number, <span class="string">"Successfully sent email to '{to}'!"</span>);
 
     <span class="prelude-val">Ok</span>(())
@@ -239,7 +315,7 @@
 /// # Arguments
 /// * `recipient_email_address` - The email address to send the email to
 /// * `status` - The status of the job
-/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `datetime` - The timestamp of the job
 /// * `job` - The job that was submitted
 /// * `front_keyframed_url` - The URL to the front keyframed video
 /// * `side_keyframed_url` - The URL to the side keyframed video
@@ -256,21 +332,20 @@
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 </span><span class="kw">pub async fn </span>send_success_email (
+    app:                     Arc&lt;Mutex&lt;AppState&gt;&gt;,
     recipient_email_address: <span class="kw-2">&amp;</span>str,
     status:                  <span class="kw-2">&amp;</span>JobStatus,
-    dt_timestamp_utc:        <span class="kw-2">&amp;</span>DateTime&lt;Utc&gt;,
+    datetime:                <span class="kw-2">&amp;</span>DateTime&lt;Tz&gt;,
     job:                     <span class="kw-2">&amp;</span>Job,
-    front_keyframed_url:     <span class="kw-2">&amp;</span>str,
-    side_keyframed_url:      <span class="kw-2">&amp;</span>str,
     uid:                     <span class="kw-2">&amp;</span>str,
     job_id:                  usize,
     task_number:             JobTaskID
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Build the email
     </span><span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Your recent submission to iGait App has completed!"</span>);
-    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"We deteremined a likelyhood score of {} for your submission on {} (UTC)!&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;Front Video: {}&lt;br&gt;Side Video: {}&lt;br&gt;These videos will remain downloadable for 7 days from the date of this email. If they expire, contact GaitStudy@niu.edu to have new files issued. If you recieve an error message viewing these videos, please use a different browser such as Chrome.&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
+    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"We deteremined a likelyhood score of {} for your submission on {}!&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
         status.value,
-        dt_timestamp_utc.format(<span class="string">"%m/%d/%Y at %H:%M"</span>),
+        datetime.to_string(),
 
         job.age,
         job.ethnicity,
@@ -278,23 +353,21 @@
         job.height,
         job.weight,
 
-        front_keyframed_url,
-        side_keyframed_url,
-
         uid,
         job_id
     );
 
     <span class="comment">// Send the email
-    </span>send_email( recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
-}
+    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+        .<span class="kw">await
+</span>}
 
 <span class="doccomment">/// A wrapper around `send_email` that sends a failure email to the recipient.
 /// 
 /// # Arguments
 /// * `recipient_email_address` - The email address to send the email to
 /// * `status` - The status of the job
-/// * `dt_timestamp_utc` - The timestamp of the job
+/// * `datetime` - The timestamp of the job
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
 /// * `task_number` - The task number of the job
@@ -308,9 +381,10 @@
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 </span><span class="kw">pub async fn </span>send_failure_email (
+    app:                     Arc&lt;Mutex&lt;AppState&gt;&gt;,
     recipient_email_address: <span class="kw-2">&amp;</span>str,
     status:                  <span class="kw-2">&amp;</span>JobStatus,
-    dt_timestamp_utc:        <span class="kw-2">&amp;</span>DateTime&lt;Utc&gt;,
+    datetime:                <span class="kw-2">&amp;</span>DateTime&lt;Tz&gt;,
     uid:                     <span class="kw-2">&amp;</span>str,
     job_id:                  usize,
     task_number:             JobTaskID
@@ -318,7 +392,7 @@
     <span class="comment">// Build the email
     </span><span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Your recent submission to iGait App failed!"</span>);
     <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Something went wrong with your submission on {}!&lt;br&gt;&lt;br&gt;Error Type: '{:?}'&lt;br&gt;Error Reason: '{}'&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}&lt;br&gt;&lt;br&gt;&lt;br&gt;Please contact support:&lt;br&gt;GaitStudy@niu.edu"</span>,
-        dt_timestamp_utc.format(<span class="string">"%m/%d/%Y at %H:%M"</span>),
+        datetime.to_string(),
 
         status.code, status.value, 
         uid,
@@ -326,8 +400,9 @@
     );
 
     <span class="comment">// Send the email
-    </span>send_email( recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
-}
+    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+        .<span class="kw">await
+</span>}
 
 <span class="doccomment">/// A wrapper around `send_email` that sends a welcome email to the recipient.
 /// 
@@ -346,6 +421,7 @@
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 </span><span class="kw">pub async fn </span>send_welcome_email (
+    app:         Arc&lt;Mutex&lt;AppState&gt;&gt;,
     job:         <span class="kw-2">&amp;</span>Job,
     uid:         <span class="kw-2">&amp;</span>str,
     job_id:      usize,
@@ -353,9 +429,10 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Build the email
     </span><span class="kw">let </span>dt_now_utc: DateTime&lt;Utc&gt; = SystemTime::now().into();
+    <span class="kw">let </span>dt_now_cst = dt_now_utc.with_timezone(<span class="kw-2">&amp;</span>chrono_tz::US::Central);
     <span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Welcome to iGait!"</span>);
-    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Your job submission on {} (UTC) has been uploaded successfully! Please give us 1-2 days to complete analysis.&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
-        dt_now_utc.format(<span class="string">"%m/%d/%Y at %H:%M"</span>),
+    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
+        dt_now_cst.to_string(),
 
         job.age,
         job.ethnicity,
@@ -368,5 +445,6 @@
     );
 
     <span class="comment">// Send the email
-    </span>send_email( <span class="kw-2">&amp;</span>job.email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
-}</code></pre></div></section></main></body></html>
+    </span>send_email( app, <span class="kw-2">&amp;</span>job.email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+        .<span class="kw">await
+</span>}</code></pre></div></section></main></body></html>

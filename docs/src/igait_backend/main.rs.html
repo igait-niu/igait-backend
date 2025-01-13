@@ -58,6 +58,20 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"./docs/home.md"</span>)]
 </span><span class="kw">mod </span>helper;
 <span class="kw">mod </span>daemons;
@@ -67,10 +81,12 @@
 <span class="kw">use </span>axum::{
     extract::DefaultBodyLimit, routing::post, Router
 };
-<span class="kw">use </span>daemons::filesystem::work_queue;
-<span class="kw">use </span>helper::lib::AppState;
+<span class="kw">use </span>daemons::filesystem::work_inputs;
+<span class="kw">use </span>helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tokio::sync::Mutex;
+
+<span class="kw">pub const </span>ASD_CLASSIFICATION_THRESHOLD: f32 = <span class="number">0.5</span>;
 
 <span class="doccomment">/// The main entrypoint for the iGait backend.
 /// 
@@ -97,7 +113,6 @@
     <span class="comment">// Build the V1 API router
     </span><span class="kw">let </span>api_v1 = Router::new()
         .route(<span class="string">"/upload"</span>, post(<span class="kw">crate</span>::routes::upload::upload_entrypoint) )
-        .route(<span class="string">"/completion"</span>, post(<span class="kw">crate</span>::routes::completion::completion_entrypoint))
         .route(<span class="string">"/historical_submissions"</span>, post(<span class="kw">crate</span>::routes::historical::historical_entrypoint))
         .with_state(state.clone());
 
@@ -106,12 +121,25 @@
         .nest(<span class="string">"/api/v1"</span>, api_v1)
         .layer(DefaultBodyLimit::max(<span class="number">500000000</span>));
 
-    <span class="comment">// Start the queue worker
-    </span>tokio::spawn(work_queue(state));
+    <span class="comment">// Copy scripts to Metis
+    </span><span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Copying scripts from local to Metis..."</span>);
+    copy_file(
+        METIS_USERNAME,
+        METIS_HOSTNAME,
+        SSHPath::Local(<span class="string">"scripts"</span>),
+        SSHPath::Remote(METIS_DATA_DIR),
+        <span class="bool-val">true
+    </span>).<span class="kw">await
+        </span>.context(<span class="string">"Couldn't move the outputs from Metis to local outputs directory!"</span>)<span class="question-mark">?</span>;
+    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Successfully copied scripts from local to Metis!"</span>);
+
+    <span class="comment">// Start the inputs worker
+    </span>tokio::spawn(work_inputs(state));
 
     <span class="comment">// Serve the API
-    </span><span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Starting iGait Backend on 3000..."</span>);
-    <span class="kw">let </span>listener = tokio::net::TcpListener::bind(<span class="string">"0.0.0.0:3000"</span>).<span class="kw">await
+    </span><span class="kw">let </span>port = std::env::var(<span class="string">"PORT"</span>).unwrap_or(<span class="string">"3000"</span>.to_string());
+    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Starting iGait Backend on {port}..."</span>);
+    <span class="kw">let </span>listener = tokio::net::TcpListener::bind(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"0.0.0.0:{port}"</span>)).<span class="kw">await
         </span>.context(<span class="string">"Couldn't start up listener!"</span>)<span class="question-mark">?</span>;
     axum::serve(listener, app).<span class="kw">await
         </span>.context(<span class="string">"Could't serve the API!"</span>)<span class="question-mark">?</span>;

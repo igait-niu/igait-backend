@@ -52,57 +52,27 @@
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the routes for the API.
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
 
-/// This module contains the completion endpoint for the API.
+/// This module contains the historical submissions endpoint for the API.
 /// 
 /// # Arguments
 /// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
-/// * `job_id`: The ID of the job to update.
-/// * `status_code`: The status code of the job. Either `OK` or `ERROR`.
-/// * `status_content`: The content of the status. This is a human-readable string.
-/// * `igait_access_key`: The access key to the iGait API.
+/// * `entries`: The number of entries to return. This is an unsigned integer.
+/// * `start_timestamp`: The UNIX timestamp (seconds since the epoch date) to start the search from.
+/// * `end_timestamp`: The UNIX timestamp (seconds since the epoch date) to end the search from.
+/// * `result_type`: The type of result to return. This is a string - either `ASD` or `NO ASD`.`
+/// * `include_original`: Whether to include the original video files in the response.
+/// * `include_skeleton`: Whether to include the skeleton files in the response.
 /// 
 /// # Example cURL Request
 /// ```sh
-/// curl -v -F user_id=curlplaceholder -F job_id=0 -F status_code=OK /
-///     -F status_content="Job completed successfully!" -F igait_access_key /
-///    http://api.igaitapp.com/api/v1/completion
-/// ```
-/// 
-/// # Potential Reasons for Failure
-/// See each individual function for potential reasons for failure.
-/// 
-/// # Notes
-/// * Only for use by **Metis**. Do not use this endpoint for the iGait API.
-/// * To find the API key, check the `.env` file on the AWS deployment.
-</span><span class="kw">pub mod </span>completion;
-
-<span class="doccomment">/// This module contains the historical submissions endpoint for the API.
-/// 
-/// # Arguments
-/// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
-/// 
-/// # Example cURL Request
-/// ```sh
-/// curl -v -F user_id=curlplaceholder http://api.igaitapp.com/api/v1/historical_submissions
+/// curl -v -F user_id=hiibolt -F entries=2 -F start_timestamp=173
+/// 6628724 -F end_timestamp=3736628726 -F result_type='NO ASD' -F inc
+/// lude_skeleton=true -F include_original=true http://api.igaitapp.com/
+/// api/v1/historical_submissions
 /// ```
 /// 
 /// # Potential Reasons for Failure
