@@ -315,10 +315,10 @@ async fn save_upload_files<'a> (
 ) -> Result<()> {
     // Unpack the extensions
     let front_extension = front_file.name.split('.')
-        .nth(1)
+        .last()
         .context("Must have a file extension!")?;
     let side_extension = side_file.name.split('.')
-        .nth(1)
+        .last()
         .context("Must have a file extension!")?;
     
     // Ensure a directory exists for this file ID
