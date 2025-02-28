@@ -5,7 +5,7 @@ mod routes;
 
 use anyhow::{ Context, Result };
 use axum::{
-    extract::DefaultBodyLimit, routing::post, Router
+    extract::DefaultBodyLimit, routing::{any, post}, Router
 };
 use daemons::filesystem::work_inputs;
 use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
@@ -39,6 +39,7 @@ async fn main() -> Result<()> {
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
+        .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
         .with_state(state.clone());
 
     // Nest the API into the general app router

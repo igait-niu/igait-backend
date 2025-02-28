@@ -7,12 +7,13 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.86", features = ["backtrace"] }
-async-openai = "0.27.2"
+#async-openai = "0.27.2"
+async-openai = { path = "../async-openai-jail/async-openai/async-openai" }
 async-recursion = "1.1.1"
 aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.15.0"
 aws-sdk-sesv2 = "1.54.0"
-axum = { version = "0.7.3", features = ["multipart"] }
+axum = { version = "0.7.3", features = ["multipart", "ws"] }
 chrono = { version = "0.4.38", features = ["alloc"] }
 chrono-tz = "0.10.0"
 colored = "2.1.0"
