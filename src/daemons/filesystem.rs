@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
-use tokio::{fs::DirEntry, sync::Mutex, time::sleep};
+use tokio::{fs::DirEntry, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
 
@@ -127,7 +127,7 @@ async fn check_inputs_dir(
 /// - `path`: The path that the function should base upon (built through recursion)
 #[async_recursion]
 async fn upload_output_dir (
-    app: Arc<Mutex<AppState>>,
+    app: Arc<AppState>,
     user_id: String,
     path: String
 ) -> Result<()> {
@@ -150,9 +150,8 @@ async fn upload_output_dir (
                     let size = contents.len();
 
                     print_s3!(0, "Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3...");
-                    app.lock()
-                        .await
-                        .bucket
+                    app.bucket
+                        .lock().await
                         .put_object(format!("{user_id}/outputs/{path}/{file_name}"), &contents)
                         .await 
                         .expect("Failed to upload file to S3! Continuing regardless.");
@@ -190,7 +189,7 @@ async fn upload_output_dir (
 /// * `app`: A handle to the app state
 /// * `entry`: The entry to check from the `outputs` directory
 async fn work_output_helper (
-    app: &Arc<Mutex<AppState>>,
+    app: &Arc<AppState>,
     entry: DirEntry
 ) -> Result<()> {
     let file_name = entry
@@ -227,8 +226,9 @@ async fn work_output_helper (
         .context("Job ID was not a valid `usize`!")?;
 
     // Grab the job it references
-    let job: Job = app.lock().await
+    let job: Job = app
         .db
+        .lock().await
         .get_job(
             uid,
             job_id,
@@ -263,14 +263,16 @@ async fn work_output_helper (
             value: String::from(classification)
         };
 
-        app.lock().await.db.update_status(
-            uid,
-            job_id,
-            status.clone(),
-            0
-        ).await
+        app.db
+            .lock().await
+            .update_status(
+                uid,
+                job_id,
+                status.clone(),
+                0
+            ).await
             .context("Failed to update status to 'Processing'!")?;
-        
+            
         // Send the success email
         send_success_email(
             app.clone(),
@@ -288,12 +290,14 @@ async fn work_output_helper (
             value: String::from("There was an error on our end! Please contact support via the instructions in the email containing these results.")
         };
 
-        app.lock().await.db.update_status(
-            uid,
-            job_id,
-            status.clone(),
-            0
-        ).await
+        app.db
+        .lock().await
+            .update_status(
+                uid,
+                job_id,
+                status.clone(),
+                0
+            ).await
             .context("Failed to update status to 'Processing'!")?;
 
         // Send the success email
@@ -341,7 +345,7 @@ async fn work_output_helper (
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
 pub async fn work_outputs(
-    app: Arc<Mutex<AppState>>
+    app: Arc<AppState>
 ) {
     match tokio::fs::read_dir("outputs").await {
         Ok(mut dir) => {
@@ -370,7 +374,7 @@ pub async fn work_outputs(
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
 pub async fn work_inputs(
-    app: Arc<Mutex<AppState>>
+    app: Arc<AppState>
 ) {
     loop {
         print_be!(0, "Scanning inputs...");

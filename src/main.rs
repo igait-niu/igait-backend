@@ -10,7 +10,6 @@ use axum::{
 use daemons::filesystem::work_inputs;
 use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 
@@ -32,9 +31,9 @@ pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 #[tokio::main]
 async fn main() -> Result<()> {
     // Create a thread-safe mutex lock to hold the app state
-    let state: Arc<Mutex<AppState>> = Arc::new(Mutex::new(
+    let state: Arc<AppState> = Arc::new(
         AppState::new().await.context("Couldn't set up app state!")?
-    ));
+    );
 
     // Build the V1 API router
     let api_v1 = Router::new()

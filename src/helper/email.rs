@@ -3,7 +3,6 @@ use std::time::SystemTime;
 use anyhow::{ Context, Result };
 use chrono::{ DateTime, Utc };
 use chrono_tz::Tz;
-use tokio::sync::Mutex;
 use aws_sdk_sesv2::types::{
     Content, Destination, EmailContent, Body, Message
 };
@@ -31,7 +30,7 @@ use super::lib::{Job, JobStatus, JobTaskID};
 /// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
 pub async fn send_email (
-    app:     Arc<Mutex<AppState>>,
+    app:     Arc<AppState>,
     to:      &str,
     subject: &str,
     body:    &str,
@@ -69,8 +68,9 @@ pub async fn send_email (
         )
         .build();
 
-    app.lock().await
-        .aws_ses_client.send_email()
+    app.aws_ses_client
+        .lock().await
+        .send_email()
         .from_email_address("noreply@igaitapp.com")
         .from_email_address_identity_arn("arn:aws:ses:us-east-2:851725269484:identity/noreply@igaitapp.com")
         .destination(destination)
@@ -105,7 +105,7 @@ pub async fn send_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_success_email (
-    app:                     Arc<Mutex<AppState>>,
+    app:                     Arc<AppState>,
     recipient_email_address: &str,
     status:                  &JobStatus,
     datetime:                &DateTime<Tz>,
@@ -154,7 +154,7 @@ pub async fn send_success_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_failure_email (
-    app:                     Arc<Mutex<AppState>>,
+    app:                     Arc<AppState>,
     recipient_email_address: &str,
     status:                  &JobStatus,
     datetime:                &DateTime<Tz>,
@@ -194,7 +194,7 @@ pub async fn send_failure_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 pub async fn send_welcome_email (
-    app:         Arc<Mutex<AppState>>,
+    app:         Arc<AppState>,
     job:         &Job,
     uid:         &str,
     job_id:      usize,

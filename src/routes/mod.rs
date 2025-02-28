@@ -52,3 +52,6 @@ pub mod historical;
 /// # Notes
 /// <div class="warning">This route takes a long time to process. Make users aware of this on the frontend.</div>
 pub mod upload;
+
+/// This module contains the assistant endpoint for the API.
+pub mod assistant;

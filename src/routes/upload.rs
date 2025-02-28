@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
-use tokio::{io::AsyncWriteExt, sync::Mutex};
+use tokio::io::AsyncWriteExt;
 use anyhow::{ Result, Context, anyhow };
 
 use crate::{
@@ -182,13 +182,12 @@ async fn unpack_upload_arguments(
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object to unpack.
 pub async fn upload_entrypoint(
-    State(app): State<Arc<Mutex<AppState>>>,
+    State(app): State<Arc<AppState>>,
     mut multipart: Multipart
 ) -> Result<(), AppError> {
     // Allocate a new task number
-    app.lock().await
-        .task_number += 1;
-    let task_number = app.lock().await.task_number;
+    *app.task_number.lock().await += 1;
+    let task_number = app.task_number.lock().await.clone();
 
     print_be!(task_number, "\n----- [ Recieved base request ] -----");
     print_be!(task_number, "Unpacking arguments...");
@@ -207,8 +206,9 @@ pub async fn upload_entrypoint(
     };
 
     // Generate the new job ID (no need to add 1 since it's 0-indexed)
-    let job_id = app.lock().await
+    let job_id = app
         .db
+        .lock().await
         .count_jobs(
             &arguments.uid,
             task_number
@@ -228,8 +228,9 @@ pub async fn upload_entrypoint(
     };
     
     // Add the job to the database
-    app.lock().await
-        .db.new_job(
+    app.db
+        .lock().await
+        .new_job(
             &arguments.uid,
             job.clone(),
             task_number
@@ -252,8 +253,9 @@ pub async fn upload_entrypoint(
         status.value = err.to_string();
 
         // Update the status of the job
-        app.lock().await
-            .db.update_status(
+        app.db
+            .lock().await
+            .update_status(
                 &arguments.uid,
                 job_id,
                 status,
@@ -279,8 +281,9 @@ pub async fn upload_entrypoint(
     ).await.context("Failed to send welcome email!")?;
 
     // Update the status of the job
-    app.lock().await
-        .db.update_status(
+    app.db
+        .lock().await
+        .update_status(
             &arguments.uid,
             job_id,
             status,
@@ -306,7 +309,7 @@ pub async fn upload_entrypoint(
 /// * `job` - The job object to save to the local filesystem.
 /// * `task_number` - The task number to print out to the console.
 async fn save_upload_files<'a> (
-    app:              Arc<Mutex<AppState>>,
+    app:              Arc<AppState>,
     front_file:       UploadRequestFile,
     side_file:        UploadRequestFile,
     user_id:          &str,
@@ -367,16 +370,14 @@ async fn save_upload_files<'a> (
         .context("Failed to build u8 vector from side file's Bytes object!")?;
 
     // Upload the all three files to S3
-    app.lock()
-        .await
-        .bucket
+    app.bucket
+        .lock().await
         .put_object(format!("{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
     print_s3!(task_number, "Successfully uploaded front file to S3!");
-    app.lock()
-        .await
-        .bucket
+    app.bucket
+        .lock().await
         .put_object(format!("{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;

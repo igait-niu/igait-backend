@@ -7,6 +7,10 @@ use axum::{
     response::{IntoResponse, Response}
 };
 use serde::{Deserialize, Serialize};
+use async_openai::{
+    config::OpenAIConfig, types::AssistantObject, Client
+};
+use tokio::sync::Mutex;
 
 use super::database::Database;
 use crate::print_be;
@@ -101,10 +105,12 @@ pub struct Request {
 /// * This struct is typically wrapped in an `Arc<Mutex<>>` to allow for concurrent access.
 #[derive(Debug)]
 pub struct AppState {
-    pub db: Database,
-    pub bucket: Bucket,
-    pub task_number: JobTaskID,
-    pub aws_ses_client: aws_sdk_sesv2::Client
+    pub db: Mutex<Database>,
+    pub bucket: Mutex<Bucket>,
+    pub task_number: Mutex<JobTaskID>,
+    pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
+    pub openai_client: Client<OpenAIConfig>,
+    pub openai_assistant: AssistantObject,
 }
 impl AppState {
     /// Initializes the application state with a new database and S3 bucket.
@@ -122,16 +128,28 @@ impl AppState {
     /// * The environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set.
     pub async fn new() -> Result<Self> {
         let aws_config = aws_config::load_from_env().await;
+        let client = Client::new();
+
+        // Initialize the assistant
+        let assistant_id = std::env::var("OPENAI_ASSISTANT_ID")
+            .context("Couldn't find the OpenAI assistant ID!")?;
+        let assistant = client
+            .assistants()
+            .retrieve(&assistant_id)
+            .await
+            .context("Failed to retrieve assistant")?;
 
         Ok(Self {
-            db: Database::init().await.context("Failed to initialize database while setting up app state!")?,
-            bucket: Bucket::new(
+            db: Mutex::new(Database::init().await.context("Failed to initialize database while setting up app state!")?),
+            bucket: Mutex::new(Bucket::new(
                 "igait-storage",
                 "us-east-2".parse().context("Improper region!")?,
                 Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
-            ).context("Failed to initialize bucket!")?,
-            task_number: 0,
-            aws_ses_client: aws_sdk_sesv2::Client::new(&aws_config)
+            ).context("Failed to initialize bucket!")?),
+            task_number: Mutex::new(0),
+            aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
+            openai_client: client,
+            openai_assistant: assistant
         })
     }
 }

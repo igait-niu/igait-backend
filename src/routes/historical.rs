@@ -3,7 +3,6 @@ use std::{sync::Arc, time::SystemTime};
 use anyhow::{ Result, Context, anyhow, bail };
 use axum::extract::{Multipart, State};
 use chrono::{DateTime, Utc};
-use tokio::sync::Mutex;
 use time_util::system_time_from_secs;
 
 use crate::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
@@ -140,13 +139,12 @@ async fn unpack_historical_arguments(
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object containing the request.
 pub async fn historical_entrypoint ( 
-    State(app): State<Arc<Mutex<AppState>>>,
+    State(app): State<Arc<AppState>>,
     multipart: Multipart
 ) -> Result<(), AppError> {
     // Allocate a new task number
-    app.lock().await
-        .task_number += 1;
-    let task_number = app.lock().await.task_number;
+    *app.task_number.lock().await += 1;
+    let task_number = app.task_number.lock().await.clone();
 
     print_be!(task_number, "\n----- [ Recieved historical submissions request ] -----");
 
@@ -156,8 +154,8 @@ pub async fn historical_entrypoint (
         .context("Failed to unpack historical arguments!")?;
 
     // Get all jobs
-    let mut jobs: Vec<(usize, Job)> = app.lock().await
-        .db
+    let mut jobs: Vec<(usize, Job)> = app.db
+        .lock().await
         .get_all_jobs(
             &arguments.uid,
             task_number
@@ -271,9 +269,9 @@ pub async fn historical_entrypoint (
                     );
         
                     // List the available files (since we don't know the extensions)
-                    let results = app.lock()
-                        .await
+                    let results = app
                         .bucket
+                        .lock().await
                         .list(inputs_prefix, Some("/".to_string())).await?;
                     let mut front_file_key = None;
                     let mut side_file_key = None;
@@ -294,14 +292,14 @@ pub async fn historical_entrypoint (
                         }
                     }
         
-                    let front_skeleton_video_link = app.lock()
-                        .await
+                    let front_skeleton_video_link = app
                         .bucket
+                        .lock().await
                         .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
                         .context("Failed to get the front keyframed URL!")?;
-                    let side_skeleton_video_link = app.lock()
-                        .await
+                    let side_skeleton_video_link = app
                         .bucket
+                        .lock().await
                         .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
                         .context("Failed to get the front keyframed URL!")?;
         
@@ -337,9 +335,9 @@ pub async fn historical_entrypoint (
             );
 
             // List the available files (since we don't know the extensions)
-            let results = app.lock()
-                .await
+            let results = app
                 .bucket
+                .lock().await
                 .list(inputs_prefix, Some("/".to_string())).await?;
             let mut front_file_key = None;
             let mut side_file_key = None;
@@ -360,14 +358,14 @@ pub async fn historical_entrypoint (
                 }
             }
 
-            let front_original_video_link = app.lock()
-                .await
+            let front_original_video_link = app
                 .bucket
+                .lock().await
                 .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
                 .context("Failed to get the front keyframed URL!")?;
-            let side_original_video_link = app.lock()
-                .await
+            let side_original_video_link = app
                 .bucket
+                .lock().await
                 .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
                 .context("Failed to get the front keyframed URL!")?;
 
@@ -455,7 +453,7 @@ pub async fn historical_entrypoint (
 ///    <br><br>Currently, I do not have the technical skills to fix this. I will come back with more skill later.
 /// </div>
 async fn get_email_and_pdf_link(
-    app: Arc<Mutex<AppState>>,
+    app: Arc<AppState>,
     jobs: Vec<(usize, Job)>,
     uid: String,
     timestamp: u64,
@@ -583,9 +581,8 @@ async fn get_email_and_pdf_link(
     // Put the extended body into the user's S3 bucket
     print_s3!(task_number, "Putting file to AWS...");
     let aws_path = format!("{}/history_requests/{}.pdf", uid_og, timestamp_og);
-    app.lock()
-        .await
-        .bucket
+    app.bucket
+        .lock().await
         .put_object(&aws_path, &extended_body_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
@@ -593,9 +590,9 @@ async fn get_email_and_pdf_link(
 
     // Generate the presigned URL
     print_s3!(task_number, "Generating presigned URL...");
-    let extended_body_url = app.lock()
-            .await
+    let extended_body_url = app
             .bucket
+            .lock().await
             .presign_get(aws_path, 86400 * 7, None)
             .context("Failed to get the front keyframed URL!")?;
     print_s3!(task_number, "Generated a presigned URL for the HTML file!");
