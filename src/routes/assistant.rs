@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_openai::{
     config::OpenAIConfig, types::{
-        AssistantObject, CreateAssistantToolFileSearchResources, CreateAssistantToolResources, CreateMessageRequestArgs, CreateRunRequest, CreateThreadRequest, MessageContent, MessageContentTextAnnotations, MessageRole, RunStatus, ThreadObject
+        AssistantObject, CreateAssistantToolFileSearchResources, CreateAssistantToolResources, CreateMessageRequestArgs, CreateRunRequest, CreateThreadRequest, MessageContent, MessageContentTextAnnotations, MessageRole, RunStatus, SubmitToolOutputsRunRequest, ThreadObject, ToolsOutputs
     }, Client
 };
 use anyhow::{Result, Context, bail};
@@ -10,7 +10,7 @@ use tokio::time::{Duration, sleep};
 use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
 
-use crate::helper::lib::AppState;
+use crate::{helper::lib::AppState, print_be};
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -116,8 +116,7 @@ async fn send_response (
             }
 
             RunStatus::Queued     | RunStatus::Cancelling | 
-            RunStatus::InProgress | RunStatus::Incomplete | 
-            RunStatus::RequiresAction => {
+            RunStatus::InProgress | RunStatus::Incomplete => {
                 let status_text = match run.status {
                     RunStatus::Queued     => "Run Queued",
                     RunStatus::Cancelling => "Cancelling...",
@@ -133,6 +132,43 @@ async fn send_response (
                         .context("Failed to serialize 'done thinking' event!")?)
                 ).await
                     .context("Failed to send message to client! Error: {e:?}")?;
+            },
+
+            RunStatus::RequiresAction => {
+                let required_action = &(run.required_action)
+                    .context("No required action found!")?;
+
+                let run_tool_calls = &required_action
+                    .submit_tool_outputs
+                    .tool_calls;
+
+                let mut returned_tool_outputs = SubmitToolOutputsRunRequest {
+                    tool_outputs: vec!(),
+                    stream: None
+                };
+                for run_tool_call in run_tool_calls {
+                    let function_name = &run_tool_call.function.name;
+
+                    println!("Run ID requires action: {function_name}");
+
+                    let result = match function_name.as_str() {
+                        "get_last_job" => {
+                            "It failed with an error! You submitted a MOV instead of an MP4"
+                        },
+                        _ => bail!("Unknown function name: {function_name}")
+                    };
+                    
+                    returned_tool_outputs.tool_outputs.push(ToolsOutputs {
+                        tool_call_id: Some(run_tool_call.id.clone()),
+                        output: Some(result.to_string())
+                    });
+                }
+
+                client.threads().runs(&thread.id)
+                    .submit_tool_outputs(
+                        &run.id,
+                        returned_tool_outputs
+                    ).await?;
             }
         }
 
@@ -156,7 +192,7 @@ async fn handle_socket_helper (
     socket: WebSocket
 ) -> () {
     if let Err(e) = handle_socket(app, socket).await {
-        println!("Failed to handle socket! Error: {e:?}");
+        print_be!(0, "Failed to handle socket! Error: {e:?}");
     }
 }
 async fn handle_socket (
@@ -180,7 +216,7 @@ async fn handle_socket (
     let thread = app.openai_client.threads().create(create_thread_request).await?;
 
     while let Some(msg_result) = socket.recv().await {
-        println!("Received message: {msg_result:?}");
+        print_be!(0, "Received message: {msg_result:?}");
         let msg_obj = if let Ok(msg_obj) = msg_result {
             msg_obj
         } else {
@@ -212,6 +248,7 @@ async fn handle_socket (
 
     // Close the thread
     app.openai_client.threads().delete(&thread.id).await?;
+    print_be!(0, "Thread closed!");
 
     Ok(())
 }
