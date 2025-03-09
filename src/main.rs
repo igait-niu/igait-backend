@@ -10,6 +10,8 @@ use axum::{
 use daemons::filesystem::work_inputs;
 use helper::{lib::{AppState, AppStatePtr}, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
+use tracing::info;
+use tracing_subscriber;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 
@@ -29,7 +31,18 @@ pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 /// * The API is served with a body limit of 500MB
 /// * The API is served with the V1 API nested under `/api/v1`
 #[tokio::main]
+#[tracing::instrument]
 async fn main() -> Result<()> {
+    // Initialize the logger
+    tracing_subscriber::fmt()
+        .compact()
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     // Create a thread-safe mutex lock to hold the app state
     let state: Arc<AppState> = Arc::new(
         AppState::new().await.context("Couldn't set up app state!")?
@@ -49,7 +62,7 @@ async fn main() -> Result<()> {
         .layer(DefaultBodyLimit::max(500000000));
 
     // Copy scripts to Metis
-    print_metis!(0, "Copying scripts from local to Metis...");
+    info!("Copying scripts from local to Metis...");
     copy_file(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -58,14 +71,14 @@ async fn main() -> Result<()> {
         true
     ).await
         .context("Couldn't move the outputs from Metis to local outputs directory!")?;
-    print_metis!(0, "Successfully copied scripts from local to Metis!");
+    info!("Successfully copied scripts from local to Metis!");
 
     // Start the inputs worker
     tokio::spawn(work_inputs(state));
 
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
-    print_be!(0, "Starting iGait Backend on {port}...");
+    println!("Starting iGait backend on port {port}...");
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await
         .context("Couldn't start up listener!")?;
     axum::serve(listener, app).await

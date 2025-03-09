@@ -1,11 +1,12 @@
 use std::time::SystemTime;
 
-use crate::{helper::lib::{JobStatusCode, User}, print_db};
+use crate::helper::lib::{JobStatusCode, User};
 
 use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
+use tracing::info;
 
-use super::lib::{Job, JobStatus, JobTaskID};
+use super::lib::{Job, JobStatus};
 
 /// A wrapper class on the Firebase database to make it easier to interact with.
 #[derive( Debug )]
@@ -50,18 +51,18 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
+    #[tracing::instrument]
     pub async fn ensure_user (
         &self,
-        uid:         &str,
-        task_number: JobTaskID
+        uid: &str
     ) -> Result<()> {
         // Create a path to the user in the database
         let user_handle = self._state.at(uid);
 
         // Check if the user doesn't exist
-        print_db!(task_number, "Verifying user existence...");
+        info!("Verifying user existence...");
         if user_handle.get::<User>().await.is_err() {
-            print_db!(task_number, "User doesn't exist, creating new user with UID '{uid}'...");
+            info!("User doesn't exist, creating new user with UID '{uid}'...");
 
             // Create a new user
             user_handle.update(&User {
@@ -84,7 +85,7 @@ impl Database {
             }).await
                 .map_err(|e| anyhow!("{e:?}"))
                 .context("Failed to create a new user while ensuring they existed!")?;
-            print_db!(task_number, "Successfully created new user!");
+            info!("Successfully created new user!");
         }
 
         Ok(())
@@ -106,15 +107,15 @@ impl Database {
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
     /// * This function returns `0` if there are no jobs, but the user exists.
+    #[tracing::instrument]
     pub async fn count_jobs (
         &self,
-        uid:         &str,
-        task_number: JobTaskID
+        uid:         &str
     ) -> Result<usize> {
-        print_db!(task_number, "Counting jobs...");
+        info!("Counting jobs...");
 
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
         // Then, get the jobs and count them
         if let Ok(jobs) = self._state.at(uid).at("jobs").get::<Vec<Job>>().await {
@@ -142,14 +143,14 @@ impl Database {
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
     /// * This function adds the job to the end of the user's job list.
+    #[tracing::instrument]
     pub async fn new_job (
         &self,
         uid:         &str,
-        job:         Job,
-        task_number: JobTaskID
+        job:         Job
     ) -> Result<()> {
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
         // Get a handle to the location of the jobs in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -167,7 +168,7 @@ impl Database {
         }).await.map_err(|e| anyhow!("{e:?}")).context("Failed to update database with the new job array!")?;
 
         // Return as successful
-        print_db!(task_number, "Added new job!");
+        info!("Added new job!");
         Ok(())
     }
 
@@ -189,17 +190,17 @@ impl Database {
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
     /// * This function overwrites the status of the job with the new status.
+    #[tracing::instrument]
     pub async fn update_status (
         &self, 
         uid:         &str,
         job_id:      usize, 
-        status:      JobStatus,
-        task_number: JobTaskID
+        status:      JobStatus
     ) -> Result<()> {
-        print_db!(task_number, "Updating status...");
+        info!("Updating status...");
 
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
         
         // Get the user and job handles
         let user_handle = self._state.at(&uid);
@@ -224,7 +225,7 @@ impl Database {
         // Return as successful
         let code = status.code;
         let value = status.value;
-        print_db!(task_number, "Updated status successfully to {code:#?} with message '{value}'!");
+        info!("Updated status successfully to {code:#?} with message '{value}'!");
         Ok(())
     }
 
@@ -244,16 +245,16 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
+    #[tracing::instrument]
     pub async fn _get_status (
         &self, 
         uid:         &str,
-        job_id:      usize,
-        task_number: JobTaskID
+        job_id:      usize
     ) -> Result<JobStatus> {
-        print_db!(task_number, "Getting status...");
+        info!("Getting status...");
 
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -282,16 +283,16 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
+    #[tracing::instrument]
     pub async fn get_job (
         &self,
         uid:         &str,
-        job_id:      usize,
-        task_number: JobTaskID
+        job_id:      usize
     ) -> Result<Job> {
-        print_db!(task_number, "Getting job...");
+        info!("Getting job...");
 
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");
@@ -320,15 +321,15 @@ impl Database {
     /// 
     /// # Notes
     /// * This function creates a new user if the user doesn't exist.
+    #[tracing::instrument]
     pub async fn get_all_jobs (
         &self,
-        uid:         &str,
-        task_number: JobTaskID
+        uid:         &str
     ) -> Result<Vec<Job>> {
-        print_db!(task_number, "Getting all jobs...");
+        info!("Getting all jobs...");
 
         // First double check that the user actually exists
-        self.ensure_user(uid, task_number).await.context("Failed to ensure user!")?;
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
         // Build a path to the job in the database
         let job_handle = self._state.at(uid).at("jobs");

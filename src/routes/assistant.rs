@@ -6,15 +6,15 @@ use async_openai::{
     }, Client
 };
 use anyhow::{Result, Context, bail};
-use axum_macros::debug_handler;
 use tokio::time::{Duration, sleep};
 use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
 use firebase_auth::FirebaseUser;
+use tracing::{info, error};
 
-use crate::{helper::lib::{AppState, AppStatePtr}, print_be};
+use crate::helper::lib::{AppState, AppStatePtr};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 enum AssistantUpdate {
     Message { content: String },
@@ -22,6 +22,7 @@ enum AssistantUpdate {
     Waiting { content: String }
 }
 
+#[tracing::instrument]
 async fn send_response (
     client: &Client<OpenAIConfig>,
     thread: &ThreadObject,
@@ -98,6 +99,7 @@ async fn send_response (
                     }
                 }
                 let event = AssistantUpdate::Message{ content: body.join("\n") };
+                info!("Sending message to client: {:?}", event);
                 socket.send(
                     Message::Text(serde_json::to_string(&event)
                         .context("Failed to serialize 'done thinking' event!")?)
@@ -183,28 +185,35 @@ async fn send_response (
 
     Ok(())
 }
-#[debug_handler]
+#[tracing::instrument(skip(current_user))]
 pub async fn assistant_entrypoint (
     current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
     ws: WebSocketUpgrade
 ) -> Response {
+    info!("Upgrading WS connection...");
     ws.on_upgrade(move |socket| handle_socket_helper(app.state, socket, current_user))
 }
+#[tracing::instrument(skip(current_user))]
 async fn handle_socket_helper (
     app: Arc<AppState>,
     socket: WebSocket,
     current_user: FirebaseUser
 ) -> () {
     if let Err(e) = handle_socket(app, socket, current_user).await {
-        print_be!(0, "Failed to handle socket! Error: {e:?}");
+        error!("Failed to handle socket! Error: {e:?}");
     }
 }
+#[tracing::instrument(skip(current_user))]
 async fn handle_socket (
     app: Arc<AppState>,
     mut socket: WebSocket,
     current_user: FirebaseUser
 ) -> Result<()> {
+    let id = &current_user.user_id;
+
+    println!("User ID '{id}' connected to assistant!");
+
     let vector_store_id = std::env::var("OPENAI_VECTOR_STORE_ID")
         .context("Couldn't find the OpenAI vector store ID!")?;
 
@@ -222,7 +231,7 @@ async fn handle_socket (
     let thread = app.openai_client.threads().create(create_thread_request).await?;
 
     while let Some(msg_result) = socket.recv().await {
-        print_be!(0, "Received message: {msg_result:?}");
+        info!("Received message: {msg_result:?}");
         let msg_obj = if let Ok(msg_obj) = msg_result {
             msg_obj
         } else {
@@ -254,7 +263,7 @@ async fn handle_socket (
 
     // Close the thread
     app.openai_client.threads().delete(&thread.id).await?;
-    print_be!(0, "Thread closed!");
+    info!("Thread closed!");
 
     Ok(())
 }

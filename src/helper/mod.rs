@@ -13,6 +13,3 @@ pub mod lib;
 
 /// Contains the Metis helper functions.
 pub mod metis;
-
-/// Contains the debug printing helper functions.
-pub mod print;

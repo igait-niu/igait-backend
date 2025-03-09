@@ -4,8 +4,9 @@ use anyhow::{ Result, Context, anyhow, bail };
 use axum::extract::{Multipart, State};
 use chrono::{DateTime, Utc};
 use time_util::system_time_from_secs;
+use tracing::{warn, info};
 
-use crate::{helper::{email::send_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
+use crate::helper::{email::send_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatusCode}};
 
 /// The request arguments for the historical submissions endpoint.
 struct HistoricalRequestArguments {
@@ -26,9 +27,9 @@ struct HistoricalRequestArguments {
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
 /// * `task_number` - The task number to print out to the console.
+#[tracing::instrument]
 async fn unpack_historical_arguments(
-    mut multipart: Multipart,
-    task_number:   JobTaskID
+    mut multipart: Multipart
 ) -> Result<HistoricalRequestArguments> {
     // Create placeholders for all fields
     let mut uid_option: Option<String> = None;
@@ -43,7 +44,7 @@ async fn unpack_historical_arguments(
         .context("Bad request! Is it possible you submitted a file over the size limit?")?
     {
         let name = field.name();
-        print_be!(task_number, "Field Incoming: {name:#?}");
+        info!("Field Incoming: {name:#?}");
         match field.name() {
             Some("user_id") => {
                 uid_option = Some(
@@ -112,8 +113,8 @@ async fn unpack_historical_arguments(
                         .parse::<bool>()
                         .context("Field 'include_skeleton' didn't contain a valid boolean!")?);
             },
-            _ => {
-                print_be!(task_number, "Which had an unknown/no field name...");
+            other => {
+                warn!("Recieved unknown/no field name '{other:?}'!");
             }
         }
     }
@@ -138,29 +139,23 @@ async fn unpack_historical_arguments(
 /// # Arguments
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object containing the request.
+#[tracing::instrument]
 pub async fn historical_entrypoint ( 
     State(app): State<AppStatePtr>,
     multipart: Multipart
 ) -> Result<(), AppError> {
     let app = app.state;
 
-    // Allocate a new task number
-    *app.task_number.lock().await += 1;
-    let task_number = app.task_number.lock().await.clone();
-
-    print_be!(task_number, "\n----- [ Recieved historical submissions request ] -----");
-
     // Unpack the arguments
-    print_be!(task_number, "Unpacking arguments...");
-    let arguments = unpack_historical_arguments(multipart, task_number).await
+    info!("Unpacking arguments...");
+    let arguments = unpack_historical_arguments(multipart).await
         .context("Failed to unpack historical arguments!")?;
 
     // Get all jobs
     let mut jobs: Vec<(usize, Job)> = app.db
         .lock().await
         .get_all_jobs(
-            &arguments.uid,
-            task_number
+            &arguments.uid
         )
         .await
         .context("Failed to get jobs!")?
@@ -262,7 +257,7 @@ pub async fn historical_entrypoint (
                     )
                 );
                 if arguments.include_skeleton {
-                    print_s3!(task_number, "Preparing to grab pre-signed URLs for the skeleton-overlaid videos...");
+                    info!("Preparing to grab pre-signed URLs for the skeleton-overlaid videos...");
 
                     let inputs_prefix = format!(
                         "{}/outputs/{};{}/videos/",
@@ -285,7 +280,7 @@ pub async fn historical_entrypoint (
                         let file_name = file.split(".")
                             .next()
                             .context("Empty filename! (Likely unreachable?)")?;
-                        print_s3!(task_number, "Found file `{file}` with name `{file_name}`");
+                        info!("Found file `{file}` with name `{file_name}`");
         
                         if file_name.contains("__F_") {
                             front_file_key = Some(object.key.clone());
@@ -311,7 +306,7 @@ pub async fn historical_entrypoint (
                         side_skeleton_video_link
                     ));
 
-                    print_s3!(task_number, "Grabbed pre-signed URLs for the skeleton-overlaid videos!");
+                    info!("Grabbed pre-signed URLs for the skeleton-overlaid videos!");
                 }
             },
             _ => {
@@ -329,7 +324,7 @@ pub async fn historical_entrypoint (
         
         // Add the original videos, if requested
         if arguments.include_original {
-            print_s3!(task_number, "Preparing to grab pre-signed URLs for the original videos...");
+            info!("Preparing to grab pre-signed URLs for the original videos...");
             let inputs_prefix = format!(
                 "{}/inputs/{};{}/",
                 arguments.uid,
@@ -351,7 +346,7 @@ pub async fn historical_entrypoint (
                 let file_name = file.split(".")
                     .next()
                     .context("Empty filename! (Likely unreachable?)")?;
-                print_s3!(task_number, "Found file `{file}` with name `{file_name}`");
+                info!("Found file `{file}` with name `{file_name}`");
 
                 if file_name == "front" {
                     front_file_key = Some(object.key.clone());
@@ -377,21 +372,10 @@ pub async fn historical_entrypoint (
                 side_original_video_link
             ));
 
-            print_s3!(task_number, "Grabbed pre-signed URLs for the original videos!");
+            info!("Grabbed pre-signed URLs for the original videos!");
         }
-
-        /*
-        body.push_str(&format!(
-            "<h3>Patient Information:</h3>- Age: {}<br>- Ethnicity: {}<br>- Sex: {}<br>- Height: {}<br>- Weight: {}<br><br>",
-            job.age,
-            job.ethnicity,
-            job.sex,
-            job.height,
-            job.weight
-        ));
-         */
     }
-    print_be!(task_number, "Built the HTML file and email body!");
+    info!("Built the HTML file and email body!");
 
     // Now that we have created the shortened body, let's 
     //  upload the more verbose file to the user's S3,
@@ -402,7 +386,7 @@ pub async fn historical_entrypoint (
         .as_secs();
 
     // Generate the PDF
-    let (email, pdf_link) = get_email_and_pdf_link(app.clone(), jobs, arguments.uid, timestamp, task_number)
+    let (email, pdf_link) = get_email_and_pdf_link(app.clone(), jobs, arguments.uid, timestamp)
         .await
         .context("Failed to generate the PDF file!")?;
 
@@ -418,8 +402,7 @@ pub async fn historical_entrypoint (
         app,
         &email,
         "Your iGait Submission History",
-        &email_body,
-        task_number
+        &email_body
     ).await
         .context("Failed to send email!")?;
 
@@ -454,12 +437,12 @@ pub async fn historical_entrypoint (
 ///    <br>It is possible for this function to panic without catching the panic.
 ///    <br><br>Currently, I do not have the technical skills to fix this. I will come back with more skill later.
 /// </div>
+#[tracing::instrument]
 async fn get_email_and_pdf_link(
     app: Arc<AppState>,
     jobs: Vec<(usize, Job)>,
     uid: String,
-    timestamp: u64,
-    task_number: JobTaskID
+    timestamp: u64
 ) -> Result<(String, String)> {
     let jobs_og = Arc::new(jobs.clone());
     let uid_og = Arc::new(uid);
@@ -550,14 +533,14 @@ async fn get_email_and_pdf_link(
                 genpdf::style::Style::new()
             )));
         }
-        print_be!(task_number, "Built PDF file!");
+        info!("Built PDF file!");
 
         // Render the file to a compatible Writer
         let path = format!("pdf_handling/history_requests/{}_{}.html", uid_arc, timestamp_arc);
         doc.render_to_file(&path)
             .expect("Closure - Failed to render PDF!");
 
-        print_be!(task_number, "Rendered PDF file to {path}");
+        info!("Rendered PDF file to {path}");
     });
 
     // Await the sync thread
@@ -565,11 +548,11 @@ async fn get_email_and_pdf_link(
         .await
         .map_err(|e| anyhow!("{e:#?}"))
         .context("Failed to generate PDF file!")?;
-    print_be!(task_number, "Preparing to upload...");
+    info!("Preparing to upload...");
 
     // Read the bytes of the file
     let path = format!("pdf_handling/history_requests/{}_{}.html", uid_og, timestamp_og);
-    print_be!(task_number, "Reading file from {path}");
+    info!("Reading file from {path}");
     let extended_body_byte_vec = tokio::fs::read(&path)
         .await
         .context("Failed to read the PDF file!")?;
@@ -578,26 +561,26 @@ async fn get_email_and_pdf_link(
     tokio::fs::remove_file(&format!("pdf_handling/history_requests/{}_{}.html", uid_og, timestamp_og))
         .await
         .context("Failed to remove the PDF file!")?;
-    print_be!(task_number, "Removed file!");
+    info!("Removed file!");
 
     // Put the extended body into the user's S3 bucket
-    print_s3!(task_number, "Putting file to AWS...");
+    info!("Putting file to AWS...");
     let aws_path = format!("{}/history_requests/{}.pdf", uid_og, timestamp_og);
     app.bucket
         .lock().await
         .put_object(&aws_path, &extended_body_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
-    print_s3!(task_number, "Uploaded PDF file to S3!");
+    info!("Uploaded PDF file to S3!");
 
     // Generate the presigned URL
-    print_s3!(task_number, "Generating presigned URL...");
+    info!("Generating presigned URL...");
     let extended_body_url = app
             .bucket
             .lock().await
             .presign_get(aws_path, 86400 * 7, None)
             .context("Failed to get the front keyframed URL!")?;
-    print_s3!(task_number, "Generated a presigned URL for the HTML file!");
+    info!("Generated a presigned URL for the HTML file!");
     
     let email = jobs
         .iter()

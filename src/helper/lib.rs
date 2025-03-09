@@ -1,7 +1,5 @@
 use std::{sync::Arc, time::SystemTime};
 
-use axum_macros::FromRef;
-//use axum::extract::FromRef;
 use s3::{creds::Credentials, Bucket};
 use anyhow::{ Result, Context };
 use axum::{
@@ -13,12 +11,9 @@ use async_openai::{
 };
 use tokio::sync::Mutex;
 use firebase_auth::{FirebaseAuth, FirebaseUser};
+use tracing::error;
 
 use super::database::Database;
-use crate::print_be;
-
-/// The unique identifier for a job task.
-pub type JobTaskID = u128;
 
 /// The user struct, which contains a user ID and a list of jobs.
 /// 
@@ -110,7 +105,6 @@ impl std::fmt::Debug for AppState {
         f.debug_struct("AppState")
             .field("db", &self.db)
             .field("bucket", &self.bucket)
-            .field("task_number", &self.task_number)
             .field("aws_ses_client", &self.aws_ses_client)
             .field("openai_client", &self.openai_client)
             .field("openai_assistant", &self.openai_assistant)
@@ -126,7 +120,7 @@ fn get_bearer_token(header: &str) -> Option<String> {
         _ => Some(header[prefix_len..].to_string()),
     }
 }
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct AppStatePtr {
     pub state: Arc<AppState>
 }
@@ -150,12 +144,14 @@ impl FromRequestParts<AppStatePtr> for FirebaseUser {
             Ok,
         )?;
 
-        println!("Got bearer token {}", bearer);
-
         match store.verify(&bearer) {
-            Err(e) => Err(UnauthorizedResponse {
-                msg: format!("Failed to verify Token: {}", e),
-            }),
+            Err(e) => {
+                println!("Failed to verify Token: {}", e);
+
+                Err(UnauthorizedResponse {
+                    msg: format!("Failed to verify Token: {}", e),
+                })
+            },
             Ok(current_user) => Ok(current_user),
         }
     }
@@ -170,19 +166,11 @@ impl IntoResponse for UnauthorizedResponse {
         (http::StatusCode::UNAUTHORIZED, self.msg).into_response()
     }
 }
-#[derive(FromRef)]
 pub struct AppState {
-    #[from_ref(skip)]
     pub db: Mutex<Database>,
-    #[from_ref(skip)]
     pub bucket: Mutex<Bucket>,
-    #[from_ref(skip)]
-    pub task_number: Mutex<JobTaskID>,
-    #[from_ref(skip)]
     pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
-    #[from_ref(skip)]
     pub openai_client: Client<OpenAIConfig>,
-    #[from_ref(skip)]
     pub openai_assistant: AssistantObject,
     pub firebase_auth: FirebaseAuth
 }
@@ -203,7 +191,7 @@ impl AppState {
     pub async fn new() -> Result<Self> {
         let aws_config = aws_config::load_from_env().await;
         let client = Client::new();
-        let firebase_auth = FirebaseAuth::new("https://network-technology-project-default-rtdb.firebaseio.com/")
+        let firebase_auth = FirebaseAuth::new("network-technology-project")
             .await;
 
         // Initialize the assistant
@@ -222,7 +210,6 @@ impl AppState {
                 "us-east-2".parse().context("Improper region!")?,
                 Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
             ).context("Failed to initialize bucket!")?),
-            task_number: Mutex::new(0),
             aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
             openai_client: client,
             openai_assistant: assistant,
@@ -243,17 +230,17 @@ impl AppState {
 #[derive(Debug)]
 pub struct AppError(pub anyhow::Error);
 impl IntoResponse for AppError {
+    #[tracing::instrument]
     fn into_response(self) -> Response<Body> {
-        print_be!(0, "Encountered an error: {self:#?}");
-        print_be!(0, "Returning an internal server error response.");
-        print_be!(0, "Please check the logs for more information.");
+        error!("Encountered an error: {self:#?}");
+        error!("Please see below for more information.");
 
-        print_be!(0, "Printing the error chain...");
+        error!("Printing the error chain...");
         for (ind, cause) in self.0.chain().enumerate() {
-            eprintln!("[{ind}] {cause:#?}");
+            error!("[{ind}] {cause:#?}");
         }
 
-        print_be!(0, "Printing the backtrace...");
+        error!("Printing the backtrace...");
         eprintln!("{:#?}", self.0.backtrace());
 
         (

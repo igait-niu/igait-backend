@@ -3,13 +3,12 @@ use std::{sync::Arc, time::SystemTime};
 use axum::{body::Bytes, extract::{Multipart, State}};
 use tokio::io::AsyncWriteExt;
 use anyhow::{ Result, Context, anyhow };
+use tracing::info;
 
-use crate::{
-    helper::{
-        email::send_welcome_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
-            copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
-        }
-    }, print_be, print_s3,
+use crate::helper::{
+    email::send_welcome_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode}, metis::{
+        copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
+    }
 };
 
 /// The required arguments for the upload request.
@@ -26,6 +25,7 @@ struct UploadRequestArguments {
 }
 
 /// A representation of a file in a `Multipart` request.
+#[derive(Debug)]
 struct UploadRequestFile {
     name:  String,
     bytes: Bytes
@@ -40,9 +40,9 @@ struct UploadRequestFile {
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
 /// * `task_number` - The task number to print out to the console.
+#[tracing::instrument]
 async fn unpack_upload_arguments(
-    multipart:   &mut Multipart,
-    task_number: JobTaskID
+    multipart:   &mut Multipart
 ) -> Result<UploadRequestArguments> {
     // Initialize all of the fields as options
     let mut uid_option:       Option<String> = None;
@@ -67,7 +67,7 @@ async fn unpack_upload_arguments(
     {
         let name = field.name();
         let field_name = field.file_name();
-        print_be!(task_number, "Field Incoming: {name:?} - File Attached: {field_name:?}");
+        info!("Field Incoming: {name:?} - File Attached: {field_name:?}");
         
         match field.name() {
             Some("fileuploadfront") => {
@@ -136,7 +136,7 @@ async fn unpack_upload_arguments(
                             .context("Field 'weight' wasn't parseable as a number! Was the entry only digits?")?);
             },
             _ => {
-                print_be!(task_number, "Which had an unknown/no field name...");
+                info!("Which had an unknown/no field name...");
             }
         }
     }
@@ -181,23 +181,18 @@ async fn unpack_upload_arguments(
 /// # Arguments
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object to unpack.
+#[tracing::instrument]
 pub async fn upload_entrypoint(
     State(app): State<AppStatePtr>,
     mut multipart: Multipart
 ) -> Result<(), AppError> {
     let app = app.state;
 
-    // Allocate a new task number
-    *app.task_number.lock().await += 1;
-    let task_number = app.task_number.lock().await.clone();
-
-    print_be!(task_number, "\n----- [ Recieved base request ] -----");
-    print_be!(task_number, "Unpacking arguments...");
+    info!("Unpacking arguments...");
 
     // Unpack the arguments
     let arguments = unpack_upload_arguments(
-            &mut multipart,
-            task_number
+            &mut multipart
         ).await
         .context("Failed to unpack arguments!")?;
 
@@ -212,8 +207,7 @@ pub async fn upload_entrypoint(
         .db
         .lock().await
         .count_jobs(
-            &arguments.uid,
-            task_number
+            &arguments.uid
         ).await
         .context("Failed to count the number of jobs!")?;
 
@@ -234,8 +228,7 @@ pub async fn upload_entrypoint(
         .lock().await
         .new_job(
             &arguments.uid,
-            job.clone(),
-            task_number
+            job.clone()
         ).await
         .context("Failed to add the new job to the database!")?;
 
@@ -246,8 +239,7 @@ pub async fn upload_entrypoint(
             arguments.front_file,
             arguments.side_file,
             &arguments.uid, 
-            job_id,
-            task_number
+            job_id
         ).await 
     {
         // Populate the status object
@@ -260,8 +252,7 @@ pub async fn upload_entrypoint(
             .update_status(
                 &arguments.uid,
                 job_id,
-                status,
-                task_number
+                status
             ).await
             .context("Failed to update the status of the job! It failed to save, however.")?;
 
@@ -278,8 +269,7 @@ pub async fn upload_entrypoint(
         app.clone(),
         &job,
         &arguments.uid,
-        job_id,
-        task_number
+        job_id
     ).await.context("Failed to send welcome email!")?;
 
     // Update the status of the job
@@ -288,8 +278,7 @@ pub async fn upload_entrypoint(
         .update_status(
             &arguments.uid,
             job_id,
-            status,
-            task_number
+            status
         ).await
         .context("Failed to update the status of the job! However, it was otherwise saved.")?;
 
@@ -310,13 +299,13 @@ pub async fn upload_entrypoint(
 /// * `job_id` - The job ID to save the files under.
 /// * `job` - The job object to save to the local filesystem.
 /// * `task_number` - The task number to print out to the console.
+#[tracing::instrument]
 async fn save_upload_files<'a> (
     app:              Arc<AppState>,
     front_file:       UploadRequestFile,
     side_file:        UploadRequestFile,
     user_id:          &str,
-    job_id:           usize,
-    task_number:      JobTaskID
+    job_id:           usize
 ) -> Result<()> {
     // Unpack the extensions
     let front_extension = front_file.name.split('.')
@@ -334,7 +323,7 @@ async fn save_upload_files<'a> (
         tokio::fs::create_dir(&dir_path).await
             .context("Unable to create directory for inputs file!")?;
 
-        print_be!(task_number, "Created directory for inputs file: {dir_path}");
+        info!("Created directory for inputs file: {dir_path}");
     }
 
     // Build path ID and file handles
@@ -377,18 +366,18 @@ async fn save_upload_files<'a> (
         .put_object(format!("{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
-    print_s3!(task_number, "Successfully uploaded front file to S3!");
+    info!("Successfully uploaded front file to S3!");
     app.bucket
         .lock().await
         .put_object(format!("{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
-    print_s3!(task_number, "Successfully uploaded side file to S3!");
-    print_be!(task_number, "Successfully saved all files physically and to S3!");
+    info!("Successfully uploaded side file to S3!");
+    info!("Successfully saved all files physically and to S3!");
     
 
     // Copy files to Metis
-    print_be!(task_number, "Copying files to Metis...");
+    info!("Copying files to Metis...");
     copy_file(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -418,10 +407,10 @@ async fn save_upload_files<'a> (
         false
     ).await
         .context("Couldn't move file from local to Metis!")?;
-    print_be!(task_number, "Successfully copied files to Metis!");
+    info!("Successfully copied files to Metis!");
 
     // Launch the Metis inference
-    print_be!(task_number, "Launching PBS batchfile on Metis");
+    info!("Launching PBS batchfile on Metis");
     let pbs_job_id = metis_qsub(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -429,7 +418,7 @@ async fn save_upload_files<'a> (
         vec!("-v", &format!("ID={}", job_file_identifier))
     ).await
         .map_err(|e| anyhow!("Couldn't launch PBS batchfile on Metis! Full error: {e:?}"))?;
-    print_be!(task_number, "Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
+    info!("Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
 
     // Write the job ID to a file
     let pbs_job_id_file_path = format!("{}/pbs_job_id", dir_path);
