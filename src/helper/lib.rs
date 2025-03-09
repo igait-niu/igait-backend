@@ -1,16 +1,18 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
+use axum_macros::FromRef;
+//use axum::extract::FromRef;
 use s3::{creds::Credentials, Bucket};
 use anyhow::{ Result, Context };
 use axum::{
-    body::Body,
-    response::{IntoResponse, Response}
+    async_trait, body::Body, extract::FromRequestParts, http::{self, request::Parts}, response::{IntoResponse, Response}
 };
 use serde::{Deserialize, Serialize};
 use async_openai::{
     config::OpenAIConfig, types::AssistantObject, Client
 };
 use tokio::sync::Mutex;
+use firebase_auth::{FirebaseAuth, FirebaseUser};
 
 use super::database::Database;
 use crate::print_be;
@@ -103,14 +105,86 @@ pub struct Request {
 /// # Notes
 /// * The task number is used to keep track of requests and is incremented with each request.
 /// * This struct is typically wrapped in an `Arc<Mutex<>>` to allow for concurrent access.
-#[derive(Debug)]
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState")
+            .field("db", &self.db)
+            .field("bucket", &self.bucket)
+            .field("task_number", &self.task_number)
+            .field("aws_ses_client", &self.aws_ses_client)
+            .field("openai_client", &self.openai_client)
+            .field("openai_assistant", &self.openai_assistant)
+            .field("firebase_auth", &"<firebase_auth>")
+            .finish()
+    }
+}
+fn get_bearer_token(header: &str) -> Option<String> {
+    let prefix_len = "Bearer ".len();
+
+    match header.len() {
+        l if l < prefix_len => None,
+        _ => Some(header[prefix_len..].to_string()),
+    }
+}
+#[derive(Clone)]
+pub struct AppStatePtr {
+    pub state: Arc<AppState>
+}
+#[async_trait]
+impl FromRequestParts<AppStatePtr> for FirebaseUser {
+    type Rejection = UnauthorizedResponse;
+
+    async fn from_request_parts(parts: &mut Parts, app_state_ptr: &AppStatePtr) -> Result<Self, Self::Rejection> {
+        let store = &app_state_ptr.state.firebase_auth;
+
+        let auth_header = parts
+            .headers
+            .get(http::header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("");
+
+        let bearer = get_bearer_token(auth_header).map_or(
+            Err(UnauthorizedResponse {
+                msg: "Missing Bearer Token".to_string(),
+            }),
+            Ok,
+        )?;
+
+        println!("Got bearer token {}", bearer);
+
+        match store.verify(&bearer) {
+            Err(e) => Err(UnauthorizedResponse {
+                msg: format!("Failed to verify Token: {}", e),
+            }),
+            Ok(current_user) => Ok(current_user),
+        }
+    }
+}
+
+pub struct UnauthorizedResponse {
+    msg: String,
+}
+
+impl IntoResponse for UnauthorizedResponse {
+    fn into_response(self) -> Response {
+        (http::StatusCode::UNAUTHORIZED, self.msg).into_response()
+    }
+}
+#[derive(FromRef)]
 pub struct AppState {
+    #[from_ref(skip)]
     pub db: Mutex<Database>,
+    #[from_ref(skip)]
     pub bucket: Mutex<Bucket>,
+    #[from_ref(skip)]
     pub task_number: Mutex<JobTaskID>,
+    #[from_ref(skip)]
     pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
+    #[from_ref(skip)]
     pub openai_client: Client<OpenAIConfig>,
+    #[from_ref(skip)]
     pub openai_assistant: AssistantObject,
+    pub firebase_auth: FirebaseAuth
 }
 impl AppState {
     /// Initializes the application state with a new database and S3 bucket.
@@ -129,6 +203,8 @@ impl AppState {
     pub async fn new() -> Result<Self> {
         let aws_config = aws_config::load_from_env().await;
         let client = Client::new();
+        let firebase_auth = FirebaseAuth::new("https://network-technology-project-default-rtdb.firebaseio.com/")
+            .await;
 
         // Initialize the assistant
         let assistant_id = std::env::var("OPENAI_ASSISTANT_ID")
@@ -149,7 +225,8 @@ impl AppState {
             task_number: Mutex::new(0),
             aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
             openai_client: client,
-            openai_assistant: assistant
+            openai_assistant: assistant,
+            firebase_auth
         })
     }
 }

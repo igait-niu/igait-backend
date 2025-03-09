@@ -8,7 +8,7 @@ use axum::{
     extract::DefaultBodyLimit, routing::{any, post}, Router
 };
 use daemons::filesystem::work_inputs;
-use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
+use helper::{lib::{AppState, AppStatePtr}, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
@@ -34,13 +34,14 @@ async fn main() -> Result<()> {
     let state: Arc<AppState> = Arc::new(
         AppState::new().await.context("Couldn't set up app state!")?
     );
+    let app_state_ptr = AppStatePtr { state: state.clone() };
 
     // Build the V1 API router
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
         .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
-        .with_state(state.clone());
+        .with_state(app_state_ptr);
 
     // Nest the API into the general app router
     let app = Router::new()

@@ -6,11 +6,13 @@ use async_openai::{
     }, Client
 };
 use anyhow::{Result, Context, bail};
+use axum_macros::debug_handler;
 use tokio::time::{Duration, sleep};
 use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
+use firebase_auth::FirebaseUser;
 
-use crate::{helper::lib::AppState, print_be};
+use crate::{helper::lib::{AppState, AppStatePtr}, print_be};
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -181,23 +183,27 @@ async fn send_response (
 
     Ok(())
 }
+#[debug_handler]
 pub async fn assistant_entrypoint (
-    State(app): State<Arc<AppState>>,
+    current_user: FirebaseUser,
+    State(app): State<AppStatePtr>,
     ws: WebSocketUpgrade
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_socket_helper(app, socket))
+    ws.on_upgrade(move |socket| handle_socket_helper(app.state, socket, current_user))
 }
 async fn handle_socket_helper (
     app: Arc<AppState>,
-    socket: WebSocket
+    socket: WebSocket,
+    current_user: FirebaseUser
 ) -> () {
-    if let Err(e) = handle_socket(app, socket).await {
+    if let Err(e) = handle_socket(app, socket, current_user).await {
         print_be!(0, "Failed to handle socket! Error: {e:?}");
     }
 }
 async fn handle_socket (
     app: Arc<AppState>,
-    mut socket: WebSocket
+    mut socket: WebSocket,
+    current_user: FirebaseUser
 ) -> Result<()> {
     let vector_store_id = std::env::var("OPENAI_VECTOR_STORE_ID")
         .context("Couldn't find the OpenAI vector store ID!")?;

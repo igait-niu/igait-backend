@@ -5,7 +5,7 @@ use axum::extract::{Multipart, State};
 use chrono::{DateTime, Utc};
 use time_util::system_time_from_secs;
 
-use crate::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
+use crate::{helper::{email::send_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
 
 /// The request arguments for the historical submissions endpoint.
 struct HistoricalRequestArguments {
@@ -139,9 +139,11 @@ async fn unpack_historical_arguments(
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object containing the request.
 pub async fn historical_entrypoint ( 
-    State(app): State<Arc<AppState>>,
+    State(app): State<AppStatePtr>,
     multipart: Multipart
 ) -> Result<(), AppError> {
+    let app = app.state;
+
     // Allocate a new task number
     *app.task_number.lock().await += 1;
     let task_number = app.task_number.lock().await.clone();

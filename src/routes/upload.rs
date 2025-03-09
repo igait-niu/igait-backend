@@ -6,7 +6,7 @@ use anyhow::{ Result, Context, anyhow };
 
 use crate::{
     helper::{
-        email::send_welcome_email, lib::{AppError, AppState, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
+        email::send_welcome_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode, JobTaskID}, metis::{
             copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
         }
     }, print_be, print_s3,
@@ -182,9 +182,11 @@ async fn unpack_upload_arguments(
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object to unpack.
 pub async fn upload_entrypoint(
-    State(app): State<Arc<AppState>>,
+    State(app): State<AppStatePtr>,
     mut multipart: Multipart
 ) -> Result<(), AppError> {
+    let app = app.state;
+
     // Allocate a new task number
     *app.task_number.lock().await += 1;
     let task_number = app.task_number.lock().await.clone();

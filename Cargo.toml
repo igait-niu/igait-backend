@@ -14,9 +14,11 @@ aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.15.0"
 aws-sdk-sesv2 = "1.54.0"
 axum = { version = "0.7.3", features = ["multipart", "ws"] }
+axum-macros = "0.5.0"
 chrono = { version = "0.4.38", features = ["alloc"] }
 chrono-tz = "0.10.0"
 colored = "2.1.0"
+firebase-auth = { version = "0.5.0", features = ["axum"] }
 firebase-rs = "2.0.9"
 genpdf = "0.2.0"
 openssh = { version = "0.10.3", features = ["native-mux"] }
