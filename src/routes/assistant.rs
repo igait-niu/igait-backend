@@ -5,12 +5,14 @@ use async_openai::{
         AssistantObject, CreateAssistantToolFileSearchResources, CreateAssistantToolResources, CreateMessageRequestArgs, CreateRunRequest, CreateThreadRequest, MessageContent, MessageContentTextAnnotations, MessageRole, RunStatus, SubmitToolOutputsRunRequest, ThreadObject, ToolsOutputs
     }, Client
 };
+use futures_util::{SinkExt, StreamExt};
 use anyhow::{Result, Context, bail};
 use tokio::time::{Duration, sleep};
-use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, response::Response};
+use axum::{extract::{ws::WebSocket, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
 use firebase_auth::FirebaseUser;
 use tracing::{info, error};
+use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
 use crate::helper::lib::{AppState, AppStatePtr};
 
@@ -101,7 +103,7 @@ async fn send_response (
                 let event = AssistantUpdate::Message{ content: body.join("\n") };
                 info!("Sending message to client: {:?}", event);
                 socket.send(
-                    Message::Text(serde_json::to_string(&event)
+                    axum::extract::ws::Message::Text(serde_json::to_string(&event)
                         .context("Failed to serialize 'done thinking' event!")?)
                 ).await
                     .context("Failed to send message to client! Error: {e:?}")?;
@@ -132,7 +134,7 @@ async fn send_response (
 
                 let event = AssistantUpdate::Waiting{ content: format!("> {}", status_text) };
                 socket.send(
-                    Message::Text(serde_json::to_string(&event)
+                    axum::extract::ws::Message::Text(serde_json::to_string(&event)
                         .context("Failed to serialize 'done thinking' event!")?)
                 ).await
                     .context("Failed to send message to client! Error: {e:?}")?;
@@ -181,6 +183,97 @@ async fn send_response (
 
         // Retrieve the run
         run = client.threads().runs(&thread.id).retrieve(&run.id).await?;
+    }
+
+    Ok(())
+}
+#[tracing::instrument]
+pub async fn assistant_proxied_entrypoint (
+    State(app): State<AppStatePtr>,
+    ws: WebSocketUpgrade
+) -> Response {
+    info!("Proxying connection for `assistant` route");
+    
+    ws.on_upgrade(move |socket| handle_proxied_socket_helper(app.state, socket))
+}
+#[tracing::instrument]
+async fn handle_proxied_socket_helper (
+    app: Arc<AppState>,
+    socket: WebSocket
+) -> () {
+    if let Err(e) = handle_proxied_socket(app, socket).await {
+        error!("Failed to handle socket! Error: {e:?}");
+    }
+}
+#[tracing::instrument]
+async fn handle_proxied_socket (
+    app: Arc<AppState>,
+    mut socket: WebSocket
+) -> Result<()> {
+    // Get the token from the client
+    let token = match socket.recv().await
+        .context("Failed to receive token from client!")?
+    {
+        Ok(msg_obj) => {
+            match msg_obj {
+                axum::extract::ws::Message::Text(text) => text,
+                _ => bail!("Expected text message!")
+            }
+        },
+        Err(e) => bail!("Failed to receive message from client! Error: {e:?}")
+    };
+
+    println!("Received token: {token}");
+
+    let port = std::env::var("PORT").unwrap_or("3000".to_string());
+    let mut request = (&format!("ws://localhost:{port}/api/v1/assistant")).into_client_request()?;
+    let headers = request.headers_mut();
+    headers.insert("Authorization", format!("Bearer {token}").parse().context("Failed to parse token header!")?);
+    let (mut local_socket, _) = connect_async(request).await?;
+
+    // Get message from client
+    'primary_loop: while let Some(msg_result) = socket.recv().await {
+        info!("Received message: {msg_result:?}");
+        let msg_obj = if let Ok(msg_obj) = msg_result {
+            msg_obj
+        } else {
+            break;
+        };
+
+        let msg = match msg_obj {
+            axum::extract::ws::Message::Text(text) => text,
+            _ => {
+                return Ok(());
+            }
+        };
+
+        println!("Got message on proxied connection, forwarding: {msg}");
+
+        local_socket.send(tokio_tungstenite::tungstenite::Message::Text(msg)).await
+            .context("Couldn't send message!")?;
+
+        println!("Sent!");
+
+        loop {
+            while let Some(msg_result) = local_socket.next().await {
+                match msg_result.and_then(|msg_obj| msg_obj.into_text()) {
+                    Ok(msg) => {
+                        socket.send(axum::extract::ws::Message::Text(msg.clone())).await
+                            .context("Couldn't send message!")?;
+
+                        if msg.starts_with("{\"type\":\"Message\"") {
+                            println!("Awaiting new message...");
+                            continue 'primary_loop;
+                        }
+                    },
+                    Err(e) => {
+                        error!("Failed to receive message from local socket! Error: {e:?}");
+
+                        break 'primary_loop;
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
@@ -239,7 +332,7 @@ async fn handle_socket (
         };
 
         let msg = match msg_obj {
-            Message::Text(text) => text,
+            axum::extract::ws::Message::Text(text) => text,
             _ => {
                 return Ok(());
             }
@@ -254,7 +347,7 @@ async fn handle_socket (
         ).await {
             let event = AssistantUpdate::Error { content: format!("> {e}") };
             socket.send(
-                Message::Text(serde_json::to_string(&event)
+                axum::extract::ws::Message::Text(serde_json::to_string(&event)
                     .context("Failed to serialize 'error' event!")?)
             ).await
                 .context("Failed to send message to client! Error: {e:?}")?;
