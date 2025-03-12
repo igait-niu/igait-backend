@@ -312,7 +312,7 @@ async fn work_output_helper (
     
     info!("Deleting local output folder...");
     if let Err(e) = tokio::fs::remove_dir_all(&format!("outputs/{file_name}")).await {
-        println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
+        error!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
     }
     info!("Successfully deleted local output folder!");
 

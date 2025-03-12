@@ -146,7 +146,7 @@ impl FromRequestParts<AppStatePtr> for FirebaseUser {
 
         match store.verify(&bearer) {
             Err(e) => {
-                println!("Failed to verify Token: {}", e);
+                error!("Failed to verify Token: {}", e);
 
                 Err(UnauthorizedResponse {
                     msg: format!("Failed to verify Token: {}", e),
@@ -241,7 +241,7 @@ impl IntoResponse for AppError {
         }
 
         error!("Printing the backtrace...");
-        eprintln!("{:#?}", self.0.backtrace());
+        error!("{:#?}", self.0.backtrace());
 
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,

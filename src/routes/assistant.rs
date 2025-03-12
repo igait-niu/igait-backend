@@ -7,6 +7,7 @@ use async_openai::{
 };
 use futures_util::{SinkExt, StreamExt};
 use anyhow::{Result, Context, bail};
+use time_util::system_time_from_secs;
 use tokio::time::{Duration, sleep};
 use axum::{extract::{ws::WebSocket, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
@@ -14,23 +15,60 @@ use firebase_auth::FirebaseUser;
 use tracing::{info, error};
 use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
-use crate::helper::lib::{AppState, AppStatePtr};
+use crate::helper::lib::{AppState, AppStatePtr, Job};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 enum AssistantUpdate {
     Message { content: String },
     Error { content: String },
-    Waiting { content: String }
+    Waiting { content: String },
+    Jobs { content: Vec<Job> }
+}
+
+/* OpenAI Spec
+
+"properties": {
+      "entries": {
+        "type": "number",
+        "description": "The number of results to show, should default to 5"
+      },
+      "start_timestamp": {
+        "type": "number",
+        "description": "UNIX timestamp representing the start date (optional)"
+      },
+      "end_timestamp": {
+        "type": "number",
+        "description": "UNIX timestamp representing the end date (optional)"
+      },
+      "result_type": {
+        "type": "string",
+        "description": "Specifies the type of results to filter by. Options are 'ASD' or 'NO ASD' (optional).",
+        "enum": [
+          "ASD",
+          "NO ASD"
+        ]
+      }
+    },
+
+*/
+#[derive(Deserialize)]
+struct SearchJobArguments {
+    entries: Option<i64>,
+    start_timestamp: Option<i64>,
+    end_timestamp: Option<i64>,
+    result_type: Option<String>
 }
 
 #[tracing::instrument]
 async fn send_response (
+    app: &Arc<AppState>,
     client: &Client<OpenAIConfig>,
     thread: &ThreadObject,
     assistant: &AssistantObject,
     message: &str,
-    socket: &mut WebSocket
+    socket: &mut WebSocket,
+    user_id: &str
 ) -> Result<()> {
     // Create and add the message
     let create_message_request = CreateMessageRequestArgs::default()
@@ -124,15 +162,15 @@ async fn send_response (
             RunStatus::Queued     | RunStatus::Cancelling | 
             RunStatus::InProgress | RunStatus::Incomplete => {
                 let status_text = match run.status {
-                    RunStatus::Queued     => "Run Queued",
+                    RunStatus::Queued     => "Run queued...",
                     RunStatus::Cancelling => "Cancelling...",
                     RunStatus::InProgress => "In Progress...",
-                    RunStatus::Incomplete => "Run Incomplete",
-                    RunStatus::RequiresAction => "Run Requires Action",
+                    RunStatus::Incomplete => "Run incomplete...",
+                    RunStatus::RequiresAction => "Run requires action...",
                     _ => unreachable!()
                 };
 
-                let event = AssistantUpdate::Waiting{ content: format!("> {}", status_text) };
+                let event = AssistantUpdate::Waiting{ content: status_text.to_string() };
                 socket.send(
                     axum::extract::ws::Message::Text(serde_json::to_string(&event)
                         .context("Failed to serialize 'done thinking' event!")?)
@@ -153,20 +191,116 @@ async fn send_response (
                     stream: None
                 };
                 for run_tool_call in run_tool_calls {
-                    let function_name = &run_tool_call.function.name;
+                    let function = &run_tool_call.function;
+                    let function_name = &function.name;
 
-                    println!("Run ID requires action: {function_name}");
+                    info!("Run ID requires action: {function_name}");
 
                     let result = match function_name.as_str() {
                         "get_last_job" => {
-                            "It failed with an error! You submitted a MOV instead of an MP4"
+                            let jobs = app
+                                .db.lock().await
+                                .get_all_jobs(user_id).await
+                                .with_context(|| "Failed to get all jobs for {user_id}!")?;
+
+                            let last_job = jobs.last()
+                                .with_context(|| "No jobs found for {user_id}!")?;
+
+                            let last_job_serialized = serde_json::to_string(last_job)
+                                .context("Failed to serialize last job!")?;
+
+                            // Send the job over the websocket
+                            let event = AssistantUpdate::Jobs{ content: vec!(last_job.clone()) };
+                            info!("Sending jobs to client: {event:#?}");
+                            socket.send(
+                                axum::extract::ws::Message::Text(serde_json::to_string(&event)
+                                    .context("Failed to serialize 'done thinking' event!")?)
+                            ).await
+                                .context("Failed to send message to client! Error: {e:?}")?;
+
+                            last_job_serialized
+                        },
+                        "get_all_jobs" => {
+                            let jobs = app
+                                .db.lock().await
+                                .get_all_jobs(user_id).await
+                                .with_context(|| "Failed to get all jobs for {user_id}!")?;
+
+                            let jobs_serialized = serde_json::to_string(&jobs)
+                                .context("Failed to serialize last job!")?;
+
+                            // Send the job over the websocket
+                            let event = AssistantUpdate::Jobs{ content: jobs.clone() };
+                            info!("Sending jobs to client: {event:#?}");
+                            socket.send(
+                                axum::extract::ws::Message::Text(serde_json::to_string(&event)
+                                    .context("Failed to serialize 'done thinking' event!")?)
+                            ).await
+                                .context("Failed to send message to client! Error: {e:?}")?;
+
+                            jobs_serialized
+                        },
+                        "search_jobs" => {
+                            let search_args = serde_json::from_str::<SearchJobArguments>(
+                                &function.arguments
+                            ).context("Failed to deserialize search arguments!")?;
+
+                            let mut jobs = app
+                                .db.lock().await
+                                .get_all_jobs(user_id).await
+                                .with_context(|| "Failed to search jobs for {user_id}!")?;
+
+                            // Filter the jobs
+                            if let Some(entries) = search_args.entries {
+                                jobs = jobs.into_iter().take(entries as usize).collect();
+                            }
+                            if let Some(start_timestamp) = search_args.start_timestamp {
+                                jobs = jobs.into_iter().filter_map(|job| {
+                                    if job.timestamp >= system_time_from_secs(serde_json::Value::Number(
+                                        start_timestamp.into()
+                                    )).ok()? {
+                                        Some(job)
+                                    } else {
+                                        None
+                                    }
+                                }).collect();
+                            }
+                            if let Some(end_timestamp) = search_args.end_timestamp {
+                                jobs = jobs.into_iter().filter_map(|job| {
+                                    if job.timestamp <= system_time_from_secs(serde_json::Value::Number(
+                                        end_timestamp.into()
+                                    )).ok()? {
+                                        Some(job)
+                                    } else {
+                                        None
+                                    }
+                                }).collect();
+                            }
+                            if let Some(result_type) = search_args.result_type {
+                                jobs = jobs.into_iter().filter(|job| job.status.value == result_type).collect();
+                            }
+
+                            // Serialized the now-filtered jobs
+                            let jobs_serialized = serde_json::to_string(&jobs)
+                                .context("Failed to serialize last job!")?;
+
+                            // Send the job over the websocket
+                            let event = AssistantUpdate::Jobs{ content: jobs.clone() };
+                            info!("Sending jobs to client: {event:#?}");
+                            socket.send(
+                                axum::extract::ws::Message::Text(serde_json::to_string(&event)
+                                    .context("Failed to serialize 'done thinking' event!")?)
+                            ).await
+                                .context("Failed to send message to client! Error: {e:?}")?;
+
+                            jobs_serialized
                         },
                         _ => bail!("Unknown function name: {function_name}")
                     };
                     
                     returned_tool_outputs.tool_outputs.push(ToolsOutputs {
                         tool_call_id: Some(run_tool_call.id.clone()),
-                        output: Some(result.to_string())
+                        output: Some(result)
                     });
                 }
 
@@ -223,7 +357,7 @@ async fn handle_proxied_socket (
         Err(e) => bail!("Failed to receive message from client! Error: {e:?}")
     };
 
-    println!("Received token: {token}");
+    info!("Received token: {token}");
 
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let mut request = (&format!("ws://localhost:{port}/api/v1/assistant")).into_client_request()?;
@@ -247,12 +381,12 @@ async fn handle_proxied_socket (
             }
         };
 
-        println!("Got message on proxied connection, forwarding: {msg}");
+        info!("Got message on proxied connection, forwarding: {msg}");
 
         local_socket.send(tokio_tungstenite::tungstenite::Message::Text(msg)).await
             .context("Couldn't send message!")?;
 
-        println!("Sent!");
+        info!("Sent!");
 
         loop {
             while let Some(msg_result) = local_socket.next().await {
@@ -262,7 +396,7 @@ async fn handle_proxied_socket (
                             .context("Couldn't send message!")?;
 
                         if msg.starts_with("{\"type\":\"Message\"") {
-                            println!("Awaiting new message...");
+                            info!("Awaiting new message...");
                             continue 'primary_loop;
                         }
                     },
@@ -305,7 +439,7 @@ async fn handle_socket (
 ) -> Result<()> {
     let id = &current_user.user_id;
 
-    println!("User ID '{id}' connected to assistant!");
+    info!("User ID '{id}' connected to assistant!");
 
     let vector_store_id = std::env::var("OPENAI_VECTOR_STORE_ID")
         .context("Couldn't find the OpenAI vector store ID!")?;
@@ -339,13 +473,15 @@ async fn handle_socket (
         };
 
         if let Err(e) = send_response(
+            &app,
             &app.openai_client,
             &thread,
             &app.openai_assistant,
             &msg,
-            &mut socket
+            &mut socket,
+            &id
         ).await {
-            let event = AssistantUpdate::Error { content: format!("> {e}") };
+            let event = AssistantUpdate::Error { content: e.to_string() };
             socket.send(
                 axum::extract::ws::Message::Text(serde_json::to_string(&event)
                     .context("Failed to serialize 'error' event!")?)
