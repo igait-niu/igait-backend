@@ -1,22 +1,19 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
 use s3::{creds::Credentials, Bucket};
 use anyhow::{ Result, Context };
 use axum::{
-    body::Body,
-    response::{IntoResponse, Response}
+    async_trait, body::Body, extract::FromRequestParts, http::{self, request::Parts}, response::{IntoResponse, Response}
 };
 use serde::{Deserialize, Serialize};
 use async_openai::{
     config::OpenAIConfig, types::AssistantObject, Client
 };
 use tokio::sync::Mutex;
+use firebase_auth::{FirebaseAuth, FirebaseUser};
+use tracing::error;
 
 use super::database::Database;
-use crate::print_be;
-
-/// The unique identifier for a job task.
-pub type JobTaskID = u128;
 
 /// The user struct, which contains a user ID and a list of jobs.
 /// 
@@ -103,14 +100,79 @@ pub struct Request {
 /// # Notes
 /// * The task number is used to keep track of requests and is incremented with each request.
 /// * This struct is typically wrapped in an `Arc<Mutex<>>` to allow for concurrent access.
-#[derive(Debug)]
+impl std::fmt::Debug for AppState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppState")
+            .field("db", &self.db)
+            .field("bucket", &self.bucket)
+            .field("aws_ses_client", &self.aws_ses_client)
+            .field("openai_client", &self.openai_client)
+            .field("openai_assistant", &self.openai_assistant)
+            .field("firebase_auth", &"<firebase_auth>")
+            .finish()
+    }
+}
+fn get_bearer_token(header: &str) -> Option<String> {
+    let prefix_len = "Bearer ".len();
+
+    match header.len() {
+        l if l < prefix_len => None,
+        _ => Some(header[prefix_len..].to_string()),
+    }
+}
+#[derive(Debug, Clone)]
+pub struct AppStatePtr {
+    pub state: Arc<AppState>
+}
+#[async_trait]
+impl FromRequestParts<AppStatePtr> for FirebaseUser {
+    type Rejection = UnauthorizedResponse;
+
+    async fn from_request_parts(parts: &mut Parts, app_state_ptr: &AppStatePtr) -> Result<Self, Self::Rejection> {
+        let store = &app_state_ptr.state.firebase_auth;
+
+        let auth_header = parts
+            .headers
+            .get(http::header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("");
+
+        let bearer = get_bearer_token(auth_header).map_or(
+            Err(UnauthorizedResponse {
+                msg: "Missing Bearer Token".to_string(),
+            }),
+            Ok,
+        )?;
+
+        match store.verify(&bearer) {
+            Err(e) => {
+                error!("Failed to verify Token: {}", e);
+
+                Err(UnauthorizedResponse {
+                    msg: format!("Failed to verify Token: {}", e),
+                })
+            },
+            Ok(current_user) => Ok(current_user),
+        }
+    }
+}
+
+pub struct UnauthorizedResponse {
+    msg: String,
+}
+
+impl IntoResponse for UnauthorizedResponse {
+    fn into_response(self) -> Response {
+        (http::StatusCode::UNAUTHORIZED, self.msg).into_response()
+    }
+}
 pub struct AppState {
     pub db: Mutex<Database>,
     pub bucket: Mutex<Bucket>,
-    pub task_number: Mutex<JobTaskID>,
     pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
     pub openai_client: Client<OpenAIConfig>,
     pub openai_assistant: AssistantObject,
+    pub firebase_auth: FirebaseAuth
 }
 impl AppState {
     /// Initializes the application state with a new database and S3 bucket.
@@ -129,6 +191,8 @@ impl AppState {
     pub async fn new() -> Result<Self> {
         let aws_config = aws_config::load_from_env().await;
         let client = Client::new();
+        let firebase_auth = FirebaseAuth::new("network-technology-project")
+            .await;
 
         // Initialize the assistant
         let assistant_id = std::env::var("OPENAI_ASSISTANT_ID")
@@ -146,10 +210,10 @@ impl AppState {
                 "us-east-2".parse().context("Improper region!")?,
                 Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
             ).context("Failed to initialize bucket!")?),
-            task_number: Mutex::new(0),
             aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
             openai_client: client,
-            openai_assistant: assistant
+            openai_assistant: assistant,
+            firebase_auth
         })
     }
 }
@@ -166,18 +230,18 @@ impl AppState {
 #[derive(Debug)]
 pub struct AppError(pub anyhow::Error);
 impl IntoResponse for AppError {
+    #[tracing::instrument]
     fn into_response(self) -> Response<Body> {
-        print_be!(0, "Encountered an error: {self:#?}");
-        print_be!(0, "Returning an internal server error response.");
-        print_be!(0, "Please check the logs for more information.");
+        error!("Encountered an error: {self:#?}");
+        error!("Please see below for more information.");
 
-        print_be!(0, "Printing the error chain...");
+        error!("Printing the error chain...");
         for (ind, cause) in self.0.chain().enumerate() {
-            eprintln!("[{ind}] {cause:#?}");
+            error!("[{ind}] {cause:#?}");
         }
 
-        print_be!(0, "Printing the backtrace...");
-        eprintln!("{:#?}", self.0.backtrace());
+        error!("Printing the backtrace...");
+        error!("{:#?}", self.0.backtrace());
 
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,

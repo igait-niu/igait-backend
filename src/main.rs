@@ -5,11 +5,12 @@ mod routes;
 
 use anyhow::{ Context, Result };
 use axum::{
-    extract::DefaultBodyLimit, routing::post, Router
+    extract::DefaultBodyLimit, routing::{any, post}, Router
 };
 use daemons::filesystem::work_inputs;
-use helper::{lib::AppState, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
+use helper::{lib::{AppState, AppStatePtr}, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
+use tracing_subscriber;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 
@@ -29,17 +30,31 @@ pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 /// * The API is served with a body limit of 500MB
 /// * The API is served with the V1 API nested under `/api/v1`
 #[tokio::main]
+#[tracing::instrument]
 async fn main() -> Result<()> {
+    // Initialize the logger
+    tracing_subscriber::fmt()
+        .compact()
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     // Create a thread-safe mutex lock to hold the app state
     let state: Arc<AppState> = Arc::new(
         AppState::new().await.context("Couldn't set up app state!")?
     );
+    let app_state_ptr = AppStatePtr { state: state.clone() };
 
     // Build the V1 API router
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
         .route("/historical_submissions", post(crate::routes::historical::historical_entrypoint))
-        .with_state(state.clone());
+        .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
+        .route("/assistant_proxied", any(crate::routes::assistant::assistant_proxied_entrypoint))
+        .with_state(app_state_ptr);
 
     // Nest the API into the general app router
     let app = Router::new()
@@ -47,7 +62,7 @@ async fn main() -> Result<()> {
         .layer(DefaultBodyLimit::max(500000000));
 
     // Copy scripts to Metis
-    print_metis!(0, "Copying scripts from local to Metis...");
+    println!("[1/3] Copying scripts from local to Metis...");
     copy_file(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -56,14 +71,14 @@ async fn main() -> Result<()> {
         true
     ).await
         .context("Couldn't move the outputs from Metis to local outputs directory!")?;
-    print_metis!(0, "Successfully copied scripts from local to Metis!");
+    println!("[2/3] Successfully copied scripts from local to Metis!");
 
     // Start the inputs worker
     tokio::spawn(work_inputs(state));
 
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
-    print_be!(0, "Starting iGait Backend on {port}...");
+    println!("[3/3] Starting iGait backend on port {port}...");
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await
         .context("Couldn't start up listener!")?;
     axum::serve(listener, app).await

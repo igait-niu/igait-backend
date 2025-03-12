@@ -4,8 +4,9 @@ use chrono::{DateTime, Utc};
 use tokio::{fs::DirEntry, time::sleep};
 use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
+use tracing::{info, warn, error};
 
-use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
+use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, ASD_CLASSIFICATION_THRESHOLD};
 
 /// Checks the a directory entry from the `inputs` folder, and preforms the following:
 ///
@@ -20,6 +21,7 @@ use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppS
 /// 
 /// # Returns
 /// * A successful result if the directory was checked
+#[tracing::instrument]
 async fn check_inputs_dir(
     entry: &DirEntry
 ) -> Result<()> {
@@ -46,19 +48,19 @@ async fn check_inputs_dir(
                 .context("Couldn't check if the Metis output existed!")?
             {
                 pbs_job_id = pbs_job_id_inner;
-                print_be!(0, "Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3");
+                info!("Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3");
             } else {
-                print_be!(0, "[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')...");
+                info!("[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')...");
                 return Ok(());
             }
         },
         Err(e) => {
-            print_be!(0, "[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'");
+            warn!("[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'");
             return Ok(());
         }
     }
 
-    print_metis!(0, "Copying file from Metis home directory to output directory...");
+    info!("Copying file from Metis home directory to output directory...");
     let job_id_no_system_postfix = pbs_job_id
         .split(".")
         .next()
@@ -78,9 +80,9 @@ async fn check_inputs_dir(
         false
     ).await
         .context("Couldn't move file from local to Metis!")?;
-    print_metis!(0, "Copied PBS logfile to output directory successfully!");
+    info!("Copied PBS logfile to output directory successfully!");
 
-    print_metis!(0, "Cleaning logfile from home directory on Metis...");
+    info!("Cleaning logfile from home directory on Metis...");
     delete_logfile( 
         METIS_USERNAME,
         METIS_HOSTNAME, 
@@ -88,15 +90,15 @@ async fn check_inputs_dir(
         &pbs_job_id
     ).await
         .context("Failed to clean up PBS logfile from Metis home directory!")?;
-    print_metis!(0, "Done!");
+    info!("Done!");
 
-    print_be!(0, "Deleting local input folder...");
+    info!("Deleting local input folder...");
     tokio::fs::remove_dir_all(&format!("inputs/{dir_name}"))
         .await
         .context("Couldn't remove local input folder!")?;
-    print_be!(0, "Successfully deleted local input folder!");
+    info!("Successfully deleted local input folder!");
     
-    print_metis!(0, "Copying output results from Metis to local...");
+    info!("Copying output results from Metis to local...");
     copy_file(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -110,7 +112,7 @@ async fn check_inputs_dir(
         true
     ).await
         .context("Couldn't move the outputs from Metis to local outputs directory!")?;
-    print_metis!(0, "Successfully copied output from Metis to local!");
+    info!("Successfully copied output from Metis to local!");
 
     Ok(())
 }
@@ -149,15 +151,15 @@ async fn upload_output_dir (
                         .map_err(|e| anyhow!("Couldn't read file `{file_name}`! Error: {e:?}"))?;
                     let size = contents.len();
 
-                    print_s3!(0, "Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3...");
+                    info!("Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3...");
                     app.bucket
                         .lock().await
                         .put_object(format!("{user_id}/outputs/{path}/{file_name}"), &contents)
                         .await 
                         .expect("Failed to upload file to S3! Continuing regardless.");
-                    print_s3!(0, "Successfully uploaded file `{file_name}` to S3!");
+                    info!("Successfully uploaded file `{file_name}` to S3!");
                 } else {
-                    print_be!(0, "Recursing through sub-directory `{file_name}`");
+                    info!("Recursing through sub-directory `{file_name}`");
                     upload_output_dir (
                         app.clone(),
                         user_id.clone(),
@@ -168,8 +170,8 @@ async fn upload_output_dir (
             }
         },
         Err(why) => {
-            print_be!(0, "Couldn't read from directory path {path}!");
-            print_be!(0, "{why:?}\n\nContinuing as usual...");
+            error!("Couldn't read from directory path {path}!");
+            error!("{why:?}\n\nContinuing as usual...");
         }
     }
 
@@ -188,6 +190,7 @@ async fn upload_output_dir (
 /// # Arguments
 /// * `app`: A handle to the app state
 /// * `entry`: The entry to check from the `outputs` directory
+#[tracing::instrument]
 async fn work_output_helper (
     app: &Arc<AppState>,
     entry: DirEntry
@@ -206,14 +209,14 @@ async fn work_output_helper (
         .context("[ ERROR ] Output directory `{file_name}` is invalidly named!")?
         .to_owned();
     
-    print_s3!(0, "Uploading directory `{file_name}` to S3...");
+    info!("Uploading directory `{file_name}` to S3...");
     upload_output_dir(
         app.clone(),
         user_id,
         file_name.to_string()
     ).await
         .map_err(|e| anyhow!("[ WARN ] Encountered error uploading outputs directory `{file_name}`! Error: {e:?}"))?;
-    print_s3!(0, "Successfully uploaded directory `{file_name}` to S3!");
+    info!("Successfully uploaded directory `{file_name}` to S3!");
 
     // Get the user and job IDs
     let uid = file_name.split(';')
@@ -231,8 +234,7 @@ async fn work_output_helper (
         .lock().await
         .get_job(
             uid,
-            job_id,
-            0
+            job_id
         ).await
         .context("The job targeted by the completion request doesn't exist!")?; 
 
@@ -241,7 +243,7 @@ async fn work_output_helper (
     let dt_timestamp_utc: DateTime<Utc> = job.timestamp.into();
     let cst = dt_timestamp_utc.with_timezone(&chrono_tz::US::Central);
 
-    print_s3!(0, "Checking whether `final_score` file exists!");
+    info!("Checking whether `final_score` file exists!");
     if tokio::fs::try_exists(&format!("outputs/{file_name}/final_score")).await
         .map_err(|e| anyhow!("Encountered error trying to find `final_score` file! Error: {e:?}"))?
     {
@@ -268,8 +270,7 @@ async fn work_output_helper (
             .update_status(
                 uid,
                 job_id,
-                status.clone(),
-                0
+                status.clone()
             ).await
             .context("Failed to update status to 'Processing'!")?;
             
@@ -281,8 +282,7 @@ async fn work_output_helper (
             &cst,
             &job,
             uid,
-            job_id,
-            0
+            job_id
         ).await.context("Failed to send success email!")?;
     } else {
         let status = JobStatus {
@@ -295,8 +295,7 @@ async fn work_output_helper (
             .update_status(
                 uid,
                 job_id,
-                status.clone(),
-                0
+                status.clone()
             ).await
             .context("Failed to update status to 'Processing'!")?;
 
@@ -307,18 +306,17 @@ async fn work_output_helper (
             &status,
             &cst,
             uid,
-            job_id,
-            0
+            job_id
         ).await.context("Failed to send success email!")?;
     }
     
-    print_be!(0, "Deleting local output folder...");
+    info!("Deleting local output folder...");
     if let Err(e) = tokio::fs::remove_dir_all(&format!("outputs/{file_name}")).await {
-        println!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
+        error!("[ ERROR ] Couldn't remove local input folder! Error: {e:?}");
     }
-    print_be!(0, "Successfully deleted local output folder!");
+    info!("Successfully deleted local output folder!");
 
-    print_be!(0, "Deleting output folder off Metis...");
+    info!("Deleting output folder off Metis...");
     delete_output_folder(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -327,7 +325,7 @@ async fn work_output_helper (
         &job_id.to_string()
     ).await
         .context("Failed to delete the output folder off Metis!")?;
-    print_be!(0, "Successfully deleted output folder off Metis!");
+    info!("Successfully deleted output folder off Metis!");
     
     Ok(())
 }
@@ -344,6 +342,7 @@ async fn work_output_helper (
 /// 
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
+#[tracing::instrument]
 pub async fn work_outputs(
     app: Arc<AppState>
 ) {
@@ -351,12 +350,12 @@ pub async fn work_outputs(
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 if let Err(e) = work_output_helper(&app, entry).await {
-                    println!("Encountered error in output worker! Error: {e:?}");
+                    error!("Encountered error in output worker! Error: {e:?}");
                 }
             }
         },
         Err(e) => {
-            print_be!(0, "Encountered error trying to work output directory! Error: {e:?}");
+            error!("Encountered error trying to work output directory! Error: {e:?}");
         }
     }
 }
@@ -377,24 +376,24 @@ pub async fn work_inputs(
     app: Arc<AppState>
 ) {
     loop {
-        print_be!(0, "Scanning inputs...");
+        info!("Scanning inputs...");
 
         match tokio::fs::read_dir("inputs").await {
             Ok(mut dir) => {
                 while let Ok(Some(entry)) = dir.next_entry().await {
                     if let Err(e) = check_inputs_dir(&entry).await {
-                        print_be!(0, "Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
+                        error!("Failed to process file:\n\n{e:?}\n\nContinuing as usual...");
                     }
                 }
             },
             Err(why) => {
-                print_be!(0, "Couldn't read from inputs directory!");
-                print_be!(0, "{why:?}\n\nContinuing as usual...");
+                error!("Couldn't read from inputs directory!");
+                error!("{why:?}\n\nContinuing as usual...");
                 continue;
             }
         }
 
-        print_be!(0, "Scanning outputs...");
+        info!("Scanning outputs...");
         work_outputs(app.clone()).await;
 
         sleep(Duration::from_secs(15)).await;
