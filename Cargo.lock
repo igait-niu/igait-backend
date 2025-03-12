@@ -304,6 +304,7 @@ dependencies = [
 [[package]]
 name = "async-openai"
 version = "0.27.2"
+source = "git+https://github.com/hiibolt/async-openai.git#7b58ee4f4f823c0135415621a2aac62eafdcc06f"
 dependencies = [
  "backoff",
  "base64 0.22.1",

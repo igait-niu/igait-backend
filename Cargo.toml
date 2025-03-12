@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 #async-openai = "0.27"
-async-openai = { path = "../async-openai-jail/async-openai/async-openai" }
+async-openai = { git = "https://github.com/hiibolt/async-openai.git" }
 async-recursion = "1"
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1"
