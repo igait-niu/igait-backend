@@ -27,6 +27,10 @@
 
           cargoLock = {
             lockFile = ./Cargo.lock;
+
+            outputHashes = {
+              "async-openai-0.27.2" = "Y8FZWaceFpF7PcJ70UcKNQy0hY2/mNQMq3d41Qq03dM=";
+            };
           };
 
           nativeBuildInputs = [ (rustVersion.override { extensions = ["rust-src"]; }) ] ++ (with pkgs; [ 
