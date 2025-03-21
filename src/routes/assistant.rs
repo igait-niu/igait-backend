@@ -366,7 +366,26 @@ async fn handle_proxied_socket (
     let (mut local_socket, _) = connect_async(request).await?;
 
     // Get message from client
-    'primary_loop: while let Some(msg_result) = socket.recv().await {
+    'primary_loop: while let Some(msg_result) 
+        = tokio::select!{
+            msg_res = socket.recv() => msg_res,
+            _ = tokio::time::sleep(Duration::from_secs(5 * 60)) => {
+                // Tell the client that they are being disconnected 
+                //  due to inactivity
+                let event = AssistantUpdate::Error {
+                    content: "Connection timed out due to inactivity!".to_string()
+                };
+
+                socket.send(
+                    axum::extract::ws::Message::Text(serde_json::to_string(&event)
+                        .context("Failed to serialize 'error' event!")?)
+                ).await
+                    .context("Failed to send message to client! Error: {e:?}")?;
+                
+                return Ok(());
+            }
+        }
+    {
         info!("Received message: {msg_result:?}");
         let msg_obj = if let Ok(msg_obj) = msg_result {
             msg_obj
