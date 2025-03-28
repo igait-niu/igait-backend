@@ -6,7 +6,7 @@ use anyhow::{ Result, Context, anyhow };
 use async_recursion::async_recursion;
 use tracing::{info, warn, error};
 
-use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD, DISABLE_RESULT_EMAIL};
+use crate::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, ASD_CLASSIFICATION_THRESHOLD, DISABLE_RESULT_EMAIL};
 
 /// Checks the a directory entry from the `inputs` folder, and preforms the following:
 ///
@@ -283,8 +283,7 @@ async fn work_output_helper (
                 &cst,
                 &job,
                 uid,
-                job_id,
-                0
+                job_id
             ).await.context("Failed to send success email!")?;
         }
     } else {
