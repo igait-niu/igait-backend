@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tracing_subscriber;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
+pub const DISABLE_RESULT_EMAIL: bool = true;
 
 /// The main entrypoint for the iGait backend.
 /// 
