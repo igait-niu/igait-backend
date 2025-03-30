@@ -94,7 +94,6 @@ pub async fn send_email (
 /// * `side_keyframed_url` - The URL to the side keyframed video
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -143,7 +142,6 @@ pub async fn send_success_email (
 /// * `datetime` - The timestamp of the job
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -183,7 +181,6 @@ pub async fn send_failure_email (
 /// * `job` - The job that was submitted
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -219,5 +216,38 @@ pub async fn send_welcome_email (
 
     // Send the email
     send_email( app, &job.email, &subject, &body )
+        .await
+}
+
+/// A wrapper around `send_email` that thanks the recipient for their contribution.
+/// 
+/// # Arguments
+/// * `recipient_email_address` - The email address to send the email to
+/// * `status` - The status of the job
+/// * `datetime` - The timestamp of the job
+/// * `uid` - The user ID of the job
+/// * `job_id` - The job ID of the job
+/// 
+/// # Fails
+/// * If the email fails to send
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+///
+/// # Notes
+/// * Any changes to the email logic should be made to the `send_email` function first
+/// * * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
+/// * The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
+#[tracing::instrument]
+pub async fn send_contribution_email (
+    app: Arc<AppState>,
+    email: &str,
+) -> Result<()> {
+    // Build the email
+    let subject = format!("Thank you for your contribution to iGait!");
+    let body = format!("We appreciate your contribution to our research!<br><br>We will send you an email once we have completed analysis on your video.<br><br>Thank you for your support!");
+
+    // Send the email
+    send_email( app, email, &subject, &body )
         .await
 }

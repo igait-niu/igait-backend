@@ -55,3 +55,7 @@ pub mod upload;
 
 /// This module contains the assistant endpoint for the API.
 pub mod assistant;
+
+/// This module contains the contribute endpoint for the API,
+/// which is used to submit a video for our research purposes.
+pub mod contribute;

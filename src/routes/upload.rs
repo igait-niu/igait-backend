@@ -363,13 +363,13 @@ async fn save_upload_files<'a> (
     // Upload the all three files to S3
     app.bucket
         .lock().await
-        .put_object(format!("{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
+        .put_object(format!("data/{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
         .await 
         .context("Failed to upload front file to S3! Continuing regardless.")?;
     info!("Successfully uploaded front file to S3!");
     app.bucket
         .lock().await
-        .put_object(format!("{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
+        .put_object(format!("data/{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
         .await
         .context("Failed to upload front side to S3! Continuing regardless.")?;
     info!("Successfully uploaded side file to S3!");
