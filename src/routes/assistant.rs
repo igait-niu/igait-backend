@@ -25,33 +25,6 @@ enum AssistantUpdate {
     Waiting { content: String },
     Jobs { content: Vec<Job> }
 }
-
-/* OpenAI Spec
-
-"properties": {
-      "entries": {
-        "type": "number",
-        "description": "The number of results to show, should default to 5"
-      },
-      "start_timestamp": {
-        "type": "number",
-        "description": "UNIX timestamp representing the start date (optional)"
-      },
-      "end_timestamp": {
-        "type": "number",
-        "description": "UNIX timestamp representing the end date (optional)"
-      },
-      "result_type": {
-        "type": "string",
-        "description": "Specifies the type of results to filter by. Options are 'ASD' or 'NO ASD' (optional).",
-        "enum": [
-          "ASD",
-          "NO ASD"
-        ]
-      }
-    },
-
-*/
 #[derive(Deserialize)]
 struct SearchJobArguments {
     entries: Option<i64>,
@@ -60,7 +33,7 @@ struct SearchJobArguments {
     result_type: Option<String>
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(app))]
 async fn send_response (
     app: &Arc<AppState>,
     client: &Client<OpenAIConfig>,
@@ -321,7 +294,7 @@ async fn send_response (
 
     Ok(())
 }
-#[tracing::instrument]
+#[tracing::instrument(skip(app, ws))]
 pub async fn assistant_proxied_entrypoint (
     State(app): State<AppStatePtr>,
     ws: WebSocketUpgrade
@@ -330,7 +303,7 @@ pub async fn assistant_proxied_entrypoint (
     
     ws.on_upgrade(move |socket| handle_proxied_socket_helper(app.state, socket))
 }
-#[tracing::instrument]
+#[tracing::instrument(skip(app, socket))]
 async fn handle_proxied_socket_helper (
     app: Arc<AppState>,
     socket: WebSocket
@@ -339,9 +312,9 @@ async fn handle_proxied_socket_helper (
         error!("Failed to handle socket! Error: {e:?}");
     }
 }
-#[tracing::instrument]
+#[tracing::instrument(skip(_app, socket))]
 async fn handle_proxied_socket (
-    app: Arc<AppState>,
+    _app: Arc<AppState>,
     mut socket: WebSocket
 ) -> Result<()> {
     // Get the token from the client
@@ -394,7 +367,16 @@ async fn handle_proxied_socket (
         };
 
         let msg = match msg_obj {
-            axum::extract::ws::Message::Text(text) => text,
+            axum::extract::ws::Message::Text(text) => {
+                if text == "ping" {
+                    info!("Received ping, sending pong...");
+                    socket.send(axum::extract::ws::Message::Text("pong".to_string().into())).await
+                        .context("Couldn't send message!")?;
+                    continue 'primary_loop;
+                } else {
+                    text
+                }
+            },
             _ => {
                 return Ok(());
             }
@@ -431,7 +413,7 @@ async fn handle_proxied_socket (
 
     Ok(())
 }
-#[tracing::instrument(skip(current_user))]
+#[tracing::instrument(skip(current_user, app, ws))]
 pub async fn assistant_entrypoint (
     current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
@@ -440,7 +422,7 @@ pub async fn assistant_entrypoint (
     info!("Upgrading WS connection...");
     ws.on_upgrade(move |socket| handle_socket_helper(app.state, socket, current_user))
 }
-#[tracing::instrument(skip(current_user))]
+#[tracing::instrument(skip(current_user, socket, app))]
 async fn handle_socket_helper (
     app: Arc<AppState>,
     socket: WebSocket,
@@ -450,7 +432,7 @@ async fn handle_socket_helper (
         error!("Failed to handle socket! Error: {e:?}");
     }
 }
-#[tracing::instrument(skip(current_user))]
+#[tracing::instrument(skip(current_user, app, socket))]
 async fn handle_socket (
     app: Arc<AppState>,
     mut socket: WebSocket,
