@@ -8,7 +8,7 @@ use aws_sdk_sesv2::types::{
 };
 use tracing::info;
 
-use crate::{ Arc, AppState };
+use crate::{ AppState, Arc, DISABLE_RESULT_EMAIL };
 
 use super::lib::{Job, JobStatus};
 
@@ -201,18 +201,32 @@ pub async fn send_welcome_email (
     let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
     let dt_now_cst = dt_now_utc.with_timezone(&chrono_tz::US::Central);
     let subject = format!("Welcome to iGait!");
-    let body = format!("Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
-        dt_now_cst.to_string(),
+    let body = match DISABLE_RESULT_EMAIL {
+        false => format!("Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+            dt_now_cst.to_string(),
 
-        job.age,
-        job.ethnicity,
-        job.sex,
-        job.height,
-        job.weight,
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight,
 
-        uid,
-        job_id
-    );
+            uid,
+            job_id
+        ),
+        true => format!("Dear iGAIT user,<br><br>Your submission on {} has been successfully received! Please understand that the iGAIT website is still under development. At this point, the research team will review the screening result of your submission. We are working on adding the functionality to automatically email you the result. We hope that will be available soon.<br><br>In the meanwhile, if you have any questions regarding your submission or user experience, or any suggestion to help us improve the website, please don't hesitate to contact us at GaitStudy@niu.edu. Please include the information below about your submission.<br><br>Submission information:<br>Age: {}<br>Ethnicity: {}<br>Sex: {}<br>Height: {}<br>Weight: {}<br><br>User ID: {}<br>Job ID: {}", 
+            dt_now_cst.to_string(),
+
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight,
+
+            uid,
+            job_id
+        ),
+    };
 
     // Send the email
     send_email( app, &job.email, &subject, &body )
