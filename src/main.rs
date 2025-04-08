@@ -11,6 +11,7 @@ use daemons::filesystem::work_inputs;
 use helper::{lib::{AppState, AppStatePtr}, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
 use std::sync::Arc;
 use tracing_subscriber;
+use dotenv::dotenv;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
 pub const DISABLE_RESULT_EMAIL: bool = true;
@@ -33,6 +34,10 @@ pub const DISABLE_RESULT_EMAIL: bool = true;
 #[tokio::main]
 #[tracing::instrument]
 async fn main() -> Result<()> {
+    
+    // Enable loading on WSL
+    dotenv().ok();
+
     // Initialize the logger
     tracing_subscriber::fmt()
         .compact()
