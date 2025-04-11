@@ -58,4 +58,20 @@ pub mod assistant;
 
 /// This module contains the contribute endpoint for the API,
 /// which is used to submit a video for our research purposes.
+/// 
+/// # Arguments
+/// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
+/// * `email`: The email address of the user of which to send emails to.
+/// * `fileuploadfront`: The front video file. Needs to be a file compatible with OpenPose.
+/// * `fileuploadside`: The side video file. Needs to be a file compatible with OpenPose.
+/// 
+/// # Example cURL Request
+/// ```sh
+/// curl -v -F fileuploadfront=@test.mp4 -F fileuploadside=test.mp4
+///     -F uid=curlplaceholder -F email=me@hiibolt.com
+///     http://api.igaitapp.com/api/v1/contribute
+/// ```
+/// 
+/// # Potential Reasons for Failure
+/// See each individual function for potential reasons for failure.
 pub mod contribute;
