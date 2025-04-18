@@ -10,6 +10,7 @@ use crate::helper::{email::send_contribution_email, lib::{AppError, AppState, Ap
 /// A request to upload a video for the contribute endpoint.
 pub struct ContributeRequestArguments {
     uid: String,
+    name: String,
     email: String,
     front_file: ContributeRequestFile,
     side_file:  ContributeRequestFile,
@@ -37,6 +38,7 @@ async fn unpack_contribute_arguments(
 ) -> Result<ContributeRequestArguments> {
     // Initialize all of the fields as options
     let mut uid_option:       Option<String> = None;
+    let mut name_option:      Option<String> = None;
     let mut email_option:     Option<String> = None;
 
     // Initialize the file fields as options
@@ -76,6 +78,13 @@ async fn unpack_contribute_arguments(
                         .context("Field 'uid' wasn't readable as text!")?
                         .to_string());
             }
+            Some("name") => {
+                name_option = Some(
+                    field
+                        .text().await
+                        .context("Field 'name' wasn't readable as text!")?
+                        .to_string());
+            }
             Some("uid") => {
                 uid_option = Some(
                     field
@@ -91,6 +100,7 @@ async fn unpack_contribute_arguments(
 
     // Make sure all of the fields are present
     let uid:   String = uid_option.ok_or(   anyhow!( "Missing 'uid' in request"   ))?;
+    let name:  String = name_option.ok_or( anyhow!( "Missing 'name' in request" ))?;
     let email: String = email_option.ok_or( anyhow!( "Missing 'email' in request" ))?;
 
     // Make sure all of the file fields are present
@@ -101,6 +111,7 @@ async fn unpack_contribute_arguments(
 
     Ok(ContributeRequestArguments {
         uid,
+        name,
         email, 
         front_file: ContributeRequestFile {
             name: front_file_name, 
@@ -146,7 +157,8 @@ pub async fn contribute_entrypoint(
             arguments.front_file,
             arguments.side_file,
             &arguments.uid,
-            &arguments.email
+            &arguments.email,
+            &arguments.name
         ).await 
     {
         return Err(AppError(anyhow!("Failed to save files to S3! Error:\n{}", err)));
@@ -155,7 +167,8 @@ pub async fn contribute_entrypoint(
     // Thank the user for their contribution
     send_contribution_email(
         app.clone(),
-        &arguments.email
+        &arguments.email,
+        &arguments.name
     )
         .await
         .context("Failed to send contribution email!")?;
@@ -185,6 +198,7 @@ async fn save_upload_files<'a> (
     side_file:        ContributeRequestFile,
     user_id:          &str,
     email:            &str,
+    name:             &str,
 ) -> Result<()> {
     // Unpack the extensions
     let front_extension = front_file.name.split('.')

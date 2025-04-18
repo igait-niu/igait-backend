@@ -124,7 +124,6 @@ pub async fn send_success_email (
         job.sex,
         job.height,
         job.weight,
-
         uid,
         job_id
     );
@@ -164,7 +163,6 @@ pub async fn send_failure_email (
     let subject = format!("Your recent submission to iGait App failed!");
     let body = format!("Something went wrong with your submission on {}!<br><br>Error Type: '{:?}'<br>Error Reason: '{}'<br><br>User ID: {}<br>Job ID: {}<br><br><br>Please contact support:<br>GaitStudy@niu.edu",
         datetime.to_string(),
-
         status.code, status.value, 
         uid,
         job_id
@@ -227,7 +225,8 @@ pub async fn send_welcome_email (
 /// * `datetime` - The timestamp of the job
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// 
+/// * `name` - The name entered by user from frontend
+///
 /// # Fails
 /// * If the email fails to send
 /// 
@@ -242,10 +241,11 @@ pub async fn send_welcome_email (
 pub async fn send_contribution_email (
     app: Arc<AppState>,
     email: &str,
+    name:  &str
 ) -> Result<()> {
     // Build the email
     let subject = format!("Thank you for your contribution to iGait!");
-    let body = format!("We appreciate your contribution to our research!<br><br>We will send you an email once we have completed analysis on your video.<br><br>Thank you for your support!");
+    let body = format!("Dear {}!<br><br>Your submission has been successfully received. Thank you for participating in this research study. If you have any questions or would like to follow up, please contact GaitStudy@niu.edu.<br><br>Thank you for your support!", name);
 
     // Send the email
     send_email( app, email, &subject, &body )
