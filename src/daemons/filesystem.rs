@@ -119,7 +119,7 @@ async fn check_inputs_dir(
 
 /// Recursively uploads a given folder to AWS.
 ///
-/// This function will recursive if it encounters a sub-directory, otherwise,
+/// This function will recurse if it encounters a sub-directory, otherwise,
 /// it will simply upload directly to AWS based on the current key path that
 /// has been built thus far.
 ///

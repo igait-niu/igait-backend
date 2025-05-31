@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AssistantUpdate"],"fn":["assistant_entrypoint","assistant_proxied_entrypoint","handle_proxied_socket","handle_proxied_socket_helper","handle_socket","handle_socket_helper","send_response"],"struct":["SearchJobArguments"]};

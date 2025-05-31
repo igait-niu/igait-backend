@@ -31,7 +31,6 @@ struct ContributeRequestFile {
 /// 
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-/// * `task_number` - The task number to print out to the console.
 #[tracing::instrument]
 async fn unpack_contribute_arguments(
     multipart:   &mut Multipart
@@ -124,7 +123,7 @@ async fn unpack_contribute_arguments(
     })
 }
 
-/// The entrypoint for the upload request.
+/// The entrypoint for the contribute request.
 /// 
 /// # Fails
 /// * If the arguments are missing.
@@ -188,9 +187,8 @@ pub async fn contribute_entrypoint(
 /// * `front_file` - The front file to save.
 /// * `side_file` - The side file to save.
 /// * `user_id` - The user ID to save the files under.
-/// * `job_id` - The job ID to save the files under.
-/// * `job` - The job object to save to the local filesystem.
-/// * `task_number` - The task number to print out to the console.
+/// * `email` - The email to save the files under.
+/// * `name` - The name to save the files under.
 #[tracing::instrument]
 async fn save_upload_files<'a> (
     app:              Arc<AppState>,

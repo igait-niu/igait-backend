@@ -40,7 +40,6 @@ impl Database {
     /// 
     /// # Arguments
     /// * `uid` - The user ID to ensure exists.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created
@@ -95,7 +94,6 @@ impl Database {
     /// 
     /// # Arguments
     /// * `uid` - The user ID to count the jobs of.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user can't be ensured
@@ -131,7 +129,6 @@ impl Database {
     /// # Arguments
     /// * `uid` - The user ID to add the job to.
     /// * `job` - The job to add to the user's job list.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created
@@ -178,7 +175,6 @@ impl Database {
     /// * `uid` - The user ID to update the job of.
     /// * `job_id` - The ID of the job to update.
     /// * `status` - The new status of the job.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created
@@ -234,7 +230,6 @@ impl Database {
     /// # Arguments
     /// * `uid` - The user ID to get the job status of.
     /// * `job_id` - The ID of the job to get the status of.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created
@@ -272,7 +267,6 @@ impl Database {
     /// # Arguments
     /// * `uid` - The user ID to get the job of.
     /// * `job_id` - The ID of the job to get.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created
@@ -311,7 +305,6 @@ impl Database {
     /// 
     /// # Arguments
     /// * `uid` - The user ID to get the jobs of.
-    /// * `task_number` - The task number to print out to the console.
     /// 
     /// # Fails
     /// * If the user doesn't exist and can't be created

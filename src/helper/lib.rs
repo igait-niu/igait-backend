@@ -95,7 +95,6 @@ pub struct Request {
 /// # Fields
 /// * `db` - The database handle
 /// * `bucket` - The S3 bucket handle
-/// * `task_number` - The task number of the backend to keep track of requests
 /// 
 /// # Notes
 /// * The task number is used to keep track of requests and is incremented with each request.

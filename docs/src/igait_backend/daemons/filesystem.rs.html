@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/daemons/filesystem.rs`."><title>filesystem.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../igait_backend/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/daemons/filesystem.rs`."><title>filesystem.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../static.files/src-script-56102188.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">igait_backend/daemons/</div>filesystem.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -396,14 +397,19 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::Duration};
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::Duration};
 
 <span class="kw">use </span>chrono::{DateTime, Utc};
-<span class="kw">use </span>tokio::{fs::DirEntry, sync::Mutex, time::sleep};
+<span class="kw">use </span>tokio::{fs::DirEntry, time::sleep};
 <span class="kw">use </span>anyhow::{ <span class="prelude-ty">Result</span>, Context, anyhow };
 <span class="kw">use </span>async_recursion::async_recursion;
+<span class="kw">use </span>tracing::{info, warn, error};
 
-<span class="kw">use crate</span>::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, print_be, print_metis, print_s3, ASD_CLASSIFICATION_THRESHOLD};
+<span class="kw">use crate</span>::{helper::{email::{send_failure_email, send_success_email}, lib::{AppState, Job, JobStatus, JobStatusCode}, metis::{copy_file, delete_logfile, delete_output_folder, metis_output_exists, SSHPath, METIS_HOSTNAME, METIS_OUTPUTS_DIR, METIS_OUTPUT_NAME, METIS_USERNAME}}, ASD_CLASSIFICATION_THRESHOLD, DISABLE_RESULT_EMAIL};
 
 <span class="doccomment">/// Checks the a directory entry from the `inputs` folder, and preforms the following:
 ///
@@ -418,6 +424,7 @@
 /// 
 /// # Returns
 /// * A successful result if the directory was checked
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">async fn </span>check_inputs_dir(
     entry: <span class="kw-2">&amp;</span>DirEntry
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -444,19 +451,19 @@
                 </span>.context(<span class="string">"Couldn't check if the Metis output existed!"</span>)<span class="question-mark">?
             </span>{
                 pbs_job_id = pbs_job_id_inner;
-                <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3"</span>);
+                <span class="macro">info!</span>(<span class="string">"Found output for '{dir_name}' (PBS Job ID '{pbs_job_id}') :3"</span>);
             } <span class="kw">else </span>{
-                <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')..."</span>);
+                <span class="macro">info!</span>(<span class="string">"[CAN IGNORE] Still awaiting output for '{dir_name}' (PBS Job ID '{pbs_job_id_inner}')..."</span>);
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
         },
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'"</span>);
+            <span class="macro">warn!</span>(<span class="string">"[CAN IGNORE] Couldn't get PBS Job ID on directory '{dir_name}' for reason '{e:?}'"</span>);
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
     }
 
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Copying file from Metis home directory to output directory..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Copying file from Metis home directory to output directory..."</span>);
     <span class="kw">let </span>job_id_no_system_postfix = pbs_job_id
         .split(<span class="string">"."</span>)
         .next()
@@ -476,9 +483,9 @@
         <span class="bool-val">false
     </span>).<span class="kw">await
         </span>.context(<span class="string">"Couldn't move file from local to Metis!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Copied PBS logfile to output directory successfully!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Copied PBS logfile to output directory successfully!"</span>);
 
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Cleaning logfile from home directory on Metis..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Cleaning logfile from home directory on Metis..."</span>);
     delete_logfile( 
         METIS_USERNAME,
         METIS_HOSTNAME, 
@@ -486,15 +493,15 @@
         <span class="kw-2">&amp;</span>pbs_job_id
     ).<span class="kw">await
         </span>.context(<span class="string">"Failed to clean up PBS logfile from Metis home directory!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Done!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Done!"</span>);
 
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Deleting local input folder..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Deleting local input folder..."</span>);
     tokio::fs::remove_dir_all(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"inputs/{dir_name}"</span>))
         .<span class="kw">await
         </span>.context(<span class="string">"Couldn't remove local input folder!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Successfully deleted local input folder!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully deleted local input folder!"</span>);
     
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Copying output results from Metis to local..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Copying output results from Metis to local..."</span>);
     copy_file(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -508,14 +515,14 @@
         <span class="bool-val">true
     </span>).<span class="kw">await
         </span>.context(<span class="string">"Couldn't move the outputs from Metis to local outputs directory!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_metis!</span>(<span class="number">0</span>, <span class="string">"Successfully copied output from Metis to local!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully copied output from Metis to local!"</span>);
 
     <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// Recursively uploads a given folder to AWS.
 ///
-/// This function will recursive if it encounters a sub-directory, otherwise,
+/// This function will recurse if it encounters a sub-directory, otherwise,
 /// it will simply upload directly to AWS based on the current key path that
 /// has been built thus far.
 ///
@@ -525,7 +532,7 @@
 /// - `path`: The path that the function should base upon (built through recursion)
 </span><span class="attr">#[async_recursion]
 </span><span class="kw">async fn </span>upload_output_dir (
-    app: Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app: Arc&lt;AppState&gt;,
     user_id: String,
     path: String
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -547,16 +554,15 @@
                         </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"Couldn't read file `{file_name}`! Error: {e:?}"</span>))<span class="question-mark">?</span>;
                     <span class="kw">let </span>size = contents.len();
 
-                    <span class="macro">print_s3!</span>(<span class="number">0</span>, <span class="string">"Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3..."</span>);
-                    app.lock()
-                        .<span class="kw">await
-                        </span>.bucket
-                        .put_object(<span class="macro">format!</span>(<span class="string">"{user_id}/outputs/{path}/{file_name}"</span>), <span class="kw-2">&amp;</span>contents)
+                    <span class="macro">info!</span>(<span class="string">"Preparing to upload file `{file_name}` (size {size}, path `{path}`) to S3..."</span>);
+                    app.bucket
+                        .lock().<span class="kw">await
+                        </span>.put_object(<span class="macro">format!</span>(<span class="string">"{user_id}/outputs/{path}/{file_name}"</span>), <span class="kw-2">&amp;</span>contents)
                         .<span class="kw">await 
                         </span>.expect(<span class="string">"Failed to upload file to S3! Continuing regardless."</span>);
-                    <span class="macro">print_s3!</span>(<span class="number">0</span>, <span class="string">"Successfully uploaded file `{file_name}` to S3!"</span>);
+                    <span class="macro">info!</span>(<span class="string">"Successfully uploaded file `{file_name}` to S3!"</span>);
                 } <span class="kw">else </span>{
-                    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Recursing through sub-directory `{file_name}`"</span>);
+                    <span class="macro">info!</span>(<span class="string">"Recursing through sub-directory `{file_name}`"</span>);
                     upload_output_dir (
                         app.clone(),
                         user_id.clone(),
@@ -567,8 +573,8 @@
             }
         },
         <span class="prelude-val">Err</span>(why) =&gt; {
-            <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Couldn't read from directory path {path}!"</span>);
-            <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"{why:?}\n\nContinuing as usual..."</span>);
+            <span class="macro">error!</span>(<span class="string">"Couldn't read from directory path {path}!"</span>);
+            <span class="macro">error!</span>(<span class="string">"{why:?}\n\nContinuing as usual..."</span>);
         }
     }
 
@@ -587,8 +593,9 @@
 /// # Arguments
 /// * `app`: A handle to the app state
 /// * `entry`: The entry to check from the `outputs` directory
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">async fn </span>work_output_helper (
-    app: <span class="kw-2">&amp;</span>Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app: <span class="kw-2">&amp;</span>Arc&lt;AppState&gt;,
     entry: DirEntry
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>file_name = entry
@@ -605,14 +612,14 @@
         .context(<span class="string">"[ ERROR ] Output directory `{file_name}` is invalidly named!"</span>)<span class="question-mark">?
         </span>.to_owned();
     
-    <span class="macro">print_s3!</span>(<span class="number">0</span>, <span class="string">"Uploading directory `{file_name}` to S3..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Uploading directory `{file_name}` to S3..."</span>);
     upload_output_dir(
         app.clone(),
         user_id,
         file_name.to_string()
     ).<span class="kw">await
         </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"[ WARN ] Encountered error uploading outputs directory `{file_name}`! Error: {e:?}"</span>))<span class="question-mark">?</span>;
-    <span class="macro">print_s3!</span>(<span class="number">0</span>, <span class="string">"Successfully uploaded directory `{file_name}` to S3!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully uploaded directory `{file_name}` to S3!"</span>);
 
     <span class="comment">// Get the user and job IDs
     </span><span class="kw">let </span>uid = file_name.split(<span class="string">';'</span>)
@@ -625,13 +632,13 @@
         .context(<span class="string">"Job ID was not a valid `usize`!"</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Grab the job it references
-    </span><span class="kw">let </span>job: Job = app.lock().<span class="kw">await
-        </span>.db
-        .get_job(
+    </span><span class="kw">let </span>job: Job = app
+        .db
+        .lock().<span class="kw">await
+        </span>.get_job(
             uid,
-            job_id,
-            <span class="number">0
-        </span>).<span class="kw">await
+            job_id
+        ).<span class="kw">await
         </span>.context(<span class="string">"The job targeted by the completion request doesn't exist!"</span>)<span class="question-mark">?</span>; 
 
     <span class="comment">// Extract the email address and timestamp
@@ -639,7 +646,7 @@
     <span class="kw">let </span>dt_timestamp_utc: DateTime&lt;Utc&gt; = job.timestamp.into();
     <span class="kw">let </span>cst = dt_timestamp_utc.with_timezone(<span class="kw-2">&amp;</span>chrono_tz::US::Central);
 
-    <span class="macro">print_s3!</span>(<span class="number">0</span>, <span class="string">"Checking whether `final_score` file exists!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Checking whether `final_score` file exists!"</span>);
     <span class="kw">if </span>tokio::fs::try_exists(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"outputs/{file_name}/final_score"</span>)).<span class="kw">await
         </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"Encountered error trying to find `final_score` file! Error: {e:?}"</span>))<span class="question-mark">?
     </span>{
@@ -661,58 +668,60 @@
             value: String::from(classification)
         };
 
-        app.lock().<span class="kw">await</span>.db.update_status(
-            uid,
-            job_id,
-            status.clone(),
-            <span class="number">0
-        </span>).<span class="kw">await
+        app.db
+            .lock().<span class="kw">await
+            </span>.update_status(
+                uid,
+                job_id,
+                status.clone()
+            ).<span class="kw">await
             </span>.context(<span class="string">"Failed to update status to 'Processing'!"</span>)<span class="question-mark">?</span>;
-        
+            
         <span class="comment">// Send the success email
-        </span>send_success_email(
-            app.clone(),
-            <span class="kw-2">&amp;</span>recipient_email_address,
-            <span class="kw-2">&amp;</span>status,
-            <span class="kw-2">&amp;</span>cst,
-            <span class="kw-2">&amp;</span>job,
-            uid,
-            job_id,
-            <span class="number">0
-        </span>).<span class="kw">await</span>.context(<span class="string">"Failed to send success email!"</span>)<span class="question-mark">?</span>;
+        </span><span class="kw">if </span>!DISABLE_RESULT_EMAIL {
+            send_success_email(
+                app.clone(),
+                <span class="kw-2">&amp;</span>recipient_email_address,
+                <span class="kw-2">&amp;</span>status,
+                <span class="kw-2">&amp;</span>cst,
+                <span class="kw-2">&amp;</span>job,
+                uid,
+                job_id
+            ).<span class="kw">await</span>.context(<span class="string">"Failed to send success email!"</span>)<span class="question-mark">?</span>;
+        }
     } <span class="kw">else </span>{
         <span class="kw">let </span>status = JobStatus {
             code: JobStatusCode::InferenceErr,
             value: String::from(<span class="string">"There was an error on our end! Please contact support via the instructions in the email containing these results."</span>)
         };
 
-        app.lock().<span class="kw">await</span>.db.update_status(
-            uid,
-            job_id,
-            status.clone(),
-            <span class="number">0
-        </span>).<span class="kw">await
+        app.db
+        .lock().<span class="kw">await
+            </span>.update_status(
+                uid,
+                job_id,
+                status.clone()
+            ).<span class="kw">await
             </span>.context(<span class="string">"Failed to update status to 'Processing'!"</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Send the success email
+        <span class="comment">// Send the failure email
         </span>send_failure_email(
             app.clone(),
             <span class="kw-2">&amp;</span>recipient_email_address,
             <span class="kw-2">&amp;</span>status,
             <span class="kw-2">&amp;</span>cst,
             uid,
-            job_id,
-            <span class="number">0
-        </span>).<span class="kw">await</span>.context(<span class="string">"Failed to send success email!"</span>)<span class="question-mark">?</span>;
+            job_id
+        ).<span class="kw">await</span>.context(<span class="string">"Failed to send success email!"</span>)<span class="question-mark">?</span>;
     }
     
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Deleting local output folder..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Deleting local output folder..."</span>);
     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tokio::fs::remove_dir_all(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"outputs/{file_name}"</span>)).<span class="kw">await </span>{
-        <span class="macro">println!</span>(<span class="string">"[ ERROR ] Couldn't remove local input folder! Error: {e:?}"</span>);
+        <span class="macro">error!</span>(<span class="string">"[ ERROR ] Couldn't remove local input folder! Error: {e:?}"</span>);
     }
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Successfully deleted local output folder!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully deleted local output folder!"</span>);
 
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Deleting output folder off Metis..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Deleting output folder off Metis..."</span>);
     delete_output_folder(
         METIS_USERNAME,
         METIS_HOSTNAME,
@@ -721,7 +730,7 @@
         <span class="kw-2">&amp;</span>job_id.to_string()
     ).<span class="kw">await
         </span>.context(<span class="string">"Failed to delete the output folder off Metis!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Successfully deleted output folder off Metis!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully deleted output folder off Metis!"</span>);
     
     <span class="prelude-val">Ok</span>(())
 }
@@ -738,19 +747,20 @@
 /// 
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>work_outputs(
-    app: Arc&lt;Mutex&lt;AppState&gt;&gt;
+    app: Arc&lt;AppState&gt;
 ) {
     <span class="kw">match </span>tokio::fs::read_dir(<span class="string">"outputs"</span>).<span class="kw">await </span>{
         <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>dir) =&gt; {
             <span class="kw">while let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(entry)) = dir.next_entry().<span class="kw">await </span>{
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = work_output_helper(<span class="kw-2">&amp;</span>app, entry).<span class="kw">await </span>{
-                    <span class="macro">println!</span>(<span class="string">"Encountered error in output worker! Error: {e:?}"</span>);
+                    <span class="macro">error!</span>(<span class="string">"Encountered error in output worker! Error: {e:?}"</span>);
                 }
             }
         },
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Encountered error trying to work output directory! Error: {e:?}"</span>);
+            <span class="macro">error!</span>(<span class="string">"Encountered error trying to work output directory! Error: {e:?}"</span>);
         }
     }
 }
@@ -768,27 +778,27 @@
 /// # Notes
 /// * This function never returns, ideally it should be run in a separate thread.
 </span><span class="kw">pub async fn </span>work_inputs(
-    app: Arc&lt;Mutex&lt;AppState&gt;&gt;
+    app: Arc&lt;AppState&gt;
 ) {
     <span class="kw">loop </span>{
-        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Scanning inputs..."</span>);
+        <span class="macro">info!</span>(<span class="string">"Scanning inputs..."</span>);
 
         <span class="kw">match </span>tokio::fs::read_dir(<span class="string">"inputs"</span>).<span class="kw">await </span>{
             <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>dir) =&gt; {
                 <span class="kw">while let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(entry)) = dir.next_entry().<span class="kw">await </span>{
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = check_inputs_dir(<span class="kw-2">&amp;</span>entry).<span class="kw">await </span>{
-                        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Failed to process file:\n\n{e:?}\n\nContinuing as usual..."</span>);
+                        <span class="macro">error!</span>(<span class="string">"Failed to process file:\n\n{e:?}\n\nContinuing as usual..."</span>);
                     }
                 }
             },
             <span class="prelude-val">Err</span>(why) =&gt; {
-                <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Couldn't read from inputs directory!"</span>);
-                <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"{why:?}\n\nContinuing as usual..."</span>);
+                <span class="macro">error!</span>(<span class="string">"Couldn't read from inputs directory!"</span>);
+                <span class="macro">error!</span>(<span class="string">"{why:?}\n\nContinuing as usual..."</span>);
                 <span class="kw">continue</span>;
             }
         }
 
-        <span class="macro">print_be!</span>(<span class="number">0</span>, <span class="string">"Scanning outputs..."</span>);
+        <span class="macro">info!</span>(<span class="string">"Scanning outputs..."</span>);
         work_outputs(app.clone()).<span class="kw">await</span>;
 
         sleep(Duration::from_secs(<span class="number">15</span>)).<span class="kw">await</span>;

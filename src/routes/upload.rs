@@ -39,7 +39,6 @@ struct UploadRequestFile {
 /// 
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-/// * `task_number` - The task number to print out to the console.
 #[tracing::instrument]
 async fn unpack_upload_arguments(
     multipart:   &mut Multipart
@@ -298,7 +297,6 @@ pub async fn upload_entrypoint(
 /// * `user_id` - The user ID to save the files under.
 /// * `job_id` - The job ID to save the files under.
 /// * `job` - The job object to save to the local filesystem.
-/// * `task_number` - The task number to print out to the console.
 #[tracing::instrument]
 async fn save_upload_files<'a> (
     app:              Arc<AppState>,

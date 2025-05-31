@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/historical.rs`."><title>historical.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../igait_backend/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/historical.rs`."><title>historical.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../static.files/src-script-56102188.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">igait_backend/routes/</div>historical.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -588,36 +589,15 @@
 <a href="#588" id="588">588</a>
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::SystemTime};
+<a href="#591" id="591">591</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, time::SystemTime};
 
 <span class="kw">use </span>anyhow::{ <span class="prelude-ty">Result</span>, Context, anyhow, bail };
 <span class="kw">use </span>axum::extract::{Multipart, State};
 <span class="kw">use </span>chrono::{DateTime, Utc};
-<span class="kw">use </span>tokio::sync::Mutex;
 <span class="kw">use </span>time_util::system_time_from_secs;
+<span class="kw">use </span>tracing::{warn, info};
 
-<span class="kw">use crate</span>::{helper::{email::send_email, lib::{AppError, AppState, Job, JobStatusCode, JobTaskID}}, print_be, print_s3};
+<span class="kw">use </span><span class="kw">crate</span>::helper::{email::send_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatusCode}};
 
 <span class="doccomment">/// The request arguments for the historical submissions endpoint.
 </span><span class="kw">struct </span>HistoricalRequestArguments {
@@ -637,10 +617,9 @@
 /// 
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-/// * `task_number` - The task number to print out to the console.
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">async fn </span>unpack_historical_arguments(
-    <span class="kw-2">mut </span>multipart: Multipart,
-    task_number:   JobTaskID
+    <span class="kw-2">mut </span>multipart: Multipart
 ) -&gt; <span class="prelude-ty">Result</span>&lt;HistoricalRequestArguments&gt; {
     <span class="comment">// Create placeholders for all fields
     </span><span class="kw">let </span><span class="kw-2">mut </span>uid_option: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="prelude-val">None</span>;
@@ -655,7 +634,7 @@
         </span>.context(<span class="string">"Bad request! Is it possible you submitted a file over the size limit?"</span>)<span class="question-mark">?
     </span>{
         <span class="kw">let </span>name = field.name();
-        <span class="macro">print_be!</span>(task_number, <span class="string">"Field Incoming: {name:#?}"</span>);
+        <span class="macro">info!</span>(<span class="string">"Field Incoming: {name:#?}"</span>);
         <span class="kw">match </span>field.name() {
             <span class="prelude-val">Some</span>(<span class="string">"user_id"</span>) =&gt; {
                 uid_option = <span class="prelude-val">Some</span>(
@@ -724,8 +703,8 @@
                         </span>.parse::&lt;bool&gt;()
                         .context(<span class="string">"Field 'include_skeleton' didn't contain a valid boolean!"</span>)<span class="question-mark">?</span>);
             },
-            <span class="kw">_ </span>=&gt; {
-                <span class="macro">print_be!</span>(task_number, <span class="string">"Which had an unknown/no field name..."</span>);
+            other =&gt; {
+                <span class="macro">warn!</span>(<span class="string">"Recieved unknown/no field name '{other:?}'!"</span>);
             }
         }
     }
@@ -750,28 +729,23 @@
 /// # Arguments
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object containing the request.
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>historical_entrypoint ( 
-    State(app): State&lt;Arc&lt;Mutex&lt;AppState&gt;&gt;&gt;,
+    State(app): State&lt;AppStatePtr&gt;,
     multipart: Multipart
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), AppError&gt; {
-    <span class="comment">// Allocate a new task number
-    </span>app.lock().<span class="kw">await
-        </span>.task_number += <span class="number">1</span>;
-    <span class="kw">let </span>task_number = app.lock().<span class="kw">await</span>.task_number;
-
-    <span class="macro">print_be!</span>(task_number, <span class="string">"\n----- [ Recieved historical submissions request ] -----"</span>);
+    <span class="kw">let </span>app = app.state;
 
     <span class="comment">// Unpack the arguments
-    </span><span class="macro">print_be!</span>(task_number, <span class="string">"Unpacking arguments..."</span>);
-    <span class="kw">let </span>arguments = unpack_historical_arguments(multipart, task_number).<span class="kw">await
+    </span><span class="macro">info!</span>(<span class="string">"Unpacking arguments..."</span>);
+    <span class="kw">let </span>arguments = unpack_historical_arguments(multipart).<span class="kw">await
         </span>.context(<span class="string">"Failed to unpack historical arguments!"</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Get all jobs
-    </span><span class="kw">let </span><span class="kw-2">mut </span>jobs: Vec&lt;(usize, Job)&gt; = app.lock().<span class="kw">await
-        </span>.db
-        .get_all_jobs(
-            <span class="kw-2">&amp;</span>arguments.uid,
-            task_number
+    </span><span class="kw">let </span><span class="kw-2">mut </span>jobs: Vec&lt;(usize, Job)&gt; = app.db
+        .lock().<span class="kw">await
+        </span>.get_all_jobs(
+            <span class="kw-2">&amp;</span>arguments.uid
         )
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to get jobs!"</span>)<span class="question-mark">?
@@ -873,7 +847,7 @@
                     )
                 );
                 <span class="kw">if </span>arguments.include_skeleton {
-                    <span class="macro">print_s3!</span>(task_number, <span class="string">"Preparing to grab pre-signed URLs for the skeleton-overlaid videos..."</span>);
+                    <span class="macro">info!</span>(<span class="string">"Preparing to grab pre-signed URLs for the skeleton-overlaid videos..."</span>);
 
                     <span class="kw">let </span>inputs_prefix = <span class="macro">format!</span>(
                         <span class="string">"{}/outputs/{};{}/videos/"</span>,
@@ -882,10 +856,10 @@
                     );
         
                     <span class="comment">// List the available files (since we don't know the extensions)
-                    </span><span class="kw">let </span>results = app.lock()
-                        .<span class="kw">await
-                        </span>.bucket
-                        .list(inputs_prefix, <span class="prelude-val">Some</span>(<span class="string">"/"</span>.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>results = app
+                        .bucket
+                        .lock().<span class="kw">await
+                        </span>.list(inputs_prefix, <span class="prelude-val">Some</span>(<span class="string">"/"</span>.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>front_file_key = <span class="prelude-val">None</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>side_file_key = <span class="prelude-val">None</span>;
                     <span class="kw">for </span>object <span class="kw">in </span><span class="kw-2">&amp;</span>results[<span class="number">0</span>].contents {
@@ -896,7 +870,7 @@
                         <span class="kw">let </span>file_name = file.split(<span class="string">"."</span>)
                             .next()
                             .context(<span class="string">"Empty filename! (Likely unreachable?)"</span>)<span class="question-mark">?</span>;
-                        <span class="macro">print_s3!</span>(task_number, <span class="string">"Found file `{file}` with name `{file_name}`"</span>);
+                        <span class="macro">info!</span>(<span class="string">"Found file `{file}` with name `{file_name}`"</span>);
         
                         <span class="kw">if </span>file_name.contains(<span class="string">"__F_"</span>) {
                             front_file_key = <span class="prelude-val">Some</span>(object.key.clone());
@@ -905,15 +879,15 @@
                         }
                     }
         
-                    <span class="kw">let </span>front_skeleton_video_link = app.lock()
-                        .<span class="kw">await
-                        </span>.bucket
-                        .presign_get(front_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
+                    <span class="kw">let </span>front_skeleton_video_link = app
+                        .bucket
+                        .lock().<span class="kw">await
+                        </span>.presign_get(front_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
                         .context(<span class="string">"Failed to get the front keyframed URL!"</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>side_skeleton_video_link = app.lock()
-                        .<span class="kw">await
-                        </span>.bucket
-                        .presign_get(side_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
+                    <span class="kw">let </span>side_skeleton_video_link = app
+                        .bucket
+                        .lock().<span class="kw">await
+                        </span>.presign_get(side_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
                         .context(<span class="string">"Failed to get the front keyframed URL!"</span>)<span class="question-mark">?</span>;
         
                     email_body.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
@@ -922,7 +896,7 @@
                         side_skeleton_video_link
                     ));
 
-                    <span class="macro">print_s3!</span>(task_number, <span class="string">"Grabbed pre-signed URLs for the skeleton-overlaid videos!"</span>);
+                    <span class="macro">info!</span>(<span class="string">"Grabbed pre-signed URLs for the skeleton-overlaid videos!"</span>);
                 }
             },
             <span class="kw">_ </span>=&gt; {
@@ -940,7 +914,7 @@
         
         <span class="comment">// Add the original videos, if requested
         </span><span class="kw">if </span>arguments.include_original {
-            <span class="macro">print_s3!</span>(task_number, <span class="string">"Preparing to grab pre-signed URLs for the original videos..."</span>);
+            <span class="macro">info!</span>(<span class="string">"Preparing to grab pre-signed URLs for the original videos..."</span>);
             <span class="kw">let </span>inputs_prefix = <span class="macro">format!</span>(
                 <span class="string">"{}/inputs/{};{}/"</span>,
                 arguments.uid,
@@ -948,10 +922,10 @@
             );
 
             <span class="comment">// List the available files (since we don't know the extensions)
-            </span><span class="kw">let </span>results = app.lock()
-                .<span class="kw">await
-                </span>.bucket
-                .list(inputs_prefix, <span class="prelude-val">Some</span>(<span class="string">"/"</span>.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
+            </span><span class="kw">let </span>results = app
+                .bucket
+                .lock().<span class="kw">await
+                </span>.list(inputs_prefix, <span class="prelude-val">Some</span>(<span class="string">"/"</span>.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>front_file_key = <span class="prelude-val">None</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>side_file_key = <span class="prelude-val">None</span>;
             <span class="kw">for </span>object <span class="kw">in </span><span class="kw-2">&amp;</span>results[<span class="number">0</span>].contents {
@@ -962,7 +936,7 @@
                 <span class="kw">let </span>file_name = file.split(<span class="string">"."</span>)
                     .next()
                     .context(<span class="string">"Empty filename! (Likely unreachable?)"</span>)<span class="question-mark">?</span>;
-                <span class="macro">print_s3!</span>(task_number, <span class="string">"Found file `{file}` with name `{file_name}`"</span>);
+                <span class="macro">info!</span>(<span class="string">"Found file `{file}` with name `{file_name}`"</span>);
 
                 <span class="kw">if </span>file_name == <span class="string">"front" </span>{
                     front_file_key = <span class="prelude-val">Some</span>(object.key.clone());
@@ -971,15 +945,15 @@
                 }
             }
 
-            <span class="kw">let </span>front_original_video_link = app.lock()
-                .<span class="kw">await
-                </span>.bucket
-                .presign_get(front_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
+            <span class="kw">let </span>front_original_video_link = app
+                .bucket
+                .lock().<span class="kw">await
+                </span>.presign_get(front_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
                 .context(<span class="string">"Failed to get the front keyframed URL!"</span>)<span class="question-mark">?</span>;
-            <span class="kw">let </span>side_original_video_link = app.lock()
-                .<span class="kw">await
-                </span>.bucket
-                .presign_get(side_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
+            <span class="kw">let </span>side_original_video_link = app
+                .bucket
+                .lock().<span class="kw">await
+                </span>.presign_get(side_file_key.context(<span class="string">"Missing front file!"</span>)<span class="question-mark">?</span>, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
                 .context(<span class="string">"Failed to get the front keyframed URL!"</span>)<span class="question-mark">?</span>;
 
             email_body.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
@@ -988,21 +962,10 @@
                 side_original_video_link
             ));
 
-            <span class="macro">print_s3!</span>(task_number, <span class="string">"Grabbed pre-signed URLs for the original videos!"</span>);
+            <span class="macro">info!</span>(<span class="string">"Grabbed pre-signed URLs for the original videos!"</span>);
         }
-
-        <span class="comment">/*
-        body.push_str(&amp;format!(
-            "&lt;h3&gt;Patient Information:&lt;/h3&gt;- Age: {}&lt;br&gt;- Ethnicity: {}&lt;br&gt;- Sex: {}&lt;br&gt;- Height: {}&lt;br&gt;- Weight: {}&lt;br&gt;&lt;br&gt;",
-            job.age,
-            job.ethnicity,
-            job.sex,
-            job.height,
-            job.weight
-        ));
-         */
-    </span>}
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Built the HTML file and email body!"</span>);
+    }
+    <span class="macro">info!</span>(<span class="string">"Built the HTML file and email body!"</span>);
 
     <span class="comment">// Now that we have created the shortened body, let's 
     //  upload the more verbose file to the user's S3,
@@ -1013,7 +976,7 @@
         </span>.as_secs();
 
     <span class="comment">// Generate the PDF
-    </span><span class="kw">let </span>(email, pdf_link) = get_email_and_pdf_link(app.clone(), jobs, arguments.uid, timestamp, task_number)
+    </span><span class="kw">let </span>(email, pdf_link) = get_email_and_pdf_link(app.clone(), jobs, arguments.uid, timestamp)
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to generate the PDF file!"</span>)<span class="question-mark">?</span>;
 
@@ -1029,8 +992,7 @@
         app,
         <span class="kw-2">&amp;</span>email,
         <span class="string">"Your iGait Submission History"</span>,
-        <span class="kw-2">&amp;</span>email_body,
-        task_number
+        <span class="kw-2">&amp;</span>email_body
     ).<span class="kw">await
         </span>.context(<span class="string">"Failed to send email!"</span>)<span class="question-mark">?</span>;
 
@@ -1053,7 +1015,6 @@
 /// * `jobs` - The jobs to include in the PDF.
 /// * `uid` - The user ID.
 /// * `timestamp` - The timestamp to use for the PDF.
-/// * `task_number` - The task number to print out to the console.
 /// 
 /// # Returns
 /// * The email address of the user.
@@ -1065,12 +1026,12 @@
 ///    &lt;br&gt;It is possible for this function to panic without catching the panic.
 ///    &lt;br&gt;&lt;br&gt;Currently, I do not have the technical skills to fix this. I will come back with more skill later.
 /// &lt;/div&gt;
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">async fn </span>get_email_and_pdf_link(
-    app: Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app: Arc&lt;AppState&gt;,
     jobs: Vec&lt;(usize, Job)&gt;,
     uid: String,
-    timestamp: u64,
-    task_number: JobTaskID
+    timestamp: u64
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(String, String)&gt; {
     <span class="kw">let </span>jobs_og = Arc::new(jobs.clone());
     <span class="kw">let </span>uid_og = Arc::new(uid);
@@ -1161,14 +1122,14 @@
                 genpdf::style::Style::new()
             )));
         }
-        <span class="macro">print_be!</span>(task_number, <span class="string">"Built PDF file!"</span>);
+        <span class="macro">info!</span>(<span class="string">"Built PDF file!"</span>);
 
         <span class="comment">// Render the file to a compatible Writer
         </span><span class="kw">let </span>path = <span class="macro">format!</span>(<span class="string">"pdf_handling/history_requests/{}_{}.html"</span>, uid_arc, timestamp_arc);
         doc.render_to_file(<span class="kw-2">&amp;</span>path)
             .expect(<span class="string">"Closure - Failed to render PDF!"</span>);
 
-        <span class="macro">print_be!</span>(task_number, <span class="string">"Rendered PDF file to {path}"</span>);
+        <span class="macro">info!</span>(<span class="string">"Rendered PDF file to {path}"</span>);
     });
 
     <span class="comment">// Await the sync thread
@@ -1176,11 +1137,11 @@
         .<span class="kw">await
         </span>.map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"{e:#?}"</span>))
         .context(<span class="string">"Failed to generate PDF file!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Preparing to upload..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Preparing to upload..."</span>);
 
     <span class="comment">// Read the bytes of the file
     </span><span class="kw">let </span>path = <span class="macro">format!</span>(<span class="string">"pdf_handling/history_requests/{}_{}.html"</span>, uid_og, timestamp_og);
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Reading file from {path}"</span>);
+    <span class="macro">info!</span>(<span class="string">"Reading file from {path}"</span>);
     <span class="kw">let </span>extended_body_byte_vec = tokio::fs::read(<span class="kw-2">&amp;</span>path)
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to read the PDF file!"</span>)<span class="question-mark">?</span>;
@@ -1189,27 +1150,26 @@
     </span>tokio::fs::remove_file(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"pdf_handling/history_requests/{}_{}.html"</span>, uid_og, timestamp_og))
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to remove the PDF file!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Removed file!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Removed file!"</span>);
 
     <span class="comment">// Put the extended body into the user's S3 bucket
-    </span><span class="macro">print_s3!</span>(task_number, <span class="string">"Putting file to AWS..."</span>);
+    </span><span class="macro">info!</span>(<span class="string">"Putting file to AWS..."</span>);
     <span class="kw">let </span>aws_path = <span class="macro">format!</span>(<span class="string">"{}/history_requests/{}.pdf"</span>, uid_og, timestamp_og);
-    app.lock()
-        .<span class="kw">await
-        </span>.bucket
-        .put_object(<span class="kw-2">&amp;</span>aws_path, <span class="kw-2">&amp;</span>extended_body_byte_vec)
+    app.bucket
+        .lock().<span class="kw">await
+        </span>.put_object(<span class="kw-2">&amp;</span>aws_path, <span class="kw-2">&amp;</span>extended_body_byte_vec)
         .<span class="kw">await 
         </span>.context(<span class="string">"Failed to upload front file to S3! Continuing regardless."</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_s3!</span>(task_number, <span class="string">"Uploaded PDF file to S3!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Uploaded PDF file to S3!"</span>);
 
     <span class="comment">// Generate the presigned URL
-    </span><span class="macro">print_s3!</span>(task_number, <span class="string">"Generating presigned URL..."</span>);
-    <span class="kw">let </span>extended_body_url = app.lock()
-            .<span class="kw">await
-            </span>.bucket
-            .presign_get(aws_path, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
+    </span><span class="macro">info!</span>(<span class="string">"Generating presigned URL..."</span>);
+    <span class="kw">let </span>extended_body_url = app
+            .bucket
+            .lock().<span class="kw">await
+            </span>.presign_get(aws_path, <span class="number">86400 </span>* <span class="number">7</span>, <span class="prelude-val">None</span>)
             .context(<span class="string">"Failed to get the front keyframed URL!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_s3!</span>(task_number, <span class="string">"Generated a presigned URL for the HTML file!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Generated a presigned URL for the HTML file!"</span>);
     
     <span class="kw">let </span>email = jobs
         .iter()

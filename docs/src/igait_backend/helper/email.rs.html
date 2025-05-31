@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/helper/email.rs`."><title>email.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../igait_backend/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/helper/email.rs`."><title>email.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="igait_backend" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../static.files/src-script-56102188.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">igait_backend/helper/</div>email.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -221,20 +222,62 @@
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::time::SystemTime;
 
-<span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result </span>};
+<span class="kw">use </span>anyhow::{ Context, <span class="prelude-ty">Result</span> };
 <span class="kw">use </span>chrono::{ DateTime, Utc };
 <span class="kw">use </span>chrono_tz::Tz;
-<span class="kw">use </span>tokio::sync::Mutex;
 <span class="kw">use </span>aws_sdk_sesv2::types::{
     Content, Destination, EmailContent, Body, Message
 };
+<span class="kw">use </span>tracing::info;
 
-<span class="kw">use </span><span class="kw">crate</span>::print_be;
-<span class="kw">use crate</span>::{ Arc, AppState };
+<span class="kw">use crate</span>::{ AppState, Arc, DISABLE_RESULT_EMAIL };
 
-<span class="kw">use </span><span class="kw">super</span>::lib::{Job, JobStatus, JobTaskID};
+<span class="kw">use </span><span class="kw">super</span>::lib::{Job, JobStatus};
 
 <span class="doccomment">/// Sends an email to the specified address with the specified subject and body.
 /// 
@@ -253,14 +296,14 @@
 /// # Notes
 /// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>send_email (
-    app:     Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app:     Arc&lt;AppState&gt;,
     to:      <span class="kw-2">&amp;</span>str,
     subject: <span class="kw-2">&amp;</span>str,
-    body:    <span class="kw-2">&amp;</span>str,
-    task_number: JobTaskID
+    body:    <span class="kw-2">&amp;</span>str
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Sending email to '{to}'..."</span>);
+    <span class="macro">info!</span>(<span class="string">"Sending email to '{to}'..."</span>);
 
     <span class="comment">// Post the form to the Cloudflare Worker
     </span><span class="kw">let </span>destination = Destination::builder()
@@ -292,8 +335,9 @@
         )
         .build();
 
-    app.lock().<span class="kw">await
-        </span>.aws_ses_client.send_email()
+    app.aws_ses_client
+        .lock().<span class="kw">await
+        </span>.send_email()
         .from_email_address(<span class="string">"noreply@igaitapp.com"</span>)
         .from_email_address_identity_arn(<span class="string">"arn:aws:ses:us-east-2:851725269484:identity/noreply@igaitapp.com"</span>)
         .destination(destination)
@@ -301,7 +345,7 @@
         .send()
         .<span class="kw">await
         </span>.context(<span class="string">"Failed to send email!"</span>)<span class="question-mark">?</span>;
-    <span class="macro">print_be!</span>(task_number, <span class="string">"Successfully sent email to '{to}'!"</span>);
+    <span class="macro">info!</span>(<span class="string">"Successfully sent email to '{to}'!"</span>);
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -317,7 +361,6 @@
 /// * `side_keyframed_url` - The URL to the side keyframed video
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -327,15 +370,15 @@
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>send_success_email (
-    app:                     Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app:                     Arc&lt;AppState&gt;,
     recipient_email_address: <span class="kw-2">&amp;</span>str,
     status:                  <span class="kw-2">&amp;</span>JobStatus,
     datetime:                <span class="kw-2">&amp;</span>DateTime&lt;Tz&gt;,
     job:                     <span class="kw-2">&amp;</span>Job,
     uid:                     <span class="kw-2">&amp;</span>str,
-    job_id:                  usize,
-    task_number:             JobTaskID
+    job_id:                  usize
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Build the email
     </span><span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Your recent submission to iGait App has completed!"</span>);
@@ -348,13 +391,12 @@
         job.sex,
         job.height,
         job.weight,
-
         uid,
         job_id
     );
 
     <span class="comment">// Send the email
-    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body )
         .<span class="kw">await
 </span>}
 
@@ -366,7 +408,6 @@
 /// * `datetime` - The timestamp of the job
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -376,27 +417,26 @@
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>send_failure_email (
-    app:                     Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app:                     Arc&lt;AppState&gt;,
     recipient_email_address: <span class="kw-2">&amp;</span>str,
     status:                  <span class="kw-2">&amp;</span>JobStatus,
     datetime:                <span class="kw-2">&amp;</span>DateTime&lt;Tz&gt;,
     uid:                     <span class="kw-2">&amp;</span>str,
-    job_id:                  usize,
-    task_number:             JobTaskID
+    job_id:                  usize
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Build the email
     </span><span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Your recent submission to iGait App failed!"</span>);
     <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Something went wrong with your submission on {}!&lt;br&gt;&lt;br&gt;Error Type: '{:?}'&lt;br&gt;Error Reason: '{}'&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}&lt;br&gt;&lt;br&gt;&lt;br&gt;Please contact support:&lt;br&gt;GaitStudy@niu.edu"</span>,
         datetime.to_string(),
-
         status.code, status.value, 
         uid,
         job_id
     );
 
     <span class="comment">// Send the email
-    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+    </span>send_email( app, recipient_email_address, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body )
         .<span class="kw">await
 </span>}
 
@@ -406,7 +446,6 @@
 /// * `job` - The job that was submitted
 /// * `uid` - The user ID of the job
 /// * `job_id` - The job ID of the job
-/// * `task_number` - The task number of the job
 /// 
 /// # Fails
 /// * If the email fails to send
@@ -416,32 +455,80 @@
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
+</span><span class="attr">#[tracing::instrument]
 </span><span class="kw">pub async fn </span>send_welcome_email (
-    app:         Arc&lt;Mutex&lt;AppState&gt;&gt;,
+    app:         Arc&lt;AppState&gt;,
     job:         <span class="kw-2">&amp;</span>Job,
     uid:         <span class="kw-2">&amp;</span>str,
-    job_id:      usize,
-    task_number: JobTaskID
+    job_id:      usize
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Build the email
     </span><span class="kw">let </span>dt_now_utc: DateTime&lt;Utc&gt; = SystemTime::now().into();
     <span class="kw">let </span>dt_now_cst = dt_now_utc.with_timezone(<span class="kw-2">&amp;</span>chrono_tz::US::Central);
     <span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Welcome to iGait!"</span>);
-    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
-        dt_now_cst.to_string(),
+    <span class="kw">let </span>body = <span class="kw">match </span>DISABLE_RESULT_EMAIL {
+        <span class="bool-val">false </span>=&gt; <span class="macro">format!</span>(<span class="string">"Your job submission on {} has been uploaded successfully! Please give us 1-2 days to complete analysis.&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
+            dt_now_cst.to_string(),
 
-        job.age,
-        job.ethnicity,
-        job.sex,
-        job.height,
-        job.weight,
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight,
 
-        uid,
-        job_id
-    );
+            uid,
+            job_id
+        ),
+        <span class="bool-val">true </span>=&gt; <span class="macro">format!</span>(<span class="string">"Dear iGAIT user,&lt;br&gt;&lt;br&gt;Your submission on {} has been successfully received! Please understand that the iGAIT website is still under development. At this point, the research team will review the screening result of your submission. We are working on adding the functionality to automatically email you the result. We hope that will be available soon.&lt;br&gt;&lt;br&gt;In the meanwhile, if you have any questions regarding your submission or user experience, or any suggestion to help us improve the website, please don't hesitate to contact us at GaitStudy@niu.edu. Please include the information below about your submission.&lt;br&gt;&lt;br&gt;Submission information:&lt;br&gt;Age: {}&lt;br&gt;Ethnicity: {}&lt;br&gt;Sex: {}&lt;br&gt;Height: {}&lt;br&gt;Weight: {}&lt;br&gt;&lt;br&gt;User ID: {}&lt;br&gt;Job ID: {}"</span>, 
+            dt_now_cst.to_string(),
+
+            job.age,
+            job.ethnicity,
+            job.sex,
+            job.height,
+            job.weight,
+
+            uid,
+            job_id
+        ),
+    };
 
     <span class="comment">// Send the email
-    </span>send_email( app, <span class="kw-2">&amp;</span>job.email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body, task_number )
+    </span>send_email( app, <span class="kw-2">&amp;</span>job.email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body )
         .<span class="kw">await
 </span>}
-</code></pre></div></section></main></body></html>
+
+<span class="doccomment">/// A wrapper around `send_email` that thanks the recipient for their contribution.
+/// 
+/// # Arguments
+/// * `recipient_email_address` - The email address to send the email to
+/// * `status` - The status of the job
+/// * `datetime` - The timestamp of the job
+/// * `uid` - The user ID of the job
+/// * `job_id` - The job ID of the job
+/// * `name` - The name entered by user from frontend
+///
+/// # Fails
+/// * If the email fails to send
+/// 
+/// # Returns
+/// * A successful result if the email was sent
+///
+/// # Notes
+/// * Any changes to the email logic should be made to the `send_email` function first
+/// * * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
+/// * The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
+</span><span class="attr">#[tracing::instrument]
+</span><span class="kw">pub async fn </span>send_contribution_email (
+    app: Arc&lt;AppState&gt;,
+    email: <span class="kw-2">&amp;</span>str,
+    name:  <span class="kw-2">&amp;</span>str
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="comment">// Build the email
+    </span><span class="kw">let </span>subject = <span class="macro">format!</span>(<span class="string">"Thank you for your contribution to iGait!"</span>);
+    <span class="kw">let </span>body = <span class="macro">format!</span>(<span class="string">"Dear {}!&lt;br&gt;&lt;br&gt;Your submission has been successfully received. Thank you for participating in this research study. If you have any questions or would like to follow up, please contact GaitStudy@niu.edu.&lt;br&gt;&lt;br&gt;Thank you for your support!"</span>, name);
+
+    <span class="comment">// Send the email
+    </span>send_email( app, email, <span class="kw-2">&amp;</span>subject, <span class="kw-2">&amp;</span>body )
+        .<span class="kw">await
+</span>}</code></pre></div></section></main></body></html>

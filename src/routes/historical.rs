@@ -26,7 +26,6 @@ struct HistoricalRequestArguments {
 /// 
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-/// * `task_number` - The task number to print out to the console.
 #[tracing::instrument]
 async fn unpack_historical_arguments(
     mut multipart: Multipart
@@ -425,7 +424,6 @@ pub async fn historical_entrypoint (
 /// * `jobs` - The jobs to include in the PDF.
 /// * `uid` - The user ID.
 /// * `timestamp` - The timestamp to use for the PDF.
-/// * `task_number` - The task number to print out to the console.
 /// 
 /// # Returns
 /// * The email address of the user.

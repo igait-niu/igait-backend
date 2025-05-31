@@ -17,6 +17,16 @@ use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
 use crate::helper::lib::{AppState, AppStatePtr, Job};
 
+/// Represents an update from the assistant to the client.
+/// 
+/// # Variants
+/// * `Message` - Contains the content of the message sent by the assistant.
+/// * `Error` - Contains the content of an error message.
+/// * `Waiting` - Contains the content of a waiting message, indicating that the assistant is still processing.
+/// * `Jobs` - Contains a list of jobs that the assistant has access to.
+/// 
+/// # Notes
+/// * Tagged with `type` to allow for easy deserialization.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 enum AssistantUpdate {
@@ -25,6 +35,13 @@ enum AssistantUpdate {
     Waiting { content: String },
     Jobs { content: Vec<Job> }
 }
+/// Represents the arguments for the `get_last_job` and `get_all_jobs` functions.
+/// 
+/// # Fields
+/// * `entries` - The number of entries to return.
+/// * `start_timestamp` - The UNIX timestamp to start the search from.
+/// * `end_timestamp` - The UNIX timestamp to end the search at.
+/// * `result_type` - The type of result to return, either `ASD` or `NO ASD`.
 #[derive(Deserialize)]
 struct SearchJobArguments {
     entries: Option<i64>,
@@ -33,6 +50,29 @@ struct SearchJobArguments {
     result_type: Option<String>
 }
 
+/// Sends a response to the client over a mutable `WebSocket` connection.
+/// 
+/// # Arguments
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `client` - The OpenAI client to use for sending the response.
+/// * `thread` - The thread object to send the response in.
+/// * `assistant` - The assistant object to use for the response.
+/// * `message` - The message to send to the assistant.
+/// * `socket` - The mutable WebSocket connection to send the response over.
+/// * `user_id` - The user ID of the client sending the message.
+/// 
+/// # Fails
+/// * If the message fails to be created.
+/// * If the run fails to be created.
+/// * If the run fails to be polled.
+/// * If the run fails to be submitted.
+/// * If the message fails to be sent to the client.
+/// * If the run fails to be retrieved.
+/// * If the run fails to be submitted with tool outputs.
+/// * If the run fails to be retrieved after submitting tool outputs.
+/// 
+/// # Returns
+/// * Nothing
 #[tracing::instrument(skip(app))]
 async fn send_response (
     app: &Arc<AppState>,
@@ -294,6 +334,16 @@ async fn send_response (
 
     Ok(())
 }
+/// The entry point for the API-facing assistant route.
+/// 
+/// Takes a `WebSocketUpgrade` and upgrades the connection to a WebSocket.
+/// 
+/// # Arguments
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `ws` - The WebSocket upgrade request.
+/// 
+/// # Returns
+/// * A response that upgrades the connection to a WebSocket and handles the socket connection.
 #[tracing::instrument(skip(app, ws))]
 pub async fn assistant_proxied_entrypoint (
     State(app): State<AppStatePtr>,
@@ -303,6 +353,11 @@ pub async fn assistant_proxied_entrypoint (
     
     ws.on_upgrade(move |socket| handle_proxied_socket_helper(app.state, socket))
 }
+/// A helper function to handle the proxied socket connection.
+/// 
+/// # Arguments
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `socket` - The WebSocket connection to handle.
 #[tracing::instrument(skip(app, socket))]
 async fn handle_proxied_socket_helper (
     app: Arc<AppState>,
@@ -312,6 +367,23 @@ async fn handle_proxied_socket_helper (
         error!("Failed to handle socket! Error: {e:?}");
     }
 }
+/// Handles the proxied socket connection.
+/// 
+/// This function expects to recieve an initial message containing the user's Firebase JWT, which is then passed via the now-proxied WSS.
+/// 
+/// # Arguments
+/// * `_app` - The application state containing the OpenAI client and assistant.
+/// * `socket` - The WebSocket connection to handle.
+/// 
+/// # Fails
+/// * If the token cannot be received from the client.
+/// * If the token cannot be parsed into a valid string.
+/// * If the connection to the proxied WebSocket fails.
+/// * If the message cannot be sent to the proxied WebSocket.
+/// * If the message cannot be received from the proxied WebSocket.
+/// 
+/// # Returns
+/// * Nothing
 #[tracing::instrument(skip(_app, socket))]
 async fn handle_proxied_socket (
     _app: Arc<AppState>,
@@ -413,6 +485,20 @@ async fn handle_proxied_socket (
 
     Ok(())
 }
+
+/// The entry point for the assistant route.
+/// 
+/// This route upgrades the connection to a WebSocket and handles the socket connection.
+/// Because Firebase Auth is expected to be grabbed via the `Bearer` header (which is in theory supported by WSS, considering the initial GET request involved with establishing a websocket!), it must be proxied to include the header.
+/// This is done because sending a WSS request with a `Bearer` header is not supported by the WSS standard for JavaScript clients.
+/// 
+/// # Arguments
+/// * `current_user` - The authenticated Firebase user.
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `ws` - The WebSocket upgrade request.
+/// 
+/// # Returns
+/// * A response that upgrades the connection to a WebSocket and handles the socket connection.
 #[tracing::instrument(skip(current_user, app, ws))]
 pub async fn assistant_entrypoint (
     current_user: FirebaseUser,
@@ -422,6 +508,12 @@ pub async fn assistant_entrypoint (
     info!("Upgrading WS connection...");
     ws.on_upgrade(move |socket| handle_socket_helper(app.state, socket, current_user))
 }
+/// A helper function to handle the socket connection.
+/// 
+/// # Arguments
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `socket` - The WebSocket connection to handle.
+/// * `current_user` - The authenticated Firebase user.
 #[tracing::instrument(skip(current_user, socket, app))]
 async fn handle_socket_helper (
     app: Arc<AppState>,
@@ -432,6 +524,25 @@ async fn handle_socket_helper (
         error!("Failed to handle socket! Error: {e:?}");
     }
 }
+/// Handles the socket connection for the assistant route.
+/// 
+/// This function expects the user to be authenticated via Firebase Auth, and will create a new OpenAI thread for the user.
+/// 
+/// # Arguments
+/// * `app` - The application state containing the OpenAI client and assistant.
+/// * `socket` - The WebSocket connection to handle.
+/// * `current_user` - The authenticated Firebase user.
+/// 
+/// # Fails
+/// * If the OpenAI vector store ID cannot be found in the environment variables.
+/// * If the thread creation fails.
+/// * If the message cannot be sent to the client.
+/// * If the run fails to be created or polled.
+/// * If the run fails to be submitted with tool outputs.
+/// * If the run fails to be retrieved after submitting tool outputs.
+/// 
+/// # Returns
+/// * Nothing
 #[tracing::instrument(skip(current_user, app, socket))]
 async fn handle_socket (
     app: Arc<AppState>,

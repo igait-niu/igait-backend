@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["historical","upload"]};
+window.SIDEBAR_ITEMS = {"mod":["assistant","contribute","historical","upload"]};

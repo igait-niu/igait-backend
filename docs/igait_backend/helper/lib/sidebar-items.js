@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["JobStatusCode"],"struct":["AppError","AppState","Job","JobStatus","Request","User"],"type":["JobTaskID"]};
+window.SIDEBAR_ITEMS = {"enum":["JobStatusCode"],"fn":["get_bearer_token"],"struct":["AppError","AppState","AppStatePtr","Job","JobStatus","Request","UnauthorizedResponse","User"]};

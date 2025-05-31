@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["ASD_CLASSIFICATION_THRESHOLD"],"fn":["main"],"macro":["print_be","print_db","print_metis","print_s3"],"mod":["daemons","helper","routes"]};
+window.SIDEBAR_ITEMS = {"constant":["ASD_CLASSIFICATION_THRESHOLD","DISABLE_RESULT_EMAIL"],"fn":["main"],"mod":["daemons","helper","routes"]};

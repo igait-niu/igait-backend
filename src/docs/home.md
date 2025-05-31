@@ -1,5 +1,5 @@
 # iGait ASD - Backend
-This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submitssion, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
+This is the primary brain behind everything in the iGait app. There are a variety of microservices involved with the submission, upload, storage, and more - this server handles all of this to bring our product to the convenience of a low-power mobile device.
 
 # Other Repositories and Documents
 Helpful links and documentation for other sources is also in this documentation.
@@ -63,10 +63,11 @@ The codebase is split up into multiple modules:
   - [`helper/email.rs`](helper::email): Handles the interfacing with Cloudflare Workers to send email
   - [`helper/lib.rs`](helper::lib): Defines all custom datatypes the iGait backend uses 
   - [`helper/metis.rs`](helper::metis): Handles the interfacing with the Metis supercomputer
-  - [`helper/print.rs`](helper::print): Helper printing macros to create easily readable print messages
 - [`routes`]: 
   - [`routes/historical.rs`](routes::historical): This route is for use by the **iGait frontend** to get the historical submissions of a user.
   - [`routes/upload.rs`](routes::upload): This route is for use by the **iGait frontend** to upload a job to the server.
+  - [`routes/contribute.rs`](routes::contribute): This route is for use by the **iGait frontend** to contribute additional research data.
+  - [`routes/assistant.rs`](routes::assistant): This route is for use by the **iGait frontend** to open a proxied WSS connection to the iGait Assistant.
 
 # 3 - Setting Up Your Development Environment
 There are two ways to ensure that you have the proper development environment.
@@ -262,6 +263,14 @@ Finally, it deletes the `outputs` folder from both the AWS EC2 instance and Meti
 It's very possible that users could lose their results, or want to see an aggregate collection of all of their submissions. To allow this, we provide a `historical_submissions` route that can email a (potentially filtered collection of the results the user wishes to see.
 
 There are a variety of ways to filter this - if you wish to learn more about it, please see the documentation for the route!
+
+#### The Contribute Route
+Currently, the iGAIT team requires additional data to further train our machine learning models. To obtain such data, we have opened an additional route on the frontend that allows the submission of NT/ASD data without the intent to recieve a result.
+
+This in turn is uploaded to a seperate section of our AWS S3 latent storage, allowing our research team to easily re-contact users and pull data.
+
+#### The iGait Assistant
+There is additionally an iGait Assistant which can be used to collect, view, and analyze results for users. Users which are confused about iGait, how it works, or ASD in general can easily prompt this assistant via a clean chat interface.
 
 # More
 For additional, more in-depth documentation, it is suggested to first read the documentation in the associated modules below.
