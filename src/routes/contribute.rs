@@ -160,7 +160,8 @@ pub async fn contribute_entrypoint(
             &arguments.name
         ).await 
     {
-        return Err(AppError(anyhow!("Failed to save files to S3! Error:\n{}", err)));
+        return Err(AppError(err
+            .context("Failed to save locally or upload files to S3!")));
     }
 
     // Thank the user for their contribution

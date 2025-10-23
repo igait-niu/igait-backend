@@ -231,20 +231,19 @@ pub struct AppError(pub anyhow::Error);
 impl IntoResponse for AppError {
     #[tracing::instrument]
     fn into_response(self) -> Response<Body> {
-        error!("Encountered an error: {self:#?}");
-        error!("Please see below for more information.");
+        let err = &self.0;
 
-        error!("Printing the error chain...");
-        for (ind, cause) in self.0.chain().enumerate() {
-            error!("[{ind}] {cause:#?}");
+        error!("Encountered an error: {err:#?}");
+        for (ind, ctx) in err.chain().enumerate() {
+            error!("  [{ind}] {ctx:#?}");
         }
 
-        error!("Printing the backtrace...");
-        error!("{:#?}", self.0.backtrace());
+        error!("Full backtrace...");
+        error!("{:#?}", err.backtrace());
 
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
+            format!("Something went wrong: {}",err),
         )
             .into_response()
     }

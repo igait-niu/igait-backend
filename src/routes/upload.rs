@@ -256,7 +256,8 @@ pub async fn upload_entrypoint(
             .context("Failed to update the status of the job! It failed to save, however.")?;
 
         // Early return as a failure
-        return Err(AppError(anyhow!("Failed to save files to S3! Error:\n{}", err)));
+        return Err(AppError(err
+            .context("Failed to save locally or upload files to S3!")));
     }
     
     // Populate the status object
