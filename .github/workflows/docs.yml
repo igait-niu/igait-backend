@@ -30,17 +30,18 @@ jobs:
           override: true
       
       - name: Build documentation
-        working-directory: ./igait-backend
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps --all-features --workspace
       
       - name: Add redirect index
-        working-directory: ./igait-backend
         run: echo '<meta http-equiv="refresh" content="0; url=igait_backend">' > target/doc/index.html
+      
+      - name: Add .nojekyll file
+        run: touch target/doc/.nojekyll
       
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./igait-backend/target/doc
+          publish_dir: ./target/doc
           publish_branch: gh-pages
           force_orphan: true
