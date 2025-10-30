@@ -161,7 +161,7 @@ async fn submit_to_webserver(output: &Output) -> Result<()> {
     }
     
     let response = client
-        .post(format!("{}/api/pipeline/submit", backend_url))
+        .post(format!("{}/api/v1/pipeline/submit", backend_url))
         .header("X-Pipeline-Secret", secret)
         .multipart(form)
         .send()

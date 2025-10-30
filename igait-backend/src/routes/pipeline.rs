@@ -100,8 +100,14 @@ async fn process_pipeline_submission(
     tracing::info!("Processing pipeline submission for job ID: {}", job_id);
 
     // Get the prediction score
-    let prediction_score = output.result.clone()
-        .map_err(|e| anyhow::anyhow!("Pipeline failed: {}", e))?;
+    let prediction_score = match output.result.clone() {
+        Ok(score) => score,
+        Err(e) => {
+            tracing::error!("Pipeline failed for job {}: {}", job_id, e);
+            tracing::error!("Pipeline stages output: {:#?}", output.stages);
+            return Err(anyhow::anyhow!("Pipeline failed: {}", e));
+        }
+    };
 
     // Determine result type
     let result_type = if prediction_score > crate::ASD_CLASSIFICATION_THRESHOLD as f64 {
@@ -146,7 +152,7 @@ async fn process_pipeline_submission(
                     value: format!("{} (score: {:.2}%)", result_type, prediction_score * 100.0),
                 },
             ).await {
-                tracing::error!("Failed to update database: {:?}", e);
+                tracing::warn!("Failed to update database (this is expected if testing with fake user): {:?}", e);
                 // Continue anyway since we have the results in S3
             } else {
                 tracing::info!("Successfully updated database for job {}", job_id);
