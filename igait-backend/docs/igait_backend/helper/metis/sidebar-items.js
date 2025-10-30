@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["METIS_DATA_DIR","METIS_HOSTNAME","METIS_INPUTS_DIR","METIS_OUTPUTS_DIR","METIS_OUTPUT_NAME","METIS_PBS_PATH","METIS_USERNAME"],"enum":["SSHPath"],"fn":["copy_file","delete_logfile","delete_output_folder","metis_output_exists","metis_qsub"],"type":["PBSId"]};

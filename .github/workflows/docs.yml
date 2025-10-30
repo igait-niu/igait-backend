@@ -1,0 +1,46 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: ['master']
+    paths:
+      - 'igait-backend/src/**'
+      - 'igait-lib/src/**'
+      - 'igait-backend/Cargo.toml'
+      - 'igait-lib/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Build documentation
+        working-directory: ./igait-backend
+        run: cargo doc --no-deps --all-features
+      
+      - name: Add redirect index
+        working-directory: ./igait-backend
+        run: echo '<meta http-equiv="refresh" content="0; url=igait_backend">' > target/doc/index.html
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./igait-backend/target/doc
+          publish_branch: gh-pages
+          force_orphan: true

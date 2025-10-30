@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["get_email_and_pdf_link","historical_entrypoint","unpack_historical_arguments"],"struct":["HistoricalRequestArguments"]};

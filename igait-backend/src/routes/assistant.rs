@@ -456,7 +456,7 @@ async fn handle_proxied_socket (
 
         info!("Got message on proxied connection, forwarding: {msg}");
 
-        local_socket.send(tokio_tungstenite::tungstenite::Message::Text(msg)).await
+        local_socket.send(tokio_tungstenite::tungstenite::Message::Text(msg.into())).await
             .context("Couldn't send message!")?;
 
         info!("Sent!");
@@ -465,7 +465,7 @@ async fn handle_proxied_socket (
             while let Some(msg_result) = local_socket.next().await {
                 match msg_result.and_then(|msg_obj| msg_obj.into_text()) {
                     Ok(msg) => {
-                        socket.send(axum::extract::ws::Message::Text(msg.clone())).await
+                        socket.send(axum::extract::ws::Message::Text(msg.to_string())).await
                             .context("Couldn't send message!")?;
 
                         if msg.starts_with("{\"type\":\"Message\"") {

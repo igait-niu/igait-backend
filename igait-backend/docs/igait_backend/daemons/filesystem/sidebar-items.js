@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["check_inputs_dir","upload_output_dir","work_inputs","work_output_helper","work_outputs"]};
