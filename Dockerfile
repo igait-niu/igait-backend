@@ -5,10 +5,12 @@ FROM debian:bookworm-slim AS builder
 RUN apt-get update && apt-get install -y \
     curl \
     xz-utils \
+    ca-certificates \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nix package manager
-RUN curl -L https://nixos.org/nix/install | sh -s -- --daemon
+# Install Nix package manager in single-user mode (better for Docker)
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
 
 # Enable Nix in the current shell and configure flakes
 RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
@@ -27,19 +29,21 @@ COPY igait-lib ./igait-lib
 COPY igait-pipeline ./igait-pipeline
 
 # Source Nix environment and build
-RUN . /root/.nix-profile/etc/profile.d/nix.sh && nix build .#igait-backend
+ENV PATH="/root/.nix-profile/bin:${PATH}"
+RUN nix build .#igait-backend
 
 # Runtime stage - slim with Nix for runtime dependencies
 FROM debian:bookworm-slim
 
-# Install dependencies for Nix
+# Install minimal dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     xz-utils \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nix package manager
-RUN curl -L https://nixos.org/nix/install | sh -s -- --daemon
+# Install Nix package manager in single-user mode
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
 
 # Enable flakes
 RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
@@ -49,6 +53,9 @@ COPY --from=builder /nix /nix
 
 # Copy the built application
 COPY --from=builder /app/result /app/result
+
+# Add Nix to PATH
+ENV PATH="/root/.nix-profile/bin:${PATH}"
 
 # Set up runtime volumes
 VOLUME /data
