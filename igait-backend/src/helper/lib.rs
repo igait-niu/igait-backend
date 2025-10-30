@@ -79,17 +79,6 @@ pub enum JobStatusCode {
     Complete
 }
 
-/// The request struct for the historical submissions endpoint.
-/// 
-/// # Fields
-/// * `id` - The ID of the request
-/// * `status` - The status of the request
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Request {
-    pub id: usize,
-    pub status: JobStatusCode
-}
-
 /// The state of the entire backend application with handles to the database and S3 bucket.
 /// 
 /// # Fields

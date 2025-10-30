@@ -9,14 +9,25 @@
 /// 
 /// # Arguments
 /// * `X-Pipeline-Secret` header: The shared secret for authentication
-/// * `output`: JSON-serialized Output struct
-/// * `archive`: Optional results.zip file
+/// * `output`: JSON-serialized Output struct (multipart field)
+/// * `archive`: Optional results.zip file (multipart field)
 /// 
-/// # Returns
-/// * `200 OK` if successful
-/// * `401 Unauthorized` if secret is invalid
-/// * `400 Bad Request` if data is malformed
-/// * `500 Internal Server Error` if processing fails
+/// # Example cURL Request
+/// ```sh
+/// curl -v -X POST \
+///     -H "X-Pipeline-Secret: MEOWMEOWMEOW" \
+///     -F output=@output.json \
+///     -F archive=@results.zip \
+///     http://api.igaitapp.com/api/v1/pipeline/submit
+/// ```
+/// 
+/// # Testing
+/// For local testing instructions, see the [testing guide](../docs/testing.md).
+/// 
+/// # Potential Reasons for Failure
+/// * `401 Unauthorized` - Invalid or missing secret
+/// * `400 Bad Request` - Malformed data
+/// * `500 Internal Server Error` - Processing failed
 pub mod pipeline;
 
 /// This module contains the historical submissions endpoint for the API.

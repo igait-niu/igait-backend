@@ -1,14 +1,12 @@
 #![doc = include_str!("./docs/home.md")]
 mod helper;
-mod daemons;
 mod routes;
 
 use anyhow::{ Context, Result };
 use axum::{
     extract::DefaultBodyLimit, routing::{any, post}, Router
 };
-use daemons::filesystem::work_inputs;
-use helper::{lib::{AppState, AppStatePtr}, metis::{copy_file, SSHPath, METIS_DATA_DIR, METIS_HOSTNAME, METIS_USERNAME}};
+use helper::lib::{AppState, AppStatePtr};
 use std::sync::Arc;
 use tracing_subscriber;
 use dotenv::dotenv;
@@ -69,24 +67,9 @@ async fn main() -> Result<()> {
         .nest("/api/v1", api_v1)
         .layer(DefaultBodyLimit::max(500000000));
 
-    // Copy scripts to Metis
-    println!("[1/3] Copying scripts from local to Metis...");
-    copy_file(
-        METIS_USERNAME,
-        METIS_HOSTNAME,
-        SSHPath::Local("scripts"),
-        SSHPath::Remote(METIS_DATA_DIR),
-        true
-    ).await
-        .context("Couldn't move the outputs from Metis to local outputs directory!")?;
-    println!("[2/3] Successfully copied scripts from local to Metis!");
-
-    // Start the inputs worker
-    tokio::spawn(work_inputs(state));
-
     // Serve the API
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
-    println!("[3/3] Starting iGait backend on port {port}...");
+    println!("Starting iGait backend on port {port}...");
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await
         .context("Couldn't start up listener!")?;
     axum::serve(listener, app).await
