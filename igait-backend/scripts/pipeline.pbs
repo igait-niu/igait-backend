@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#PBS -N igait_pipeline
+#PBS -j oe
+#PBS -l select=1:ncpus=8:mpiprocs=1:ngpus=1:mem=251gb
+#PBS -l walltime=00:30:00
+
+mprint() {
+    echo "[ :3 - $1 - :3 ]"
+}
+
+main() {
+    # Load environment
+    cd /lstr/sahara/zwlab/jw/igait-pipeline
+    source .env
+    
+    # Run the pipeline with webserver submission
+    mprint "Starting iGait pipeline..."
+    ./target/release/igait-pipeline \
+        --input-path-front /lstr/sahara/zwlab/data/inputs/${ID}__F_.* \
+        --input-path-side /lstr/sahara/zwlab/data/inputs/${ID}__S_.* \
+        --output-dir-path /lstr/sahara/zwlab/data/outputs/${ID} \
+        --submit-to-webserver
+    
+    PIPELINE_EXIT=$?
+    
+    if [ $PIPELINE_EXIT -eq 0 ]; then
+        mprint "Pipeline completed successfully!"
+    else
+        mprint "Pipeline failed with exit code $PIPELINE_EXIT"
+        exit $PIPELINE_EXIT
+    fi
+}
+
+cleanup() {
+    # Remove input files for privacy
+    mprint "Removing input files..."
+    rm -f /lstr/sahara/zwlab/data/inputs/${ID}__F_.*
+    rm -f /lstr/sahara/zwlab/data/inputs/${ID}__S_.*
+    
+    # Remove output directory to conserve space
+    mprint "Removing output directory..."
+    rm -rf /lstr/sahara/zwlab/data/outputs/${ID}
+    
+    mprint "Cleanup complete!"
+}
+
+main
+cleanup
+mprint "Done ^^"

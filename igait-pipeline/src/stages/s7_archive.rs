@@ -4,10 +4,7 @@ use walkdir::WalkDir;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-use super::{
-    StageData, StageStatus,
-    super::Output
-};
+use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{anyhow, ensure, Context, Result};
 
 async fn create_archive (

@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use super::{
-    StageData, StageStatus,
-    super::Output
-};
+use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{Result, Context, anyhow};
 use tokio::process::Command;
 

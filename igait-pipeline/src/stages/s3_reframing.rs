@@ -1,7 +1,4 @@
-use super::{
-    StageData, StageStatus,
-    super::Output
-};
+use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{Context, Result};
 
 async fn reframe (

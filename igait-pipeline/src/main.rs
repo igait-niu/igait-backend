@@ -1,10 +1,9 @@
 mod stages;
 
-use stages::{Stages, StageData};
+use igait_lib::{Output, CanonicalPaths, StagePaths, StageData};
 use std::path::PathBuf;
 use clap::Parser;
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -32,47 +31,6 @@ struct Args {
     /// The stage to start at (1-6, optional to skip stages)
     #[arg(long)]
     skip_to_stage: Option<u8>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct CanonicalPaths {
-    front_video: PathBuf,
-    side_video: PathBuf,
-    output_dir: PathBuf,
-
-    stage_paths: StagePaths
-}
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct StagePaths {
-    s1_media_conversion: PathBuf,
-    s2_validity_check: PathBuf,
-    s3_reframing: PathBuf,
-    s4_pose_estimation: PathBuf,
-    s5_cycle_detection: PathBuf,
-    s6_prediction: PathBuf,
-    s7_archive: PathBuf,
-}
-#[derive(Serialize, Deserialize, Debug)]
-struct Output {
-    canonical_paths: CanonicalPaths,
-    stages: Stages,
-    result: Result<f64, String>,
-    skip_to_stage: Option<u8>,
-}
-impl Output {
-    fn new(skip_to_stage: Option<u8>) -> Self {
-        Self {
-            canonical_paths: CanonicalPaths {
-                front_video: PathBuf::default(),
-                side_video: PathBuf::default(),
-                output_dir: PathBuf::default(),
-                stage_paths: StagePaths::default()
-            },
-            stages: Stages::default(),
-            result: Err("Critical error - Pipeline failed before starting".to_string()),
-            skip_to_stage,
-        }
-    }
 }
 
 async fn propagate_stage (
@@ -179,6 +137,44 @@ async fn run_pipeline(
     // Return the final prediction score (will be set by stage 7)
     output.result.clone()
 }
+
+async fn submit_to_webserver(output: &Output) -> Result<()> {
+    dotenv::dotenv().ok();
+    let secret = std::env::var("PIPELINE_SECRET")
+        .expect("PIPELINE_SECRET must be set in .env file");
+    let backend_url = std::env::var("BACKEND_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+    
+    let client = reqwest::Client::new();
+    
+    // Check if archive exists
+    let archive_path = output.canonical_paths.stage_paths.s7_archive.join("results.zip");
+    let mut form = reqwest::multipart::Form::new()
+        .text("output", serde_json::to_string(&output)?);
+    
+    if tokio::fs::try_exists(&archive_path).await.unwrap_or(false) {
+        let file_bytes = tokio::fs::read(&archive_path).await?;
+        let file_part = reqwest::multipart::Part::bytes(file_bytes)
+            .file_name("results.zip")
+            .mime_str("application/zip")?;
+        form = form.part("archive", file_part);
+    }
+    
+    let response = client
+        .post(format!("{}/api/pipeline/submit", backend_url))
+        .header("X-Pipeline-Secret", secret)
+        .multipart(form)
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        anyhow::bail!("Failed to submit to webserver: {}", response.status());
+    }
+    
+    println!("Successfully submitted results to webserver");
+    Ok(())
+}
+
 async fn main_wrapper (
     args: &Args,
     output: &mut Output
@@ -192,7 +188,15 @@ async fn main_wrapper (
         ).await
             .expect("Critical error - Failed to write output.json");
     }
+
+    if args.submit_to_webserver {
+        if let Err(e) = submit_to_webserver(output).await {
+            eprintln!("Failed to submit to webserver: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();

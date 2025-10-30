@@ -2,6 +2,23 @@
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
 
+/// This module contains the pipeline submission endpoint for the API.
+/// 
+/// This endpoint receives results from the iGait pipeline running on the compute cluster.
+/// It is secured with a shared secret to ensure only authorized pipeline instances can submit.
+/// 
+/// # Arguments
+/// * `X-Pipeline-Secret` header: The shared secret for authentication
+/// * `output`: JSON-serialized Output struct
+/// * `archive`: Optional results.zip file
+/// 
+/// # Returns
+/// * `200 OK` if successful
+/// * `401 Unauthorized` if secret is invalid
+/// * `400 Bad Request` if data is malformed
+/// * `500 Internal Server Error` if processing fails
+pub mod pipeline;
+
 /// This module contains the historical submissions endpoint for the API.
 /// 
 /// # Arguments
