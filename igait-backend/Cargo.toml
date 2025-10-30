@@ -1,0 +1,37 @@
+[package]
+name = "igait-backend"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+#async-openai = "0.27"
+async-openai = { git = "https://github.com/hiibolt/async-openai.git" }
+async-recursion = "1"
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"
+aws-sdk-sesv2 = "1"
+axum = { version = "0.7", features = ["multipart", "ws"] }
+chrono = { version = "0.4", features = ["alloc"] }
+chrono-tz = "0.10"
+firebase-auth = { version = "0.5", features = ["axum"] }
+firebase-rs = "2"
+genpdf = "0.2"
+openssh = { version = "0.10", features = ["native-mux"] }
+rand = "0.8"
+rust-s3 = "0.33"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha256 = "1"
+time-util = { version = "0.3", features = ["chrono", "serde"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.5", features = ["fs"] }
+tower-livereload = "0.9"
+ureq = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
+tokio-tungstenite = "*"
+futures-util = "0.3.31"
+dotenv = "0.15"

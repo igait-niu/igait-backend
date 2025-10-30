@@ -1,0 +1,13 @@
+# Secrets
+.envrc
+.env
+/.direnv
+
+# Development files
+*.mp4
+*.MOV
+/outputs/*/*
+
+# Build files
+/target
+/result

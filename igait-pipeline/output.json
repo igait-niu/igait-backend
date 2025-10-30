@@ -1,0 +1,26 @@
+{
+  "canonical_paths": {
+    "front_video": "",
+    "side_video": "",
+    "output_dir": "",
+    "stage_paths": {
+      "s1_media_conversion": "",
+      "s2_validity_check": "",
+      "s3_reframing": "",
+      "s4_pose_estimation": "",
+      "s5_cycle_detection": "",
+      "s6_prediction": ""
+    }
+  },
+  "stages": {
+    "s1_media_conversion": null,
+    "s2_validity_check": null,
+    "s3_reframing": null,
+    "s4_pose_estimation": null,
+    "s5_cycle_detection": null,
+    "s6_prediction": null
+  },
+  "result": {
+    "Err": "Failed to canonicalize output dir path: \"./output\": Os { code: 2, kind: NotFound, message: \"No such file or directory\" }"
+  }
+}
