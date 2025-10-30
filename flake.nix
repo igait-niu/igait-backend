@@ -63,9 +63,28 @@
           #LD_LIBRARY_PATH = libPath;
           OPENSSL_LIB_DIR = pkgs.openssl.out + "/lib";
         };
+        dockerImage = pkgs.dockerTools.buildLayeredImage {
+          name = "igait-backend";
+          tag = "latest";
+          contents = [ localRustBuild pkgs.cacert pkgs.openssh ];
+          config = {
+            Cmd = [ "${localRustBuild}/bin/igait-backend" ];
+            ExposedPorts = {
+              "3000/tcp" = {};
+            };
+            Volumes = {
+              "/data" = {};
+              "/root/.ssh" = {};
+            };
+          };
+        };
       in
       {
-        packages.igait-backend = localRustBuild;
+        packages = {
+          igait-backend = localRustBuild;
+          docker = dockerImage;
+          default = localRustBuild;
+        };
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [ cargo rustc ];
         };
