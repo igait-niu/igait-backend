@@ -10,6 +10,7 @@ COPY flake.nix flake.lock ./
 COPY Cargo.toml Cargo.lock ./
 COPY igait-backend/Cargo.toml ./igait-backend/
 COPY igait-lib/Cargo.toml ./igait-lib/
+COPY igait-pipeline/Cargo.toml ./igait-pipeline/
 
 # Cache the dependencies
 RUN nix develop .#igait-backend
@@ -17,6 +18,7 @@ RUN nix develop .#igait-backend
 # Import the work directory and build
 COPY igait-backend ./igait-backend
 COPY igait-lib ./igait-lib
+COPY igait-pipeline ./igait-pipeline
 RUN nix build .#igait-backend
 
 # Run the binary
