@@ -288,19 +288,32 @@ pub async fn historical_entrypoint (
                         }
                     }
         
-                    let front_skeleton_video_link = app
-                        .bucket
-                        .lock().await
-                        .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
-                        .context("Failed to get the front keyframed URL!")?;
-                    let side_skeleton_video_link = app
-                        .bucket
-                        .lock().await
-                        .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
-                        .context("Failed to get the front keyframed URL!")?;
+                    let front_skeleton_video_link = if let Some(front_file_key) = front_file_key {
+                        format!("<a href=\"{}\">Skeleton Front Video</a>",
+                            app
+                                .bucket
+                                .lock().await
+                                .presign_get(front_file_key, 86400 * 7, None)
+                                .unwrap_or(String::from("Failed to get the front skeleton keyframed URL!"))
+                        )
+                    } else {
+                        String::from("No front skeleton video available.")
+                    };
+                    let side_skeleton_video_link = if let Some(side_file_key) = side_file_key {
+                        format!("<a href=\"{}\">Skeleton Side Video</a>",
+                            app
+                                .bucket
+                                .lock().await
+                                .presign_get(side_file_key, 86400 * 7, None)
+                                .unwrap_or(String::from("Failed to get the side skeleton keyframed URL!"))
+                        )
+                    } else {
+                        String::from("No side skeleton video available.")
+                    };
+                    
         
                     email_body.push_str(&format!(
-                        "- <a href=\"{}\">Skeleton Front Video</a><br>- <a href=\"{}\">Skeleton Side Video</a><br>",
+                        "- {}<br>- {}<br>",
                         front_skeleton_video_link,
                         side_skeleton_video_link
                     ));
@@ -354,19 +367,31 @@ pub async fn historical_entrypoint (
                 }
             }
 
-            let front_original_video_link = app
-                .bucket
-                .lock().await
-                .presign_get(front_file_key.context("Missing front file!")?, 86400 * 7, None)
-                .context("Failed to get the front keyframed URL!")?;
-            let side_original_video_link = app
-                .bucket
-                .lock().await
-                .presign_get(side_file_key.context("Missing front file!")?, 86400 * 7, None)
-                .context("Failed to get the front keyframed URL!")?;
+            let front_original_video_link = if let Some(front_file_key) = front_file_key {
+                format!("<a href=\"{}\">Original Front Video</a>",
+                    app
+                        .bucket
+                        .lock().await
+                        .presign_get(front_file_key, 86400 * 7, None)
+                        .unwrap_or(String::from("Failed to get the front keyframed URL!"))
+                )
+            } else {
+                String::from("No front original video available.")
+            };
+            let side_original_video_link = if let Some(side_file_key) = side_file_key {
+                format!("<a href=\"{}\">Original Side Video</a>",
+                    app
+                        .bucket
+                        .lock().await
+                        .presign_get(side_file_key, 86400 * 7, None)
+                        .unwrap_or(String::from("Failed to get the side keyframed URL!"))
+                )
+            } else {
+                String::from("No side original video available.")
+            };
 
             email_body.push_str(&format!(
-                "- <a href=\"{}\">Original Front Video</a><br>- <a href=\"{}\">Original Side Video</a><br>",
+                "- {}<br>- {}<br>",
                 front_original_video_link,
                 side_original_video_link
             ));

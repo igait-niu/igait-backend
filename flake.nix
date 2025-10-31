@@ -63,12 +63,24 @@
           #LD_LIBRARY_PATH = libPath;
           OPENSSL_LIB_DIR = pkgs.openssl.out + "/lib";
         };
+        # Package the runtime assets
+        runtimeAssets = pkgs.stdenv.mkDerivation {
+          name = "igait-backend-assets";
+          src = ./igait-backend;
+          installPhase = ''
+            mkdir -p $out
+            cp -r inputs $out/
+            cp -r outputs $out/
+            cp -r pdf_handling $out/
+          '';
+        };
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "igait-backend";
           tag = "latest";
-          contents = [ localRustBuild pkgs.cacert pkgs.openssh ];
+          contents = [ localRustBuild pkgs.cacert pkgs.openssh runtimeAssets ];
           config = {
             Cmd = [ "${localRustBuild}/bin/igait-backend" ];
+            WorkingDir = "${runtimeAssets}";
             ExposedPorts = {
               "3000/tcp" = {};
             };

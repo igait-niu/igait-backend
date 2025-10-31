@@ -104,7 +104,7 @@ pub async fn send_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 #[tracing::instrument]
-pub async fn send_success_email (
+pub async fn _send_success_email (
     app:                     Arc<AppState>,
     recipient_email_address: &str,
     status:                  &JobStatus,
@@ -151,7 +151,7 @@ pub async fn send_success_email (
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
 #[tracing::instrument]
-pub async fn send_failure_email (
+pub async fn _send_failure_email (
     app:                     Arc<AppState>,
     recipient_email_address: &str,
     status:                  &JobStatus,
