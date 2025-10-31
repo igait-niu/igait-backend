@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PATH_TO_OPENPOSE_SIF"],"enum":["CameraView"],"fn":["execute","pose_estimation","run_openpose"]};

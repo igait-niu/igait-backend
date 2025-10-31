@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["pipeline_submit_entrypoint","process_pipeline_submission","send_pipeline_result_email"]};

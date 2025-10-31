@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["s1_media_conversion","s2_validity_check","s3_reframing","s4_pose_estimation","s5_cycle_detection","s6_prediction","s7_archive"]};
