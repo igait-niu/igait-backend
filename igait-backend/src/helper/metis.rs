@@ -28,17 +28,14 @@ pub enum SSHPath<'a> {
 pub async fn copy_file<'a> (
     username:         &str,
     hostname:         &str,
-
     source:           SSHPath<'a>,
     destination:      SSHPath<'a>,
     directory:        bool
 ) -> Result<String> {
     let mut command = Command::new("scp");
-
     if directory {
         command.arg("-r");
     }
-
     match source {
         SSHPath::Remote(remote_file_path) => {
             match destination {
@@ -64,20 +61,19 @@ pub async fn copy_file<'a> (
             }
         }
     }
-
     let output = command.output()
         .await
         .context("Failed to execute `scp` command!")?;
-
     let stdout: String = String::from_utf8 ( output.stdout )
         .context("Standard output contained invalid UTF-8!")?;
-    let stderr: String = String::from_utf8 ( output.stderr )
-        .context("Standard error contained invalid UTF-8!")?;
-
-    if !stderr.is_empty() {
-        bail!("Got error output: {stderr}");
+    
+    // Check exit status instead of stderr (SSH/SCP often writes warnings to stderr)
+    if !output.status.success() {
+        let stderr: String = String::from_utf8_lossy(&output.stderr).to_string();
+        bail!("SCP command failed with exit code {:?}.\nStdout: {}\nStderr: {}", 
+              output.status.code(), stdout, stderr);
     }
-
+    
     Ok(stdout)
 }
 

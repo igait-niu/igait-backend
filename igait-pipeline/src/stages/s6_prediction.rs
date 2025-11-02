@@ -4,8 +4,8 @@ use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{anyhow, ensure, Context, Result};
 use tokio::process::Command;
 
-// Use local assets directory instead of remote one
-const PATH_TO_STAGE_6_ASSETS: &str = "./igait-pipeline/assets/stage_6";
+// Workspace root is guaranteed to be at this location
+const PATH_TO_STAGE_6_ASSETS: &str = "/lstr/sahara/zwlab/jw/igait-pipeline/igait-pipeline/assets/stage_6";
 
 async fn predict (
     output: &mut Output,

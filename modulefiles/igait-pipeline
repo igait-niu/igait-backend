@@ -1,0 +1,25 @@
+#%Module1.0
+##
+## iGait Pipeline Module
+##
+proc ModulesHelp { } {
+    puts stderr "iGait Pipeline - Gait analysis pipeline for video processing"
+    puts stderr ""
+    puts stderr "This module provides access to the igait-pipeline command."
+    puts stderr "Usage: igait-pipeline --input-path-front <FILE> --input-path-side <FILE> --output-dir-path <DIR>"
+}
+
+module-whatis "iGait Pipeline - Gait analysis tool"
+
+set root /lstr/sahara/zwlab/jw/igait-pipeline
+
+# Add the binary to PATH
+prepend-path PATH $root/target/release
+
+# Set environment variable for workspace root (in case it's needed)
+setenv IGAIT_WORKSPACE_ROOT $root
+
+# Source the .env file location
+setenv IGAIT_ENV_FILE $root/.env
+
+conflict igait-pipeline
