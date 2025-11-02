@@ -77,10 +77,33 @@
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "igait-backend";
           tag = "latest";
-          contents = [ localRustBuild pkgs.cacert pkgs.openssh runtimeAssets ];
+          contents = [ 
+            localRustBuild 
+            pkgs.cacert 
+            pkgs.openssh
+            runtimeAssets
+            # Add core utilities needed for proper user/environment setup
+            pkgs.coreutils
+            pkgs.bash
+          ];
+          fakeRootCommands = ''
+            # Create proper /etc/passwd and /etc/group for root user
+            mkdir -p etc
+            echo "root:x:0:0:root:/root:/bin/bash" > etc/passwd
+            echo "root:x:0:" > etc/group
+            
+            # Create /tmp directory with proper permissions
+            mkdir -p tmp
+            chmod 1777 tmp
+          '';
           config = {
             Cmd = [ "${localRustBuild}/bin/igait-backend" ];
             WorkingDir = "${runtimeAssets}";
+            User = "root";
+            Env = [
+              "HOME=/root"
+              "USER=root"
+            ];
             ExposedPorts = {
               "3000/tcp" = {};
             };
