@@ -3,4 +3,5 @@ output/*
 
 # Ignore environment/testing things
 .env
-*.sh
+test.sh
+batch_process.pbs

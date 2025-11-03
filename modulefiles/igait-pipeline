@@ -13,6 +13,10 @@ module-whatis "iGait Pipeline - Gait analysis tool"
 
 set root /lstr/sahara/zwlab/jw/igait-pipeline
 
+# Load CUDA and OpenMPI modules as prerequisites
+module load cuda/cuda-12.8
+module load openmpi/openmpi-5.0.7-gcc-14.2.0-cuda-12.8
+
 # Add the binary to PATH
 prepend-path PATH $root/target/release
 

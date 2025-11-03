@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{Context, Result};
 use tokio::process::Command;
@@ -29,6 +28,7 @@ pub async fn execute(
         logs,
     }
 }
+
 async fn media_conversion (
     output: &mut Output,
     logs: &mut String
@@ -57,6 +57,7 @@ async fn media_conversion (
 
     Ok(StageStatus::Done)
 }
+
 async fn standardize_video(
     input_file_path: &PathBuf,
     output_file_path: &PathBuf,

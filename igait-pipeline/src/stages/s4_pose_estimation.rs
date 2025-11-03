@@ -4,12 +4,13 @@ use igait_lib::{StageData, StageStatus, Output};
 use anyhow::{Result, Context, anyhow};
 use tokio::process::Command;
 
-const PATH_TO_OPENPOSE_SIF: &str = "/lstr/sahara/zwlab/data/scripts/output_image.sif";
+const PATH_TO_OPENPOSE_SIF: &str = "/lstr/sahara/zwlab/jw/igait-pipeline/igait-openpose/igait-openpose.sif";
 
 enum CameraView {
     Front,
     Side,
 }
+
 pub async fn execute(
     output: &mut Output
 ) -> StageData {
@@ -33,6 +34,7 @@ pub async fn execute(
         logs,
     }
 }
+
 async fn pose_estimation (
     output: &mut Output,
     logs: &mut String
@@ -103,6 +105,7 @@ async fn pose_estimation (
 
     Ok(StageStatus::Done)
 }
+
 async fn run_openpose(
     output_dir:  &PathBuf,
     stage_output_dir_name: &str,
@@ -115,8 +118,9 @@ async fn run_openpose(
         CameraView::Side  => "side",
     };
     let filename = format!("{view}.mp4");
-    let output = Command::new("apptainer")
-        .arg("run")
+    
+    let output = Command::new("singularity")
+        .arg("exec")
         .arg("--nv")
         .arg("--pwd").arg("/openpose")
         .arg("--bind")
@@ -129,16 +133,13 @@ async fn run_openpose(
         .arg("--write_video").arg(format!("/outputs/{stage_output_dir_name}/videos/{filename}"))
         .output()
         .await
-        .context("Failed to execute apptainer command")?;
-
+        .context("Failed to execute singularity command")?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     logs.push_str(&format!("OpenPose stdout:\n{stdout}\n"));
     logs.push_str(&format!("OpenPose stderr:\n{stderr}\n"));
-
     if !output.status.success() {
         return Err(anyhow::anyhow!("OpenPose command failed with exit code: {:?}", output.status.code()));
     }
-
     Ok(())
 }

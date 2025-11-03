@@ -14,6 +14,19 @@ main() {
     cd /lstr/sahara/zwlab/jw/igait-pipeline
     source .env
     
+    # Load CUDA and OpenMPI modules
+    module load cuda/cuda-12.8
+    module load openmpi/openmpi-5.0.7-gcc-14.2.0-cuda-12.8
+    
+    # Initialize GPU with cudaMPI
+    mprint "Initializing GPU..."
+    mpirun -np 1 ./igait-pipeline/assets/stage_1/cudaMPI
+    if [ $? -ne 0 ]; then
+        mprint "ERROR: GPU initialization failed!"
+        exit 1
+    fi
+    mprint "GPU initialized successfully"
+    
     # Run the pipeline with webserver submission
     mprint "Starting iGait pipeline..."
     ./target/release/igait-pipeline \

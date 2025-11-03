@@ -66,65 +66,49 @@ async fn predict (
     tokio::fs::copy(requirements_path, output_requirements).await
         .context("Failed to copy requirements.txt to output/s6_prediction/requirements.txt")?;
 
-    // Use bash to run module commands and Python setup
-    // The module command is a bash function, so we need to invoke it through bash -l -c
-    let setup_script = format!(
-        r#"
-        module purge && \
-        module load python/python-3.12.4 && \
-        python3 -m pip install -U pip --user && \
-        pip3 install -r {} --user
-        "#,
-        output_requirements.display()
-    );
-    
-    logs.push_str("Setting up Python environment with modules...\n");
-    let output = Command::new("bash")
-        .arg("-l")
-        .arg("-c")
-        .arg(&setup_script)
+    // Install Python dependencies directly (pip should be in PATH from PBS environment)
+    logs.push_str("Installing Python dependencies...\n");
+    let pip_output = Command::new("pip3.12")
+        .arg("install")
+        .arg("-r")
+        .arg(output_requirements.as_os_str())
+        .arg("--user")
         .output()
         .await
-        .context("Failed to run Python environment setup")?;
+        .context("Failed to run pip3.12 install")?;
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    logs.push_str(&format!("Setup stdout:\n{stdout}\n"));
-    logs.push_str(&format!("Setup stderr:\n{stderr}\n"));
+    let stdout = String::from_utf8_lossy(&pip_output.stdout);
+    let stderr = String::from_utf8_lossy(&pip_output.stderr);
+    logs.push_str(&format!("pip3 stdout:\n{stdout}\n"));
+    logs.push_str(&format!("pip3 stderr:\n{stderr}\n"));
     
-    ensure!(output.status.success(), "Python environment setup failed");
-    logs.push_str("Python environment setup complete.\n");
+    ensure!(pip_output.status.success(), "pip3 install failed");
+    logs.push_str("Python dependencies installed.\n");
 
-    // Run the Python script with the Model directory path from assets
-    let run_script = format!(
-        r#"
-        module purge && \
-        module load python/python-3.12.4 && \
-        cd {} && \
-        python3 {} {} {} {}
-        "#,
-        prediction_output_dir.display(),
-        output_python_script.display(),
-        prediction_output_dir.display(),
-        prediction_output_dir.display(),
-        model_dir_path.display()
-    );
-    
+    // Run the Python script with python3.12 explicitly (matching the pip version)
     logs.push_str("Running Python inference script...\n");
-    let output = Command::new("bash")
-        .arg("-l")
-        .arg("-c")
-        .arg(&run_script)
+    
+    // Set PYTHONPATH to include user site-packages directory
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/home/z1994244".to_string());
+    let python_user_site = format!("{home_dir}/.local/lib/python3.12/site-packages");
+    
+    let python_output = Command::new("python3.12")
+        .arg(output_python_script.as_os_str())
+        .arg(prediction_output_dir.as_os_str())
+        .arg(prediction_output_dir.as_os_str())
+        .arg(model_dir_path.as_os_str())
+        .current_dir(prediction_output_dir)
+        .env("PYTHONPATH", &python_user_site)
         .output()
         .await
         .context("Failed to run Python script")?;
     
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&python_output.stdout);
+    let stderr = String::from_utf8_lossy(&python_output.stderr);
     logs.push_str(&format!("Python script stdout:\n{stdout}\n"));
     logs.push_str(&format!("Python script stderr:\n{stderr}\n"));
     
-    ensure!(output.status.success(), "Running Python script failed");
+    ensure!(python_output.status.success(), "Running Python script failed");
     logs.push_str("Python script completed successfully.\n");
 
     Ok(StageStatus::Done)
