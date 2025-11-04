@@ -10,16 +10,23 @@ mprint() {
 }
 
 main() {
-    # Load environment
+    # Change to workspace root
     cd /lstr/sahara/zwlab/jw/igait-pipeline
-    source .env
     
-    # Load CUDA and OpenMPI modules
+    mprint "Loading modules..."
+    module purge
+    module load igait
     module load cuda/cuda-12.8
     module load openmpi/openmpi-5.0.7-gcc-14.2.0-cuda-12.8
     
+    mprint "Modules loaded"
+    
+    # Enable GPU persistence mode to keep CUDA context alive
+    mprint "Enabling GPU persistence mode..."
+    nvidia-smi -pm 1 2>/dev/null || mprint "WARNING: Could not enable persistence mode (may require root)"
+    
     # Initialize GPU with cudaMPI
-    mprint "Initializing GPU..."
+    mprint "Initializing GPU with cudaMPI..."
     mpirun -np 1 ./igait-pipeline/assets/stage_1/cudaMPI
     if [ $? -ne 0 ]; then
         mprint "ERROR: GPU initialization failed!"

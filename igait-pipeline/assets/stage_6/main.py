@@ -247,6 +247,14 @@ target_rows = 30
 def select_gait_segments(df, name):
     """Select 4 segments of 30 frames each from the dataframe"""
     row_count = df.shape[0]
+    
+    # Check if we have enough data
+    if row_count == 0:
+        raise ValueError(f"{name}: No data available (0 frames processed). Cannot select gait segments.")
+    
+    if row_count < 30:
+        raise ValueError(f"{name}: Insufficient data ({row_count} frames). Need at least 30 frames to select gait segments.")
+    
     segment_starts = [int(row_count * i / 5) for i in range(1, 5)]
     segment_length = 30
     
@@ -260,6 +268,10 @@ def select_gait_segments(df, name):
         segment = df.iloc[start:end].copy()
         interpolated_segments.append(segment)
         print(f"{name} Segment {i}: Selected {segment_length} rows from index {start} to {end - 1}")
+    
+    # Check if we got any valid segments
+    if not interpolated_segments:
+        raise ValueError(f"{name}: No valid segments could be extracted from {row_count} frames. Need at least {segment_starts[0] + 30} frames for the smallest segment.")
     
     return pd.concat(interpolated_segments, ignore_index=True)
 

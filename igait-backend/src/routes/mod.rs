@@ -30,29 +30,6 @@
 /// * `500 Internal Server Error` - Processing failed
 pub mod pipeline;
 
-/// This module contains the historical submissions endpoint for the API.
-/// 
-/// # Arguments
-/// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
-/// * `entries`: The number of entries to return. This is an unsigned integer.
-/// * `start_timestamp`: The UNIX timestamp (seconds since the epoch date) to start the search from.
-/// * `end_timestamp`: The UNIX timestamp (seconds since the epoch date) to end the search from.
-/// * `result_type`: The type of result to return. This is a string - either `ASD` or `NO ASD`.`
-/// * `include_original`: Whether to include the original video files in the response.
-/// * `include_skeleton`: Whether to include the skeleton files in the response.
-/// 
-/// # Example cURL Request
-/// ```sh
-/// curl -v -F user_id=hiibolt -F entries=2 -F start_timestamp=173
-/// 6628724 -F end_timestamp=3736628726 -F result_type='NO ASD' -F inc
-/// lude_skeleton=true -F include_original=true http://api.igaitapp.com/
-/// api/v1/historical_submissions
-/// ```
-/// 
-/// # Potential Reasons for Failure
-/// See each individual function for potential reasons for failure.
-pub mod historical;
-
 /// This module contains the job upload endpoint for the API.
 /// 
 /// # Arguments

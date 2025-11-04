@@ -96,28 +96,60 @@ async fn process_pipeline_submission(
         .and_then(|n| n.to_str())
         .context("Failed to extract job ID from output path")?
         .to_string();
-
+    
     tracing::info!("Processing pipeline submission for job ID: {}", job_id);
-
+    
     // Get the prediction score
     let prediction_score = match output.result.clone() {
         Ok(score) => score,
         Err(e) => {
             tracing::error!("Pipeline failed for job {}: {}", job_id, e);
             tracing::error!("Pipeline stages output: {:#?}", output.stages);
+            
+            // Parse job_id to send failure email
+            let parts: Vec<&str> = job_id.split('_').collect();
+            if parts.len() >= 2 {
+                if let Ok(job_index) = parts[parts.len() - 1].parse::<usize>() {
+                    let uid = parts[..parts.len() - 1].join("_");
+                    
+                    // Determine if this is a stage 2 failure or generic failure
+                    let is_stage2_failure = e.contains("Stage 2") || e.contains("Validity Check");
+                    
+                    let db = state.state.db.lock().await;
+                    if let Ok(job) = db.get_job(&uid, job_index).await {
+                        if is_stage2_failure {
+                            let _ = send_stage2_failure_email(
+                                state.state.clone(),
+                                &job.email,
+                                &uid,
+                                &job_id,
+                            ).await;
+                        } else {
+                            let _ = send_generic_failure_email(
+                                state.state.clone(),
+                                &job.email,
+                                &uid,
+                                &job_id,
+                                &e,
+                            ).await;
+                        }
+                    }
+                }
+            }
+            
             return Err(anyhow::anyhow!("Pipeline failed: {}", e));
         }
     };
-
+    
     // Determine result type
     let result_type = if prediction_score > crate::ASD_CLASSIFICATION_THRESHOLD as f64 {
         "ASD"
     } else {
         "NO ASD"
     };
-
+    
     tracing::info!("Job {} completed with score {} ({})", job_id, prediction_score, result_type);
-
+    
     // Upload archive to S3 if present
     if let Some(archive_data) = archive_bytes {
         tracing::info!("Uploading results archive for job {} to S3", job_id);
@@ -131,7 +163,7 @@ async fn process_pipeline_submission(
         
         tracing::info!("Successfully uploaded archive to S3: {}", s3_key);
     }
-
+    
     // Parse job_id which should be in format "uid_jobindex"
     // Example: "user123_5" means user "user123", job index 5
     let parts: Vec<&str> = job_id.split('_').collect();
@@ -157,18 +189,16 @@ async fn process_pipeline_submission(
             } else {
                 tracing::info!("Successfully updated database for job {}", job_id);
                 
-                // Send result email if not disabled
+                // Send success email if not disabled
                 if !crate::DISABLE_RESULT_EMAIL {
                     if let Ok(job) = db.get_job(&uid, job_index).await {
-                        if let Err(e) = send_pipeline_result_email(
+                        if let Err(e) = send_success_email(
                             state.state.clone(),
                             &job.email,
-                            result_type,
-                            prediction_score,
                             &uid,
                             &job_id,
                         ).await {
-                            tracing::error!("Failed to send result email: {:?}", e);
+                            tracing::error!("Failed to send success email: {:?}", e);
                         }
                     }
                 }
@@ -179,29 +209,94 @@ async fn process_pipeline_submission(
     } else {
         tracing::warn!("Job ID format unexpected (should be uid_jobindex): {}", job_id);
     }
-
+    
     Ok(())
 }
 
-/// Send a result email for pipeline completion
-async fn send_pipeline_result_email(
+/// Send a success email for pipeline completion (censored when DISABLE_RESULT_EMAIL is true)
+async fn send_success_email(
     app: std::sync::Arc<crate::helper::lib::AppState>,
     recipient_email: &str,
-    result_type: &str,
-    score: f64,
     uid: &str,
     job_id: &str,
 ) -> Result<()> {
-    let subject = "Your iGait Analysis Results".to_string();
+    let subject = "Your iGait Analysis is Complete".to_string();
+    let body = if crate::DISABLE_RESULT_EMAIL {
+        format!(
+            "Dear iGAIT user,<br><br>\
+            Your gait analysis has been completed successfully!<br><br>\
+            Please understand that the iGAIT website is still under development. \
+            The research team will review your screening result and may contact you if needed.<br><br>\
+            Job ID: {}<br>\
+            User ID: {}<br><br>\
+            If you have any questions, please contact us at GaitStudy@niu.edu.<br><br>\
+            Thank you for using iGait!",
+            job_id,
+            uid
+        )
+    } else {
+        format!(
+            "Dear iGAIT user,<br><br>\
+            Your gait analysis has been completed successfully!<br><br>\
+            Job ID: {}<br>\
+            User ID: {}<br><br>\
+            Thank you for using iGait!",
+            job_id,
+            uid
+        )
+    };
+    
+    crate::helper::email::send_email(app, recipient_email, &subject, &body).await
+}
+
+/// Send a generic failure email
+async fn send_generic_failure_email(
+    app: std::sync::Arc<crate::helper::lib::AppState>,
+    recipient_email: &str,
+    uid: &str,
+    job_id: &str,
+    error_message: &str,
+) -> Result<()> {
+    let subject = "Your iGait Analysis Encountered an Error".to_string();
     let body = format!(
-        "Your gait analysis has been completed!<br><br>\
-        Result: {}<br>\
-        Confidence Score: {:.2}%<br><br>\
+        "Dear iGAIT user,<br><br>\
+        Unfortunately, there was an error processing your gait analysis submission.<br><br>\
         Job ID: {}<br>\
         User ID: {}<br><br>\
-        Thank you for using iGait!",
-        result_type,
-        score * 100.0,
+        Error details: {}<br><br>\
+        Please try submitting again. If the problem persists, contact us at GaitStudy@niu.edu for assistance.<br><br>\
+        We apologize for the inconvenience.",
+        job_id,
+        uid,
+        error_message
+    );
+    
+    crate::helper::email::send_email(app, recipient_email, &subject, &body).await
+}
+
+/// Send a stage 2 failure email (person could not be detected)
+async fn send_stage2_failure_email(
+    app: std::sync::Arc<crate::helper::lib::AppState>,
+    recipient_email: &str,
+    uid: &str,
+    job_id: &str,
+) -> Result<()> {
+    let subject = "Unable to Process Your iGait Submission".to_string();
+    let body = format!(
+        "Dear iGAIT user,<br><br>\
+        We were unable to process your gait analysis submission because a person could not be detected in the uploaded videos.<br><br>\
+        Job ID: {}<br>\
+        User ID: {}<br><br>\
+        Please ensure that:<br>\
+        <ul>\
+        <li>The videos clearly show a person walking</li>\
+        <li>The person is visible and not obscured</li>\
+        <li>The lighting is adequate</li>\
+        <li>The camera is stable and properly positioned</li>\
+        </ul><br>\
+        Please try recording and submitting new videos following our guidelines. \
+        If you continue to experience issues, contact us at GaitStudy@niu.edu for assistance.<br><br>\
+        Thank you for your understanding.",
         job_id,
         uid
     );
