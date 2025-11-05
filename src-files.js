@@ -1,0 +1,2 @@
+createSrcSidebar('[["igait_backend",["",[["helper",[],["database.rs","email.rs","lib.rs","metis.rs","mod.rs"]],["routes",[],["assistant.rs","contribute.rs","mod.rs","pipeline.rs","upload.rs"]]],["main.rs"]]],["igait_lib",["",[],["lib.rs"]]],["igait_pipeline",["",[["stages",[],["mod.rs","s1_media_conversion.rs","s2_validity_check.rs","s3_reframing.rs","s4_pose_estimation.rs","s5_cycle_detection.rs","s6_prediction.rs","s7_archive.rs"]]],["main.rs"]]]]');
+//{"start":19,"fragment_lengths":[188,33,212]}
