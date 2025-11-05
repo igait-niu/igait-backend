@@ -2,7 +2,7 @@
 
 #PBS -N igait_pipeline
 #PBS -j oe
-#PBS -l select=1:ncpus=8:mpiprocs=1:ngpus=1:mem=251gb
+#PBS -l select=1:ncpus=1:mpiprocs=1:ngpus=1:mem=251gb
 #PBS -l walltime=00:30:00
 
 mprint() {
@@ -10,6 +10,9 @@ mprint() {
 }
 
 main() {
+    # Set umask to allow group write permissions (002 = rwxrwxr-x for directories, rw-rw-r-- for files)
+    umask 002
+    
     # Change to workspace root
     cd /lstr/sahara/zwlab/jw/igait-pipeline
     

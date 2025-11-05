@@ -51,6 +51,22 @@ async fn run_pipeline(
     args: &Args,
     output: &mut Output
 ) -> Result<f64, String> {
+    // Create the output directory first if it doesn't exist
+    // Use 0o2775 permissions (setgid + rwxrwxr-x) so group ownership is preserved
+    tokio::fs::create_dir_all(&args.output_dir_path).await
+        .map_err(|e| format!("Critical error - Failed to create output directory {:?}: {e:?}", args.output_dir_path))?;
+    
+    // Set permissions on the output directory to allow group write
+    // Note: This requires the umask to be set properly, which should be handled by the PBS script
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let permissions = std::fs::Permissions::from_mode(0o2775);
+        std::fs::set_permissions(&args.output_dir_path, permissions)
+            .map_err(|e| format!("Warning - Could not set permissions on output directory: {e:?}"))
+            .ok(); // Don't fail if this doesn't work
+    }
+    
     // Canonicalize paths
     output.canonical_paths = {
         let canonicalized_front_video_path = args.input_path_front.canonicalize()

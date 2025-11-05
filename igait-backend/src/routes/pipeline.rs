@@ -99,115 +99,140 @@ async fn process_pipeline_submission(
     
     tracing::info!("Processing pipeline submission for job ID: {}", job_id);
     
-    // Get the prediction score
-    let prediction_score = match output.result.clone() {
-        Ok(score) => score,
-        Err(e) => {
-            tracing::error!("Pipeline failed for job {}: {}", job_id, e);
-            tracing::error!("Pipeline stages output: {:#?}", output.stages);
+    // Parse job_id which should be in format "uid_jobindex"
+    let parts: Vec<&str> = job_id.split('_').collect();
+    let (uid, job_index) = if parts.len() >= 2 {
+        if let Ok(job_index) = parts[parts.len() - 1].parse::<usize>() {
+            let uid = parts[..parts.len() - 1].join("_");
+            (uid, job_index)
+        } else {
+            tracing::warn!("Could not parse job index from job_id: {}", job_id);
+            return Ok(()); // Don't fail the request, just log and return
+        }
+    } else {
+        tracing::warn!("Job ID format unexpected (should be uid_jobindex): {}", job_id);
+        return Ok(()); // Don't fail the request, just log and return
+    };
+    
+    tracing::info!("Parsed job ID: uid={}, job_index={}", uid, job_index);
+    
+    // Check if the pipeline succeeded or failed
+    match output.result.clone() {
+        Ok(score) => {
+            // Pipeline succeeded - handle success case
+            let result_type = if score > crate::ASD_CLASSIFICATION_THRESHOLD as f64 {
+                "ASD"
+            } else {
+                "NO ASD"
+            };
             
-            // Parse job_id to send failure email
-            let parts: Vec<&str> = job_id.split('_').collect();
-            if parts.len() >= 2 {
-                if let Ok(job_index) = parts[parts.len() - 1].parse::<usize>() {
-                    let uid = parts[..parts.len() - 1].join("_");
-                    
-                    // Determine if this is a stage 2 failure or generic failure
-                    let is_stage2_failure = e.contains("Stage 2") || e.contains("Validity Check");
-                    
-                    let db = state.state.db.lock().await;
-                    if let Ok(job) = db.get_job(&uid, job_index).await {
-                        if is_stage2_failure {
-                            let _ = send_stage2_failure_email(
-                                state.state.clone(),
-                                &job.email,
-                                &uid,
-                                &job_id,
-                            ).await;
-                        } else {
-                            let _ = send_generic_failure_email(
-                                state.state.clone(),
-                                &job.email,
-                                &uid,
-                                &job_id,
-                                &e,
-                            ).await;
-                        }
-                    }
+            tracing::info!("Job {} completed successfully with score {} ({})", job_id, score, result_type);
+            
+            // Upload archive to S3 if present
+            if let Some(archive_data) = archive_bytes {
+                tracing::info!("Uploading results archive for job {} to S3", job_id);
+                
+                let s3_key = format!("results/{}/results.zip", job_id);
+                
+                let bucket = state.state.bucket.lock().await;
+                if let Err(e) = bucket.put_object(&s3_key, &archive_data).await {
+                    tracing::error!("Failed to upload archive to S3: {:?}", e);
+                    // Continue anyway - we can still update the database
+                } else {
+                    tracing::info!("Successfully uploaded archive to S3: {}", s3_key);
                 }
             }
             
-            return Err(anyhow::anyhow!("Pipeline failed: {}", e));
-        }
-    };
-    
-    // Determine result type
-    let result_type = if prediction_score > crate::ASD_CLASSIFICATION_THRESHOLD as f64 {
-        "ASD"
-    } else {
-        "NO ASD"
-    };
-    
-    tracing::info!("Job {} completed with score {} ({})", job_id, prediction_score, result_type);
-    
-    // Upload archive to S3 if present
-    if let Some(archive_data) = archive_bytes {
-        tracing::info!("Uploading results archive for job {} to S3", job_id);
-        
-        let s3_key = format!("results/{}/results.zip", job_id);
-        
-        let bucket = state.state.bucket.lock().await;
-        bucket.put_object(&s3_key, &archive_data)
-            .await
-            .context("Failed to upload archive to S3")?;
-        
-        tracing::info!("Successfully uploaded archive to S3: {}", s3_key);
-    }
-    
-    // Parse job_id which should be in format "uid_jobindex"
-    // Example: "user123_5" means user "user123", job index 5
-    let parts: Vec<&str> = job_id.split('_').collect();
-    if parts.len() >= 2 {
-        // Try to parse uid and job index
-        if let Ok(job_index) = parts[parts.len() - 1].parse::<usize>() {
-            let uid = parts[..parts.len() - 1].join("_");
-            
-            tracing::info!("Parsed job ID: uid={}, job_index={}", uid, job_index);
-            
-            // Update the database
+            // Update the database with success
             let db = state.state.db.lock().await;
             if let Err(e) = db.update_status(
                 &uid,
                 job_index,
                 crate::helper::lib::JobStatus {
                     code: crate::helper::lib::JobStatusCode::Complete,
-                    value: format!("{} (score: {:.2}%)", result_type, prediction_score * 100.0),
+                    value: format!("{} (score: {:.2}%)", result_type, score * 100.0),
                 },
             ).await {
                 tracing::warn!("Failed to update database (this is expected if testing with fake user): {:?}", e);
-                // Continue anyway since we have the results in S3
             } else {
                 tracing::info!("Successfully updated database for job {}", job_id);
                 
-                // Send success email if not disabled
-                if !crate::DISABLE_RESULT_EMAIL {
-                    if let Ok(job) = db.get_job(&uid, job_index).await {
-                        if let Err(e) = send_success_email(
-                            state.state.clone(),
-                            &job.email,
-                            &uid,
-                            &job_id,
-                        ).await {
-                            tracing::error!("Failed to send success email: {:?}", e);
-                        }
+                // Always send success email (opaque if DISABLE_RESULT_EMAIL is true)
+                if let Ok(job) = db.get_job(&uid, job_index).await {
+                    if let Err(e) = send_success_email(
+                        state.state.clone(),
+                        &job.email,
+                        &uid,
+                        &job_id,
+                    ).await {
+                        tracing::error!("Failed to send success email: {:?}", e);
                     }
                 }
             }
-        } else {
-            tracing::warn!("Could not parse job index from job_id: {}", job_id);
         }
-    } else {
-        tracing::warn!("Job ID format unexpected (should be uid_jobindex): {}", job_id);
+        Err(e) => {
+            // Pipeline failed - handle failure case
+            tracing::error!("Pipeline failed for job {}: {}", job_id, e);
+            tracing::error!("Pipeline stages output: {:#?}", output.stages);
+            
+            // Determine if this is a stage 2 failure or generic failure
+            let is_stage2_failure = e.contains("Stage 2") || e.contains("Validity Check");
+            
+            // Update the database with failure status
+            let db = state.state.db.lock().await;
+            let failure_status = crate::helper::lib::JobStatus {
+                code: crate::helper::lib::JobStatusCode::InferenceErr,
+                value: if is_stage2_failure {
+                    "Unable to detect person in video".to_string()
+                } else {
+                    format!("Processing failed: {}", e.lines().next().unwrap_or(&e))
+                },
+            };
+            
+            if let Err(e) = db.update_status(&uid, job_index, failure_status).await {
+                tracing::warn!("Failed to update database with error status: {:?}", e);
+            } else {
+                tracing::info!("Updated database with failure status for job {}", job_id);
+            }
+            
+            // Send appropriate failure email
+            if let Ok(job) = db.get_job(&uid, job_index).await {
+                let email_result = if is_stage2_failure {
+                    send_stage2_failure_email(
+                        state.state.clone(),
+                        &job.email,
+                        &uid,
+                        &job_id,
+                    ).await
+                } else {
+                    send_generic_failure_email(
+                        state.state.clone(),
+                        &job.email,
+                        &uid,
+                        &job_id,
+                        &e,
+                    ).await
+                };
+                
+                if let Err(e) = email_result {
+                    tracing::error!("Failed to send failure email: {:?}", e);
+                }
+            }
+            
+            // Upload partial results if archive is present (for debugging)
+            if let Some(archive_data) = archive_bytes {
+                tracing::info!("Uploading partial results archive for failed job {} to S3", job_id);
+                
+                let s3_key = format!("results/{}/partial_results.zip", job_id);
+                
+                let bucket = state.state.bucket.lock().await;
+                if let Err(e) = bucket.put_object(&s3_key, &archive_data).await {
+                    tracing::error!("Failed to upload partial archive to S3: {:?}", e);
+                } else {
+                    tracing::info!("Successfully uploaded partial archive to S3: {}", s3_key);
+                }
+            }
+        }
     }
     
     Ok(())
