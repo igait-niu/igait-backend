@@ -1,7 +1,9 @@
 /target
 output/*
+/.direnv
 
 # Ignore environment/testing things
 .env
+.envrc
 test.sh
 batch_process.pbs
