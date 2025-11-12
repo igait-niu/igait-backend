@@ -16,7 +16,7 @@ services:
   frontend:
     image: ghcr.io/igait-niu/igait-web:latest
     ports:
-      - "5173:5173"
+      - "4173:80"
 volumes:
   data:
   ssh:
