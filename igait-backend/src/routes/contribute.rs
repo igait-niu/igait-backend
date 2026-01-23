@@ -174,19 +174,18 @@ pub async fn contribute_entrypoint(
     Ok(())
 }
 
-/// Saves the upload files to S3 and the local filesystem.
+/// Saves the contributed video files to Firebase Storage for research purposes.
 /// 
 /// # Fails
-/// * If the files fail to save to S3.
-/// * If the files fail to save to the local filesystem.
+/// * If the files fail to upload to Firebase Storage
 /// 
 /// # Arguments
-/// * `app` - The application state.
-/// * `front_file` - The front file to save.
-/// * `side_file` - The side file to save.
-/// * `user_id` - The user ID to save the files under.
-/// * `email` - The email to save the files under.
-/// * `name` - The name to save the files under.
+/// * `app` - The application state
+/// * `front_file` - The front video file to save
+/// * `side_file` - The side video file to save
+/// * `user_id` - The user ID to save the files under
+/// * `email` - The email to save the files under
+/// * `_name` - The name of the contributor (unused but kept for API compatibility)
 async fn save_upload_files<'a> (
     app:              Arc<AppState>,
     front_file:       ContributeRequestFile,
