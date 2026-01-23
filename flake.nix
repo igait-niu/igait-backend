@@ -37,24 +37,8 @@
             openssl.dev
             openssh
             curl
+            bun
           ]);
-          /*
-          libPath = with pkgs; lib.makeLibraryPath [
-            udev
-            alsa-lib
-            vulkan-loader
-            libGL
-            libxkbcommon
-            gtk3-x11
-            gtk3
-            wayland
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            xorg.libxcb
-          ];
-          */
           # Certain Rust tools won't work without this
           # This can also be fixed by using oxalica/rust-overlay and specifying the rust-src extension
           # See https://discourse.nixos.org/t/rust-src-not-found-and-other-misadventures-of-developing-rust-on-nixos/11570/3?u=samuela. for more details.
@@ -121,7 +105,7 @@
           default = localRustBuild;
         };
         devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [ cargo rustc ];
+          buildInputs = with pkgs; [ cargo rustc bun nodejs ];
         };
     });
 }

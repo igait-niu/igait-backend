@@ -7,3 +7,4 @@ output/*
 .envrc
 test.sh
 batch_process.pbs
+!Cargo.toml
