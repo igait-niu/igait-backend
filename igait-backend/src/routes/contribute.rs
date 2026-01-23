@@ -193,7 +193,7 @@ async fn save_upload_files<'a> (
     side_file:        ContributeRequestFile,
     user_id:          &str,
     email:            &str,
-    name:             &str,
+    _name:            &str,
 ) -> Result<()> {
     // Unpack the extensions
     let front_extension = front_file.name.split('.')

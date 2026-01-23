@@ -1,4 +1,6 @@
-#![doc = include_str!("./docs/home.md")]
+// iGait Backend - Microservice Orchestrator
+// Handles job uploads, stage dispatching, and result notifications
+
 mod helper;
 mod routes;
 

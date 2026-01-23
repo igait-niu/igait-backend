@@ -1,6 +1,0 @@
-# [ `inputs` - Holds input directories from the API for Metis to process ]
-
-# Ignore everything in this directory
-*
-# Except this file
-!.gitignore
