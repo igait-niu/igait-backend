@@ -1,5 +1,5 @@
 # Multi-stage build for Stage 2: Validity Check
-FROM rust:1.75-slim as builder
+FROM rust:1.93-slim as builder
 
 WORKDIR /app
 
@@ -14,7 +14,13 @@ RUN apt-get update && apt-get install -y \
 # Copy workspace files
 COPY Cargo.toml ./
 COPY igait-lib ./igait-lib
+COPY igait-backend ./igait-backend
+COPY igait-media-conversion-stage ./igait-media-conversion-stage
 COPY igait-validity-check-stage ./igait-validity-check-stage
+COPY igait-reframing-stage ./igait-reframing-stage
+COPY igait-pose-estimation-stage ./igait-pose-estimation-stage
+COPY igait-cycle-detection-stage ./igait-cycle-detection-stage
+COPY igait-prediction-stage ./igait-prediction-stage
 
 # Build the stage service
 RUN cargo build --release -p igait-validity-check-stage
@@ -32,7 +38,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir mediapipe numpy
+RUN pip3 install --no-cache-dir --break-system-packages mediapipe numpy
 
 # Copy the binary
 COPY --from=builder /app/target/release/igait-validity-check-stage /usr/local/bin/stage-service

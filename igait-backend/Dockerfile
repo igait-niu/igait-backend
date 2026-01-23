@@ -1,5 +1,5 @@
 # Multi-stage build for igait-backend
-FROM rust:1.75-slim as builder
+FROM rust:1.93-slim AS builder
 
 WORKDIR /app
 
@@ -13,6 +13,12 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml ./
 COPY igait-lib ./igait-lib
 COPY igait-backend ./igait-backend
+COPY igait-media-conversion-stage ./igait-media-conversion-stage
+COPY igait-validity-check-stage ./igait-validity-check-stage
+COPY igait-reframing-stage ./igait-reframing-stage
+COPY igait-pose-estimation-stage ./igait-pose-estimation-stage
+COPY igait-cycle-detection-stage ./igait-cycle-detection-stage
+COPY igait-prediction-stage ./igait-prediction-stage
 
 # Build the backend
 RUN cargo build --release -p igait-backend

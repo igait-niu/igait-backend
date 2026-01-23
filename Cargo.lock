@@ -2155,6 +2155,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "igait-cycle-detection-stage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "igait-lib",
+ "tokio",
+]
+
+[[package]]
 name = "igait-lib"
 version = "0.1.0"
 dependencies = [
@@ -2171,7 +2181,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "igait-stage1-media-conversion"
+name = "igait-media-conversion-stage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2181,7 +2191,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "igait-stage2-validity-check"
+name = "igait-pose-estimation-stage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2191,7 +2201,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "igait-stage3-reframing"
+name = "igait-prediction-stage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2201,7 +2211,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "igait-stage4-pose-estimation"
+name = "igait-reframing-stage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2211,17 +2221,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "igait-stage5-cycle-detection"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "igait-lib",
- "tokio",
-]
-
-[[package]]
-name = "igait-stage6-prediction"
+name = "igait-validity-check-stage"
 version = "0.1.0"
 dependencies = [
  "anyhow",

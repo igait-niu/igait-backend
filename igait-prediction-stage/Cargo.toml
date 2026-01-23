@@ -1,11 +1,11 @@
 [package]
-name = "igait-stage6-prediction"
+name = "igait-prediction-stage"
 version = "0.1.0"
 edition = "2021"
 description = "Stage 6: ML prediction microservice for iGait pipeline"
 
 [dependencies]
-igait-lib = { workspace = true }
+igait-lib = { workspace = true, features = ["microservice"] }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }

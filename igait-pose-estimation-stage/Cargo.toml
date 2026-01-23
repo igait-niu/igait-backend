@@ -1,11 +1,11 @@
 [package]
-name = "igait-stage4-pose-estimation"
+name = "igait-pose-estimation-stage"
 version = "0.1.0"
 edition = "2021"
 description = "Stage 4: Pose estimation microservice for iGait pipeline"
 
 [dependencies]
-igait-lib = { workspace = true }
+igait-lib = { workspace = true, features = ["microservice"] }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
