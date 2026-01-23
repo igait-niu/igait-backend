@@ -1,22 +1,145 @@
+version: '3.8'
+
+# Local development environment for iGait microservices
+# Use: docker-compose -f docker-compose.dev.yml up --build
+
 services:
-  socials-test:
-    image: ghcr.io/hiibolt/socials:latest
-    ports:
-      - "4000:4000"
+  # Backend orchestrator
   backend:
-    image: ghcr.io/igait-niu/igait-backend:latest
-    network_mode: "host"
+    build:
+      context: .
+      dockerfile: igait-backend/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      # Firebase & Google Cloud
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - FIREBASE_ACCESS_KEY=${FIREBASE_ACCESS_KEY}
+      
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_ASSISTANT_ID=${OPENAI_ASSISTANT_ID}
+      - OPENAI_VECTOR_STORE_ID=${OPENAI_VECTOR_STORE_ID}
+      
+      # AWS SES
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      
+      # Service URLs (point to local services)
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
+      - STAGE1_SERVICE_URL=http://stage1:8080
+      - STAGE2_SERVICE_URL=http://stage2:8080
+      - STAGE3_SERVICE_URL=http://stage3:8080
+      - STAGE4_SERVICE_URL=http://stage4:8080
+      - STAGE5_SERVICE_URL=http://stage5:8080
+      - STAGE6_SERVICE_URL=http://stage6:8080
+      
+      - PORT=3000
+      - RUST_LOG=info
     volumes:
-      - 'data:/data'
-      - 'ssh:/root/.ssh'
-    env_file:
-      - .env
-  frontend:
-    image: ghcr.io/igait-niu/igait-web:latest
-    ports:
-      - "4173:80"
-volumes:
-  data:
-  ssh:
+      # Mount GCP credentials (you'll provide this file)
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+    depends_on:
+      - stage1
+      - stage2
+      - stage3
+      - stage4
+      - stage5
+      - stage6
+
+  # Stage 1: Media Conversion
+  stage1:
+    build:
+      context: .
+      dockerfile: igait-media-conversion-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/1
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+  # Stage 2: Validity Check
+  stage2:
+    build:
+      context: .
+      dockerfile: igait-validity-check-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/2
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+  # Stage 3: Reframing
+  stage3:
+    build:
+      context: .
+      dockerfile: igait-reframing-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/3
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+  # Stage 4: Pose Estimation
+  stage4:
+    build:
+      context: .
+      dockerfile: igait-pose-estimation-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/4
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+  # Stage 5: Cycle Detection
+  stage5:
+    build:
+      context: .
+      dockerfile: igait-cycle-detection-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/5
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+  # Stage 6: Prediction
+  stage6:
+    build:
+      context: .
+      dockerfile: igait-prediction-stage/Dockerfile
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/6
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ./credentials:/app/credentials:ro
+    networks:
+      - igait-network
+
+networks:
+  igait-network:
+    driver: bridge
