@@ -1,6 +1,10 @@
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 
+// ============================================================================
+// LEGACY TYPES (for backward compatibility with igait-pipeline)
+// ============================================================================
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CanonicalPaths {
     pub front_video: PathBuf,
@@ -65,3 +69,10 @@ pub enum StageStatus {
     Done,
     Skipped
 }
+
+// ============================================================================
+// MICROSERVICE TYPES (new architecture)
+// ============================================================================
+
+pub mod microservice;
+pub use microservice::*;

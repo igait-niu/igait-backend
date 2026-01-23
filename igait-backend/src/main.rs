@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         .route("/contribute", post(crate::routes::contribute::contribute_entrypoint))
         .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
         .route("/assistant_proxied", any(crate::routes::assistant::assistant_proxied_entrypoint))
-        .route("/pipeline/submit", post(crate::routes::pipeline::pipeline_submit_entrypoint))
+        .route("/webhook/stage/{stage_num}", post(crate::routes::webhook::stage_webhook_entrypoint))
         .with_state(app_state_ptr);
 
     // Nest the API into the general app router

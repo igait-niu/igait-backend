@@ -1,0 +1,13 @@
+[package]
+name = "igait-stage1-media-conversion"
+version = "0.1.0"
+edition = "2021"
+description = "Stage 1: Media conversion microservice for iGait pipeline"
+
+[dependencies]
+igait-lib = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

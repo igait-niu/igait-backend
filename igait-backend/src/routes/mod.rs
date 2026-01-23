@@ -2,33 +2,22 @@
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
 
-/// This module contains the pipeline submission endpoint for the API.
+/// This module contains the webhook endpoints for stage completion callbacks.
 /// 
-/// This endpoint receives results from the iGait pipeline running on the compute cluster.
-/// It is secured with a shared secret to ensure only authorized pipeline instances can submit.
+/// Stage microservices call these endpoints when they finish processing a job.
+/// The backend then either dispatches to the next stage or finalizes the job.
 /// 
-/// # Arguments
-/// * `X-Pipeline-Secret` header: The shared secret for authentication
-/// * `output`: JSON-serialized Output struct (multipart field)
-/// * `archive`: Optional results.zip file (multipart field)
+/// # Endpoint
+/// `POST /api/v1/webhook/stage/{stage_num}`
 /// 
-/// # Example cURL Request
-/// ```sh
-/// curl -v -X POST \
-///     -H "X-Pipeline-Secret: MEOWMEOWMEOW" \
-///     -F output=@output.json \
-///     -F archive=@results.zip \
-///     http://api.igaitapp.com/api/v1/pipeline/submit
-/// ```
+/// # Body
+/// `StageJobResult` JSON from `igait-lib::microservice`
 /// 
-/// # Testing
-/// For local testing instructions, see the [testing guide](../docs/testing.md).
-/// 
-/// # Potential Reasons for Failure
-/// * `401 Unauthorized` - Invalid or missing secret
-/// * `400 Bad Request` - Malformed data
+/// # Returns
+/// * `200 OK` - Result processed successfully
+/// * `400 Bad Request` - Invalid stage number
 /// * `500 Internal Server Error` - Processing failed
-pub mod pipeline;
+pub mod webhook;
 
 /// This module contains the job upload endpoint for the API.
 /// 

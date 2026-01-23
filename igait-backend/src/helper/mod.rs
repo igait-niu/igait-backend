@@ -10,6 +10,3 @@ pub mod email;
 
 /// Contains the filesystem helper functions and custom types.
 pub mod lib;
-
-/// Contains the Metis helper functions.
-pub mod metis;

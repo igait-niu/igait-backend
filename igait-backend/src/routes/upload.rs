@@ -1,48 +1,50 @@
-use std::{sync::Arc, time::SystemTime};
+//! Upload endpoint for submitting new gait analysis jobs.
+//!
+//! This module handles video uploads and initiates the processing pipeline
+//! by uploading to Firebase Storage and dispatching to Stage 1.
+
+use std::{collections::HashMap, sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
-use tokio::io::AsyncWriteExt;
-use anyhow::{ Result, Context, anyhow };
+use anyhow::{Result, Context, anyhow};
 use tracing::info;
 
+use igait_lib::microservice::{StoragePaths, StageJobRequest, StageNumber, JobMetadata};
+
 use crate::helper::{
-    email::send_welcome_email, lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode}, metis::{
-        copy_file, metis_qsub, SSHPath, METIS_HOSTNAME, METIS_INPUTS_DIR, METIS_PBS_PATH, METIS_USERNAME
-    }
+    email::send_welcome_email,
+    lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode},
 };
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
-    uid:              String,
-    age:              i16,
-    ethnicity:        String,
-    sex:              char,
-    height:           String,
-    weight:           i16,
-    email:            String,
-    front_file:       UploadRequestFile,
-    side_file:        UploadRequestFile
+    uid:        String,
+    age:        i16,
+    ethnicity:  String,
+    sex:        char,
+    height:     String,
+    weight:     i16,
+    email:      String,
+    front_file: UploadRequestFile,
+    side_file:  UploadRequestFile,
 }
 
 /// A representation of a file in a `Multipart` request.
 #[derive(Debug)]
 struct UploadRequestFile {
     name:  String,
-    bytes: Bytes
+    bytes: Bytes,
 }
 
-
-/// Takes in the `Multipart` request and unpacks the arguments into a `UploadRequestArguments` object.
-/// 
+/// Takes in the `Multipart` request and unpacks the arguments into an `UploadRequestArguments` object.
+///
 /// # Fails
 /// If any of the fields are missing or if the files are too large.
-/// 
+///
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
 #[tracing::instrument]
-async fn unpack_upload_arguments(
-    multipart:   &mut Multipart
-) -> Result<UploadRequestArguments> {
+async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequestArguments> {
     // Initialize all of the fields as options
     let mut uid_option:       Option<String> = None;
     let mut age_option:       Option<i16>    = None;
@@ -52,7 +54,6 @@ async fn unpack_upload_arguments(
     let mut weight_option:    Option<i16>    = None;
     let mut email_option:     Option<String> = None;
 
-
     // Initialize the file fields as options
     let mut front_file_name_option:  Option<String> = None;
     let mut side_file_name_option:   Option<String> = None;
@@ -61,376 +62,346 @@ async fn unpack_upload_arguments(
 
     // Loop through the fields
     while let Some(field) = multipart
-        .next_field().await
+        .next_field()
+        .await
         .context("Bad upload request! Is it possible you submitted a file over the size limit?")?
     {
         let name = field.name();
         let field_name = field.file_name();
         info!("Field Incoming: {name:?} - File Attached: {field_name:?}");
-        
+
         match field.name() {
             Some("fileuploadfront") => {
-                front_file_name_option = field
-                    .file_name().map(|x| String::from(x));
-                front_file_bytes_option = Some(field.bytes()
-                    .await
-                    .context("Could not unpack bytes from field 'fileuploadfront'! Was there no file attached?")?);
-            },
+                front_file_name_option = field.file_name().map(String::from);
+                front_file_bytes_option = Some(
+                    field
+                        .bytes()
+                        .await
+                        .context("Could not unpack bytes from field 'fileuploadfront'!")?,
+                );
+            }
             Some("fileuploadside") => {
-                side_file_name_option = field
-                    .file_name().map(|x| String::from(x));
-                side_file_bytes_option = Some(field.bytes()
-                    .await
-                    .context("Could not unpack bytes from field 'fileuploadside'! Was there no file attached?")?);
-            },
+                side_file_name_option = field.file_name().map(String::from);
+                side_file_bytes_option = Some(
+                    field
+                        .bytes()
+                        .await
+                        .context("Could not unpack bytes from field 'fileuploadside'!")?,
+                );
+            }
             Some("uid") => {
                 uid_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'uid' wasn't readable as text!")?
-                            .to_string());
+                    field
+                        .text()
+                        .await
+                        .context("Field 'uid' wasn't readable as text!")?,
+                );
             }
             Some("age") => {
                 age_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'age' wasn't readable as text!")?
-                            .parse()
-                            .context("Field 'age' wasn't parseable as a number! Was the entry only digits?")?);
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'age' wasn't readable as text!")?
+                        .parse()
+                        .context("Field 'age' wasn't parseable as a number!")?,
+                );
+            }
             Some("ethnicity") => {
                 ethnicity_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'ethnicity' wasn't readable as text!")?);
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'ethnicity' wasn't readable as text!")?,
+                );
+            }
             Some("email") => {
                 email_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'email' wasn't readable as text!")?);
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'email' wasn't readable as text!")?,
+                );
+            }
             Some("sex") => {
                 sex_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'sex' wasn't readable as text!")?
-                            .chars()
-                            .next()
-                            .context("Field 'sex' didn't have a vaild entry! Was it empty?")?
-                    );
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'sex' wasn't readable as text!")?
+                        .chars()
+                        .next()
+                        .context("Field 'sex' was empty!")?,
+                );
+            }
             Some("height") => {
                 height_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'height' wasn't readable as text!")?);
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'height' wasn't readable as text!")?,
+                );
+            }
             Some("weight") => {
                 weight_option = Some(
-                        field
-                            .text().await
-                            .context("Field 'weight' wasn't readable as text!")?
-                            .parse()
-                            .context("Field 'weight' wasn't parseable as a number! Was the entry only digits?")?);
-            },
+                    field
+                        .text()
+                        .await
+                        .context("Field 'weight' wasn't readable as text!")?
+                        .parse()
+                        .context("Field 'weight' wasn't parseable as a number!")?,
+                );
+            }
             _ => {
-                info!("Which had an unknown/no field name...");
+                info!("Skipping unknown field: {name:?}");
             }
         }
     }
 
     // Make sure all of the fields are present
-    let uid: String       = uid_option.ok_or(       anyhow!( "Missing 'uid' in request!"      ))?;
-    let age: i16          = age_option.ok_or(       anyhow!( "Missing 'age' in request"       ))?;
-    let ethnicity: String = ethnicity_option.ok_or( anyhow!( "Missing 'ethnicity' in request" ))?;
-    let sex: char         = sex_option.ok_or(       anyhow!( "Missing 'sex' in request"       ))?;
-    let height: String    = height_option.ok_or(    anyhow!( "Missing 'height' in request"    ))?;
-    let weight: i16       = weight_option.ok_or(    anyhow!( "Missing 'weight' in request"    ))?;
-    let email: String     = email_option.ok_or(     anyhow!( "Missing 'email' in request"     ))?;
+    let uid       = uid_option.ok_or(anyhow!("Missing 'uid' in request!"))?;
+    let age       = age_option.ok_or(anyhow!("Missing 'age' in request"))?;
+    let ethnicity = ethnicity_option.ok_or(anyhow!("Missing 'ethnicity' in request"))?;
+    let sex       = sex_option.ok_or(anyhow!("Missing 'sex' in request"))?;
+    let height    = height_option.ok_or(anyhow!("Missing 'height' in request"))?;
+    let weight    = weight_option.ok_or(anyhow!("Missing 'weight' in request"))?;
+    let email     = email_option.ok_or(anyhow!("Missing 'email' in request"))?;
 
     // Make sure all of the file fields are present
-    let front_file_name:  String = front_file_name_option.ok_or(  anyhow!( "Missing 'fileuploadfront' in request!" ))?;
-    let side_file_name:   String = side_file_name_option.ok_or(   anyhow!( "Missing 'fileuploadside' in request!"  ))?;
-    let front_file_bytes: Bytes  = front_file_bytes_option.ok_or( anyhow!( "Missing 'fileuploadfront' in request!" ))?;
-    let side_file_bytes:  Bytes  = side_file_bytes_option.ok_or(  anyhow!( "Missing 'fileuploadside' in request!"  ))?;
+    let front_file_name  = front_file_name_option.ok_or(anyhow!("Missing 'fileuploadfront' in request!"))?;
+    let side_file_name   = side_file_name_option.ok_or(anyhow!("Missing 'fileuploadside' in request!"))?;
+    let front_file_bytes = front_file_bytes_option.ok_or(anyhow!("Missing 'fileuploadfront' bytes!"))?;
+    let side_file_bytes  = side_file_bytes_option.ok_or(anyhow!("Missing 'fileuploadside' bytes!"))?;
 
     Ok(UploadRequestArguments {
-        uid, age, ethnicity, sex, height, weight, email, 
+        uid,
+        age,
+        ethnicity,
+        sex,
+        height,
+        weight,
+        email,
         front_file: UploadRequestFile {
-            name: front_file_name, 
-            bytes: front_file_bytes
+            name: front_file_name,
+            bytes: front_file_bytes,
         },
         side_file: UploadRequestFile {
             name: side_file_name,
-            bytes: side_file_bytes
-        }
+            bytes: side_file_bytes,
+        },
     })
 }
 
 /// The entrypoint for the upload request.
-/// 
+///
+/// # Workflow
+/// 1. Parse and validate the multipart form data
+/// 2. Create a new job in the database
+/// 3. Upload videos to Firebase Storage
+/// 4. Dispatch to Stage 1 microservice
+/// 5. Send welcome email
+///
 /// # Fails
-/// * If the arguments are missing.
-/// * If the files are too large.
-/// * If the files fail to save to S3.
-/// * If the job fails to save to the database.
-/// * If the welcome email fails to send.
-/// 
-/// # Arguments
-/// * `app` - The application state.
-/// * `multipart` - The `Multipart` object to unpack.
-#[tracing::instrument]
+/// * If the arguments are missing or invalid
+/// * If the files fail to upload to Firebase Storage
+/// * If the job fails to save to the database
+/// * If the welcome email fails to send
+#[tracing::instrument(skip(app, multipart))]
 pub async fn upload_entrypoint(
     State(app): State<AppStatePtr>,
-    mut multipart: Multipart
+    mut multipart: Multipart,
 ) -> Result<(), AppError> {
     let app = app.state;
 
-    info!("Unpacking arguments...");
-
-    // Unpack the arguments
-    let arguments = unpack_upload_arguments(
-            &mut multipart
-        ).await
+    info!("Unpacking upload arguments...");
+    let arguments = unpack_upload_arguments(&mut multipart)
+        .await
         .context("Failed to unpack arguments!")?;
 
     // Build a new status object
     let mut status = JobStatus {
         code: JobStatusCode::Submitting,
-        value: String::from("")
+        value: String::from("Uploading files..."),
     };
 
-    // Generate the new job ID (no need to add 1 since it's 0-indexed)
-    let job_id = app
+    // Generate the new job ID (0-indexed)
+    let job_index = app
         .db
-        .lock().await
-        .count_jobs(
-            &arguments.uid
-        ).await
+        .lock()
+        .await
+        .count_jobs(&arguments.uid)
+        .await
         .context("Failed to count the number of jobs!")?;
+
+    // Build job ID string (format: "{user_id}_{job_index}")
+    let job_id = format!("{}_{}", arguments.uid, job_index);
+    info!("Created job ID: {}", job_id);
 
     // Build the new job object
     let job = Job {
         age:       arguments.age,
-        ethnicity: arguments.ethnicity,
+        ethnicity: arguments.ethnicity.clone(),
         sex:       arguments.sex,
-        height:    arguments.height,
+        height:    arguments.height.clone(),
         weight:    arguments.weight,
         status:    status.clone(),
-        email:     arguments.email,
+        email:     arguments.email.clone(),
         timestamp: SystemTime::now(),
     };
-    
+
     // Add the job to the database
     app.db
-        .lock().await
-        .new_job(
-            &arguments.uid,
-            job.clone()
-        ).await
+        .lock()
+        .await
+        .new_job(&arguments.uid, job.clone())
+        .await
         .context("Failed to add the new job to the database!")?;
 
-    // Try to save the files to S3
-    if let Err(err) = 
-        save_upload_files( 
-            app.clone(),
-            arguments.front_file,
-            arguments.side_file,
-            &arguments.uid, 
-            job_id
-        ).await 
+    // Extract values we need before moving files
+    let age = arguments.age;
+    let sex = arguments.sex;
+
+    // Upload files to Firebase Storage and dispatch to Stage 1
+    if let Err(err) = upload_and_dispatch(
+        app.clone(),
+        &job_id,
+        &arguments.uid,
+        arguments.front_file,
+        arguments.side_file,
+        age,
+        sex,
+    )
+    .await
     {
-        // Populate the status object
+        // Populate the status object with error
         status.code = JobStatusCode::SubmissionErr;
         status.value = err.to_string();
 
         // Update the status of the job
         app.db
-            .lock().await
-            .update_status(
-                &arguments.uid,
-                job_id,
-                status
-            ).await
-            .context("Failed to update the status of the job! It failed to save, however.")?;
+            .lock()
+            .await
+            .update_status(&arguments.uid, job_index, status)
+            .await
+            .context("Failed to update the status of the job!")?;
 
-        // Early return as a failure
-        return Err(AppError(err
-            .context("Failed to save locally or upload files to S3!")));
+        return Err(AppError(err.context("Failed to upload files or dispatch job!")));
     }
-    
-    // Populate the status object
+
+    // Update status to Queue
     status.code = JobStatusCode::Queue;
-    status.value = String::from("Currently in queue.");
+    status.value = String::from("Job submitted for processing.");
 
     // Send the welcome email
-    send_welcome_email(
-        app.clone(),
-        &job,
-        &arguments.uid,
-        job_id
-    ).await.context("Failed to send welcome email!")?;
+    send_welcome_email(app.clone(), &job, &arguments.uid, job_index)
+        .await
+        .context("Failed to send welcome email!")?;
 
     // Update the status of the job
     app.db
-        .lock().await
-        .update_status(
-            &arguments.uid,
-            job_id,
-            status
-        ).await
-        .context("Failed to update the status of the job! However, it was otherwise saved.")?;
+        .lock()
+        .await
+        .update_status(&arguments.uid, job_index, status)
+        .await
+        .context("Failed to update the status of the job!")?;
 
+    info!("Job {} submitted successfully!", job_id);
     Ok(())
 }
 
-/// Saves the upload files to S3 and the local filesystem.
-/// 
-/// # Fails
-/// * If the files fail to save to S3.
-/// * If the files fail to save to the local filesystem.
-/// 
+/// Uploads files to Firebase Storage and dispatches the job to Stage 1.
+///
 /// # Arguments
-/// * `app` - The application state.
-/// * `front_file` - The front file to save.
-/// * `side_file` - The side file to save.
-/// * `user_id` - The user ID to save the files under.
-/// * `job_id` - The job ID to save the files under.
-/// * `job` - The job object to save to the local filesystem.
-#[tracing::instrument]
-async fn save_upload_files<'a> (
-    app:              Arc<AppState>,
-    front_file:       UploadRequestFile,
-    side_file:        UploadRequestFile,
-    user_id:          &str,
-    job_id:           usize
+/// * `app` - The application state
+/// * `job_id` - The full job ID (format: "{user_id}_{job_index}")
+/// * `user_id` - The user ID
+/// * `front_file` - The front video file
+/// * `side_file` - The side video file
+/// * `age` - Patient age for metadata
+/// * `sex` - Patient sex for metadata
+#[tracing::instrument(skip(app, front_file, side_file))]
+async fn upload_and_dispatch(
+    app: Arc<AppState>,
+    job_id: &str,
+    user_id: &str,
+    front_file: UploadRequestFile,
+    side_file: UploadRequestFile,
+    age: i16,
+    sex: char,
 ) -> Result<()> {
-    // Unpack the extensions
-    let front_extension = front_file.name.split('.')
-        .last()
-        .context("Must have a file extension!")?;
-    let side_extension = side_file.name.split('.')
-        .last()
-        .context("Must have a file extension!")?;
-    
-    // Ensure a directory exists for this file ID
-    let job_file_identifier = format!("{};{}", user_id, job_id);
-    let dir_path = format!("inputs/{}", job_file_identifier);
-    if tokio::fs::read_dir(&dir_path).await.is_err() {
-        // If it doesn't exist, create it
-        tokio::fs::create_dir(&dir_path).await
-            .context("Unable to create directory for inputs file!")?;
+    // Extract file extensions
+    let front_extension = front_file
+        .name
+        .rsplit('.')
+        .next()
+        .context("Front file must have an extension!")?;
+    let side_extension = side_file
+        .name
+        .rsplit('.')
+        .next()
+        .context("Side file must have an extension!")?;
 
-        info!("Created directory for inputs file: {dir_path}");
+    // Build storage paths
+    let front_key = StoragePaths::upload_front_video(job_id, front_extension);
+    let side_key = StoragePaths::upload_side_video(job_id, side_extension);
+
+    info!("Uploading front video to: {}", front_key);
+    app.storage
+        .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
+        .await
+        .context("Failed to upload front video to Firebase Storage!")?;
+
+    info!("Uploading side video to: {}", side_key);
+    app.storage
+        .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
+        .await
+        .context("Failed to upload side video to Firebase Storage!")?;
+
+    info!("Files uploaded successfully, dispatching to Stage 1...");
+
+    // Build the stage 1 request
+    let mut input_keys = HashMap::new();
+    input_keys.insert("front_video".to_string(), front_key);
+    input_keys.insert("side_video".to_string(), side_key);
+
+    let callback_url = std::env::var("BACKEND_CALLBACK_URL")
+        .unwrap_or_else(|_| "http://localhost:3000/api/v1/webhook/stage/1".to_string());
+
+    let stage_request = StageJobRequest {
+        job_id: job_id.to_string(),
+        user_id: user_id.to_string(),
+        stage: StageNumber::Stage1MediaConversion,
+        callback_url,
+        input_keys,
+        metadata: JobMetadata {
+            age: Some(age),
+            sex: Some(sex),
+            extra: HashMap::new(),
+        },
+    };
+
+    // Dispatch to Stage 1 microservice
+    let stage1_url = std::env::var("STAGE1_SERVICE_URL")
+        .unwrap_or_else(|_| "http://localhost:8001/submit".to_string());
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&stage1_url)
+        .json(&stage_request)
+        .send()
+        .await
+        .context("Failed to connect to Stage 1 service!")?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(anyhow!(
+            "Stage 1 service returned error {}: {}",
+            status,
+            body
+        ));
     }
 
-    // Build path ID and file handles
-    let front_file_path = format!("{}/{}__F_.{}", dir_path, job_file_identifier, front_extension);
-    let side_file_path = format!("{}/{}__S_.{}", dir_path, job_file_identifier, side_extension);
-    let mut front_file_handle = tokio::fs::File::create(&front_file_path)
-        .await
-        .context("Could not create front file!")?;
-    let mut side_file_handle = tokio::fs::File::create(&side_file_path)
-        .await
-        .context("Could not save side file!")?;
-
-    // Write files to the inputs folder
-    front_file_handle.write_all(&front_file.bytes.clone())
-        .await
-        .context("Couldn't write the byte contents of the front video file to a physical file!")?;
-    front_file_handle.flush()
-        .await
-        .context("Unable to flush inputs file!")?;
-    side_file_handle.write_all(&side_file.bytes.clone())
-        .await
-        .context("Couldn't write the byte contents of the side video file to a physical file!")?;
-    side_file_handle.flush()
-        .await
-        .context("Unable to flush inputs file!")?;
-
-    // Build byte vectors
-    let mut front_byte_vec: Vec<u8> = Vec::new();
-    let mut side_byte_vec: Vec<u8> = Vec::new();
-    front_byte_vec.write_all(&front_file.bytes)
-        .await
-        .context("Failed to build u8 vector from the front file's Bytes object!")?;
-    side_byte_vec.write_all(&side_file.bytes)
-        .await
-        .context("Failed to build u8 vector from side file's Bytes object!")?;
-
-    // Upload the all three files to S3
-    app.bucket
-        .lock().await
-        .put_object(format!("data/{}/inputs/{};{}/front.{}", user_id, user_id, job_id, front_extension), &front_byte_vec)
-        .await 
-        .context("Failed to upload front file to S3! Continuing regardless.")?;
-    info!("Successfully uploaded front file to S3!");
-    app.bucket
-        .lock().await
-        .put_object(format!("data/{}/inputs/{};{}/side.{}", user_id, user_id, job_id, side_extension), &side_byte_vec)
-        .await
-        .context("Failed to upload front side to S3! Continuing regardless.")?;
-    info!("Successfully uploaded side file to S3!");
-    info!("Successfully saved all files physically and to S3!");
-    
-
-    // Copy files to Metis
-    info!("Copying files to Metis...");
-    copy_file(
-        METIS_USERNAME,
-        METIS_HOSTNAME,
-        SSHPath::Local(&front_file_path),
-        SSHPath::Remote(
-            &format!(
-                "{}/{}__F_.{}",
-                METIS_INPUTS_DIR,
-                job_file_identifier,
-                front_extension
-            )
-        ),
-        false
-    ).await
-        .context("Couldn't move file from local to Metis!")?;
-    copy_file(
-        METIS_USERNAME, METIS_HOSTNAME,
-        SSHPath::Local(&side_file_path),
-        SSHPath::Remote(
-            &format!(
-                "{}/{}__S_.{}",
-                METIS_INPUTS_DIR,
-                job_file_identifier,
-                side_extension
-            )
-        ),
-        false
-    ).await
-        .context("Couldn't move file from local to Metis!")?;
-    info!("Successfully copied files to Metis!");
-
-    // Launch the Metis inference
-    info!("Launching PBS batchfile on Metis");
-    let pbs_job_id = metis_qsub(
-        METIS_USERNAME,
-        METIS_HOSTNAME,
-        METIS_PBS_PATH,
-        vec!("-v", &format!("ID={}", job_file_identifier))
-    ).await
-        .map_err(|e| anyhow!("Couldn't launch PBS batchfile on Metis! Full error: {e:?}"))?;
-    info!("Successfully launched PBS batchfile! PBS Job ID: '{pbs_job_id}'");
-
-    // Write the job ID to a file
-    let pbs_job_id_file_path = format!("{}/pbs_job_id", dir_path);
-    let mut pbs_job_id_file_handle = tokio::fs::File::create(&pbs_job_id_file_path)
-        .await
-        .context("Could not create front file!")?;
-    pbs_job_id_file_handle.write_all(&pbs_job_id.as_bytes())
-        .await
-        .context("Couldn't write the PBS Job ID to a physical file!")?;
-    pbs_job_id_file_handle.flush()
-        .await
-        .context("Unable to flush PBS Job ID file!")?;
-
-    // Return as successful
+    info!("Job {} dispatched to Stage 1 successfully!", job_id);
     Ok(())
 }

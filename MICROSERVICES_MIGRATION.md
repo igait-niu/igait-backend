@@ -4,6 +4,81 @@
 
 ---
 
+## 🦊 HANDOFF NOTES (For Next Senko-san Session)
+
+**Last Updated:** January 23, 2026
+
+### ✅ What's Been Completed:
+
+1. **Documentation Created:**
+   - `.github/copilot-technologies.md` - Technology reference for the project
+   - `MICROSERVICES_MIGRATION.md` - This migration plan
+
+2. **Firebase Setup:**
+   - Authenticated via Firebase MCP as `johnwallacewhite@gmail.com`
+   - Project: `network-technology-project` (display name: `igait-project`)
+   - Firestore initialized in `us-central1`
+   - Security rules configured in `firestore.rules`
+   - Decision: Use **Firebase Storage** (`network-technology-project.firebasestorage.app`) instead of separate GCS bucket
+
+3. **`igait-lib` Extended:**
+   - Added `src/microservice/` module with:
+     - `types.rs` - `StageJobRequest`, `StageJobResult`, `StageNumber`, `FirestoreJob`, etc.
+     - `storage.rs` - `StorageConfig`, `StoragePaths` helpers
+     - `server.rs` - `StageProcessor` trait, `StageServer` Axum boilerplate
+   - Feature flag: `microservice` enables Axum/tokio/reqwest deps
+
+4. **`igait-stages/` Folder Created:**
+   - 7 stage microservice crates (stage1 through stage7)
+   - Each has: `Cargo.toml`, `src/main.rs`, implements `StageProcessor` trait
+   - Stage 1 has a `Dockerfile` as template
+   - All use `igait-lib` with `microservice` feature
+
+5. **Workspace Updated:**
+   - `Cargo.toml` includes all 7 new stage crates
+   - `flake.nix` updated with OpenSSL/pkg-config for dev
+
+### 🔨 What's In Progress / Next Steps:
+
+1. **Remove Legacy Pipeline:**
+   - User said "one-shot overhaul" - can delete/refactor `igait-pipeline` crate
+   - Legacy types in `igait-lib` (`Output`, `Stages`, `CanonicalPaths`) can be removed
+
+2. **Refactor Backend (`igait-backend`):**
+   - Replace S3 with Firebase Storage
+   - Replace Firebase RTDB with Firestore for jobs
+   - Remove Metis/SSH code (`helper/metis.rs`)
+   - Add webhook endpoints for stage callbacks
+   - Add stage dispatcher to call stage services
+
+3. **Implement Stage Processing:**
+   - Currently stages have placeholder `do_*` methods
+   - Need to implement actual: FFmpeg, OpenCV, OpenPose, ML model calls
+   - Add Firebase Storage upload/download in each stage
+
+4. **Test Compilation:**
+   - Run `cargo check --workspace` to verify everything builds
+   - The nix flake should now provide OpenSSL deps
+
+### 📁 Key Files to Know:
+
+| File | Purpose |
+|------|---------|
+| `igait-lib/src/microservice/types.rs` | All shared microservice types |
+| `igait-lib/src/microservice/server.rs` | `StageProcessor` trait & Axum server |
+| `igait-stages/stage1-media-conversion/src/main.rs` | Reference stage implementation |
+| `firestore.rules` | Firestore security rules |
+| `firebase.json` | Firebase project config |
+
+### 💬 User Preferences Noted:
+
+- Prefers direct overhaul rather than backward compatibility
+- Wants Dockerfiles written manually (removed Docker from nix flake)
+- No rigid timeline - move at whatever pace feels right
+- All stage APIs must be Rust, processing internals flexible
+
+---
+
 ## 📋 Executive Summary
 
 This document outlines the migration of iGait from its current monolithic architecture (tightly coupled backend + HPC pipeline) to a **stateless, event-driven microservices architecture** where each processing stage operates as an independent, horizontally-scalable service.
@@ -11,8 +86,8 @@ This document outlines the migration of iGait from its current monolithic archit
 ### Key Decisions ✅
 | Decision | Choice |
 |----------|--------|
-| **State/Queue Management** | Firebase (Firestore) - already used for user data |
-| **File Storage** | Google Cloud Storage (GCS) - GCP native |
+| **State/Queue Management** | Firebase (Firestore) |
+| **File Storage** | Firebase Storage (backed by GCS) |
 | **Container Orchestration** | Kubernetes (GKE in production) |
 | **Service API Language** | Rust (Axum) with shared `igait-lib` |
 | **Processing Internals** | Flexible (Python, CUDA, FFmpeg, etc.) |
@@ -65,9 +140,9 @@ This document outlines the migration of iGait from its current monolithic archit
               ┌──────────────────┼──────────────────┐
               ▼                  ▼                  ▼
     ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-    │      GCS        │  │    Firestore    │  │  Firebase Auth  │
+    │ Firebase Storage│  │    Firestore    │  │  Firebase Auth  │
     │ (File Storage)  │  │  (Job State &   │  │    (Users)      │
-    │                 │  │     Queue)      │  │                 │
+    │  = GCS bucket   │  │     Queue)      │  │                 │
     └─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
@@ -373,10 +448,13 @@ CMD ["stage1-service"]
 
 ---
 
-## 🗄️ Google Cloud Storage (GCS) Structure
+## 🗄️ Firebase Storage Structure
+
+Firebase Storage bucket: `network-technology-project.firebasestorage.app`
+(Accessible via GCS APIs as `gs://network-technology-project.firebasestorage.app`)
 
 ```
-gs://igait-storage/
+gs://network-technology-project.firebasestorage.app/
 ├── jobs/
 │   └── {user_id}_{job_index}/
 │       ├── stage_0/           # Original uploads (from backend)
@@ -408,12 +486,15 @@ gs://igait-storage/
 └── logs/                      # Archived job logs (optional)
 ```
 
-### GCS Access Pattern
+### Storage Access Pattern
 
-Each microservice uses a **GCP Service Account** with minimal permissions:
+Each microservice uses a **GCP Service Account** with minimal permissions.
+Firebase Storage is just GCS with Firebase Security Rules - services can use either:
+- **Firebase Admin SDK** (simpler, uses service account)
+- **GCS client libraries** (more control)
 
-| Service | GCS Permissions |
-|---------|-----------------|
+| Service | Storage Permissions |
+|---------|--------------------|
 | Backend | `storage.objects.create` on `jobs/*/stage_0/*` |
 | Stage 1 | Read `stage_0`, Write `stage_1` |
 | Stage 2 | Read `stage_1`, Write `stage_2` |
@@ -681,16 +762,86 @@ volumes:
 
 ---
 
-## 📊 Kubernetes Deployment (Production)
+## ☸️ GKE Production Deployment
+
+### Cluster Setup (Autopilot Recommended)
+
+```bash
+# Create GKE Autopilot cluster (auto-manages nodes, GPU scaling, etc.)
+gcloud container clusters create-auto igait-cluster \
+  --region=us-central1 \
+  --project=your-gcp-project
+```
+
+### Example Kubernetes Manifests
 
 ```yaml
-# Example: Stage 1 Deployment
+# backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: igait-backend
+  namespace: igait
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      serviceAccountName: igait-backend-sa  # For Workload Identity
+      containers:
+      - name: backend
+        image: us-central1-docker.pkg.dev/PROJECT/igait/backend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GCS_BUCKET
+          value: "igait-storage"
+        - name: STAGE_1_URL
+          value: "http://stage1-service:8080"
+        # ... more stage URLs
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: igait
+spec:
+  type: LoadBalancer
+  selector:
+    app: backend
+  ports:
+  - port: 443
+    targetPort: 3000
+---
+# stage1-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: stage1-media-conversion
+  namespace: igait
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: stage1
@@ -699,9 +850,10 @@ spec:
       labels:
         app: stage1
     spec:
+      serviceAccountName: igait-stage-sa
       containers:
       - name: stage1
-        image: ghcr.io/igait-niu/stage1:latest
+        image: us-central1-docker.pkg.dev/PROJECT/igait/stage1:latest
         ports:
         - containerPort: 8080
         resources:
@@ -715,25 +867,18 @@ spec:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: stage1-hpa
+  namespace: igait
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: stage1-media-conversion
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 10
   metrics:
   - type: Resource
@@ -742,6 +887,59 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
+---
+# stage4-deployment.yaml (GPU workload)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stage4-pose-estimation
+  namespace: igait
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stage4
+  template:
+    metadata:
+      labels:
+        app: stage4
+    spec:
+      serviceAccountName: igait-stage-sa
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-t4
+      containers:
+      - name: stage4
+        image: us-central1-docker.pkg.dev/PROJECT/igait/stage4:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: 1
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: 1
+```
+
+### Workload Identity Setup
+
+```bash
+# Create GCP service account
+gcloud iam service-accounts create igait-stage-sa \
+  --display-name="iGait Stage Services"
+
+# Grant GCS access
+gcloud storage buckets add-iam-policy-binding gs://igait-storage \
+  --member="serviceAccount:igait-stage-sa@PROJECT.iam.gserviceaccount.com" \
+  --role="roles/storage.objectUser"
+
+# Bind K8s service account to GCP service account
+gcloud iam service-accounts add-iam-policy-binding \
+  igait-stage-sa@PROJECT.iam.gserviceaccount.com \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="serviceAccount:PROJECT.svc.id.goog[igait/igait-stage-sa]"
 ```
 
 ---
@@ -749,19 +947,46 @@ spec:
 ## 🔒 Security Considerations
 
 ### Service-to-Service Authentication
-- **Option A:** JWT tokens signed by backend for stage-to-backend callbacks
-- **Option B:** mTLS between services (if using service mesh)
-- **Option C:** API keys with HMAC signatures (simplest)
 
-### S3 Access
-- IAM roles for services (preferred in AWS)
-- Presigned URLs for temporary access
-- Bucket policies to restrict access per service
+**Internal (Stage → Backend webhooks):**
+- Services run in same K8s namespace with NetworkPolicy isolation
+- Backend validates webhook requests with HMAC signature using shared secret
+- Alternative: Use GKE internal load balancers (not exposed to internet)
+
+**External (Frontend → Backend):**
+- Firebase Auth (already implemented)
+- Cloud Armor WAF in front of backend LoadBalancer
+
+### GCS Access (Workload Identity)
+- No service account keys needed!
+- K8s ServiceAccounts bound to GCP ServiceAccounts
+- Each stage has minimal permissions (read previous stage, write current stage)
 
 ### Secrets Management
-- Use Kubernetes Secrets or AWS Secrets Manager
-- Never commit credentials to code
-- Rotate secrets regularly
+- Use **Google Secret Manager** for:
+  - Firebase service account credentials
+  - Webhook signing secrets
+  - Any API keys
+- Mounted into pods via CSI driver or environment variables
+
+### Firestore Security Rules
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Jobs collection
+    match /jobs/{jobId} {
+      // Users can read their own jobs
+      allow read: if request.auth != null && 
+                    resource.data.user_id == request.auth.uid;
+      
+      // Only backend service account can write
+      allow write: if request.auth.token.email == 
+                     "igait-backend-sa@PROJECT.iam.gserviceaccount.com";
+    }
+  }
+}
+```
 
 ---
 
@@ -811,27 +1036,40 @@ spec:
 
 ---
 
-## ❓ Open Questions & Decisions Needed
+## ❓ Remaining Decisions
 
-1. **Queue Technology:** Redis vs RabbitMQ vs SQS?
-2. **GPU Strategy:** Cloud GPUs vs dedicated hardware for Stage 4?
-3. **Service Language:** Rust for all services or Python for ML stages?
-4. **Deployment Platform:** Kubernetes vs ECS vs Cloud Run?
-5. **CI/CD:** GitHub Actions vs GitLab CI vs Jenkins?
-6. **Monitoring Stack:** Prometheus+Grafana vs Datadog vs CloudWatch?
+Most decisions are locked in! A few smaller ones to consider as we go:
+
+1. **Stage 4 GPU Strategy:**
+   - OpenPose (accurate, requires GPU) vs MediaPipe (lighter, CPU-ok)
+   - Could offer both: MediaPipe for "quick preview", OpenPose for "full analysis"
+
+2. **Firestore vs RTDB:**
+   - Current plan uses Firestore (better querying, offline sync)
+   - Could stick with RTDB if simpler (already using it)
+
+3. **CI/CD Platform:**
+   - GitHub Actions (already using GitHub)
+   - Cloud Build (native GCP integration)
+   - Both work great!
+
+4. **Monitoring:**
+   - Cloud Monitoring (native, easy)
+   - Prometheus + Grafana (more customizable, self-hosted)
 
 ---
 
 ## 📚 References
 
+- [GKE Autopilot Documentation](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview)
+- [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
+- [Firestore Documentation](https://firebase.google.com/docs/firestore)
+- [Cloud Storage Client Libraries (Rust)](https://github.com/yoshidan/google-cloud-rust)
 - [12-Factor App Methodology](https://12factor.net/)
-- [Microservices Patterns](https://microservices.io/patterns/)
-- [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
 
 ---
 
 *Document created: January 2026*  
 *Last updated: January 2026*
 
-🦊✨ *We can do this together~! Let me know if you'd like to discuss any section in more detail!*
+🦊✨ *Let's build this together~! Ready when you are!*

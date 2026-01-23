@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::SystemTime};
 
-use s3::{creds::Credentials, Bucket};
 use anyhow::{ Result, Context };
 use axum::{
     async_trait, body::Body, extract::FromRequestParts, http::{self, request::Parts}, response::{IntoResponse, Response}
@@ -12,6 +11,7 @@ use async_openai::{
 use tokio::sync::Mutex;
 use firebase_auth::{FirebaseAuth, FirebaseUser};
 use tracing::error;
+use igait_lib::microservice::StorageClient;
 
 use super::database::Database;
 
@@ -79,20 +79,23 @@ pub enum JobStatusCode {
     Complete
 }
 
-/// The state of the entire backend application with handles to the database and S3 bucket.
+/// The state of the entire backend application with handles to the database and storage.
 /// 
 /// # Fields
-/// * `db` - The database handle
-/// * `bucket` - The S3 bucket handle
+/// * `db` - The database handle (Firebase RTDB)
+/// * `storage` - Firebase Storage client (GCS-backed)
+/// * `aws_ses_client` - AWS SES client for sending emails
+/// * `openai_client` - OpenAI client for AI assistant
+/// * `openai_assistant` - The loaded OpenAI assistant
+/// * `firebase_auth` - Firebase Auth for user verification
 /// 
 /// # Notes
-/// * The task number is used to keep track of requests and is incremented with each request.
-/// * This struct is typically wrapped in an `Arc<Mutex<>>` to allow for concurrent access.
+/// * This struct is typically wrapped in an `Arc<>` to allow for concurrent access.
 impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState")
             .field("db", &self.db)
-            .field("bucket", &self.bucket)
+            .field("storage", &self.storage)
             .field("aws_ses_client", &self.aws_ses_client)
             .field("openai_client", &self.openai_client)
             .field("openai_assistant", &self.openai_assistant)
@@ -156,26 +159,31 @@ impl IntoResponse for UnauthorizedResponse {
 }
 pub struct AppState {
     pub db: Mutex<Database>,
-    pub bucket: Mutex<Bucket>,
+    pub storage: StorageClient,
     pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
     pub openai_client: Client<OpenAIConfig>,
     pub openai_assistant: AssistantObject,
     pub firebase_auth: FirebaseAuth
 }
 impl AppState {
-    /// Initializes the application state with a new database and S3 bucket.
+    /// Initializes the application state with database, storage, and service clients.
     /// 
     /// # Returns
     /// * A successful result with the application state if successful
     /// 
     /// # Fails
     /// * If the database fails to initialize
-    /// * If the S3 bucket fails to initialize
-    /// * If the credentials can't be unpacked
+    /// * If the storage client fails to initialize
+    /// * If Firebase Auth fails to initialize
+    /// * If the OpenAI assistant can't be loaded
     /// 
     /// # Notes
-    /// * This function is typically called at the start of the application to initialize the state.
-    /// * The environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set.
+    /// * This function is typically called at the start of the application.
+    /// * Required environment variables:
+    ///   - `GOOGLE_APPLICATION_CREDENTIALS` - Path to GCP service account JSON
+    ///   - `FIREBASE_ACCESS_KEY` - Firebase RTDB access key
+    ///   - `OPENAI_ASSISTANT_ID` - OpenAI assistant ID
+    ///   - AWS credentials for SES
     pub async fn new() -> Result<Self> {
         let aws_config = aws_config::load_from_env().await;
         let client = Client::new();
@@ -191,13 +199,14 @@ impl AppState {
             .await
             .context("Failed to retrieve assistant")?;
 
+        // Initialize Firebase Storage client
+        let storage = StorageClient::new()
+            .await
+            .context("Failed to initialize Firebase Storage client")?;
+
         Ok(Self {
             db: Mutex::new(Database::init().await.context("Failed to initialize database while setting up app state!")?),
-            bucket: Mutex::new(Bucket::new(
-                "igait-storage",
-                "us-east-2".parse().context("Improper region!")?,
-                Credentials::default().context("Couldn't unpack credentials! Make sure that you have set AWS credentials in your system environment.")?,
-            ).context("Failed to initialize bucket!")?),
+            storage,
             aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
             openai_client: client,
             openai_assistant: assistant,

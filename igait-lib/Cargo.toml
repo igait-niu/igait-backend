@@ -3,5 +3,22 @@ name = "igait-lib"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+# Enable microservice functionality (Axum server, storage clients, etc.)
+microservice = ["axum", "tokio", "reqwest", "tower-http", "tracing", "google-cloud-storage"]
+
 [dependencies]
 serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+
+# Optional: Microservice dependencies
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+google-cloud-storage = { version = "0.22", optional = true }

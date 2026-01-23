@@ -1,0 +1,13 @@
+[package]
+name = "igait-stage3-reframing"
+version = "0.1.0"
+edition = "2021"
+description = "Stage 3: Video reframing microservice for iGait pipeline"
+
+[dependencies]
+igait-lib = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

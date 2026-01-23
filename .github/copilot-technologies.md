@@ -8,9 +8,23 @@ iGait is a **Rust-based monorepo** with three main workspace members:
 
 | Crate | Purpose |
 |-------|---------|
-| `igait-backend` | Web server handling uploads, job management, Firebase/S3 integration |
+| `igait-backend` | Web server handling uploads, job management, Firebase/GCS integration |
 | `igait-pipeline` | Gait analysis pipeline with 7 processing stages |
-| `igait-lib` | Shared types and data structures |
+| `igait-lib` | Shared types, data structures, and microservice utilities |
+
+---
+
+## 🎯 Migration Target (In Progress)
+
+We're migrating to a **stateless microservices architecture**! See [MICROSERVICES_MIGRATION.md](../MICROSERVICES_MIGRATION.md) for full details.
+
+| Decision | Choice |
+|----------|--------|
+| **State/Queue** | Firebase (Firestore) |
+| **File Storage** | Firebase Storage (`network-technology-project.firebasestorage.app`) |
+| **Orchestration** | Kubernetes (GKE) |
+| **Service APIs** | Rust (Axum) via `igait-lib` |
+| **Target Cloud** | GCP |
 
 ---
 
@@ -33,11 +47,11 @@ iGait is a **Rust-based monorepo** with three main workspace members:
 
 ### Authentication & Authorization
 - **Firebase Auth** - User authentication via `firebase-auth` crate
-- **Firebase Realtime Database** - User/job data storage via `firebase-rs`
+- **Firebase Realtime Database** - User/job data storage via `firebase-rs` (migrating to Firestore)
 - **Shared secrets** - Pipeline submission verification (`X-Pipeline-Secret` header)
 
-### Cloud Services (AWS)
-- **S3** (`rust-s3` + `aws-sdk-s3`) - File storage for:
+### Cloud Services (Current: AWS → Migrating to GCP)
+- **S3/GCS** - File storage for:
   - Input videos: `data/{uid}/inputs/{uid};{job_id}/`
   - Results: `results/{job_id}/results.zip`
 - **SES v2** (`aws-sdk-sesv2`) - Email notifications (welcome, success, failure)

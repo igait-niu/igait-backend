@@ -1,7 +1,6 @@
 use std::{sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
-use tokio::io::AsyncWriteExt;
 use anyhow::{ Result, Context, anyhow };
 use tracing::info;
 
@@ -214,30 +213,22 @@ async fn save_upload_files<'a> (
         .as_secs();
     let email_user_id = format!("{};{}", user_id, email.replace('@', "_at_"));
 
-    // Build byte vectors
-    let mut front_byte_vec: Vec<u8> = Vec::new();
-    let mut side_byte_vec: Vec<u8> = Vec::new();
-    front_byte_vec.write_all(&front_file.bytes)
-        .await
-        .context("Failed to build u8 vector from the front file's Bytes object!")?;
-    side_byte_vec.write_all(&side_file.bytes)
-        .await
-        .context("Failed to build u8 vector from side file's Bytes object!")?;
+    // Build storage keys
+    let front_key = format!("research/{}/{}/front.{}", email_user_id, unix_timestamp, front_extension);
+    let side_key = format!("research/{}/{}/side.{}", email_user_id, unix_timestamp, side_extension);
 
-    // Upload the all three files to S3
-    app.bucket
-        .lock().await
-        .put_object(format!("research/{}/{}/front.{}", email_user_id, unix_timestamp, front_extension), &front_byte_vec)
+    // Upload files to Firebase Storage
+    app.storage
+        .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
         .await 
-        .context("Failed to upload front file to S3! Continuing regardless.")?;
-    info!("Successfully uploaded front file to S3!");
-    app.bucket
-        .lock().await
-        .put_object(format!("research/{}/{}/side.{}", email_user_id, unix_timestamp, side_extension), &side_byte_vec)
+        .context("Failed to upload front file to Firebase Storage!")?;
+    info!("Successfully uploaded front file to Firebase Storage!");
+    
+    app.storage
+        .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
-        .context("Failed to upload front side to S3! Continuing regardless.")?;
-    info!("Successfully uploaded side file to S3!");
-    info!("Successfully saved all files physically and to S3!");
+        .context("Failed to upload side file to Firebase Storage!")?;
+    info!("Successfully uploaded side file to Firebase Storage!");
     
     // Return as successful
     Ok(())

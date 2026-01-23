@@ -1,13 +1,36 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
-    "igait-pipeline",
     "igait-lib",
     "igait-backend",
+    
+    # Stage microservices
+    "igait-stages/stage1-media-conversion",
+    "igait-stages/stage2-validity-check",
+    "igait-stages/stage3-reframing",
+    "igait-stages/stage4-pose-estimation",
+    "igait-stages/stage5-cycle-detection",
+    "igait-stages/stage6-prediction",
+    "igait-stages/stage7-archive",
 ]
 
 [workspace.dependencies]
-anyhow = "1.0.100"
-serde = { version = "1.0.226", features = ["derive"] }
-serde_json = "1.0.145"
-tokio = { version = "1.47.1", features = ["full"] }
+# Core
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Web framework
+axum = { version = "0.7", features = ["multipart", "ws"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
+reqwest = { version = "0.12", features = ["json"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Internal
+igait-lib = { path = "./igait-lib", features = ["microservice"] }

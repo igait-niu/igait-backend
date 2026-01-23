@@ -1,0 +1,13 @@
+[package]
+name = "igait-stage2-validity-check"
+version = "0.1.0"
+edition = "2021"
+description = "Stage 2: Validity check microservice for iGait pipeline"
+
+[dependencies]
+igait-lib = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
