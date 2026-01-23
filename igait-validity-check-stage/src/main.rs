@@ -10,7 +10,6 @@ use igait_lib::microservice::{
 };
 use std::collections::HashMap;
 use std::time::Instant;
-use tracing::{info, error};
 
 /// The validity check processor.
 pub struct ValidityCheckProcessor;
@@ -29,7 +28,7 @@ impl StageProcessor for ValidityCheckProcessor {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        info!("Processing job {}: Validity Check", request.job_id);
+        println!("Processing job {}: Validity Check", request.job_id);
         logs.push_str(&format!("Starting validity check for job {}\n", request.job_id));
 
         match self.do_validity_check(&request, &mut logs).await {
@@ -47,7 +46,7 @@ impl StageProcessor for ValidityCheckProcessor {
             }
             Err(e) => {
                 let duration = start_time.elapsed();
-                error!("Validity check failed for job {}: {}", request.job_id, e);
+                eprintln!("Validity check failed for job {}: {}", request.job_id, e);
                 logs.push_str(&format!("ERROR: {}\n", e));
                 
                 StageJobResult::failure(
@@ -97,19 +96,12 @@ impl ValidityCheckProcessor {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
-        .init();
-
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);
 
-    info!("Starting Stage 2 Validity Check service on port {}", port);
+    println!("Starting Stage 2 Validity Check service on port {}", port);
 
     StageServer::new(ValidityCheckProcessor)
         .port(port)

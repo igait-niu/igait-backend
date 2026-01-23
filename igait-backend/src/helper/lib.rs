@@ -10,7 +10,6 @@ use async_openai::{
 };
 use tokio::sync::Mutex;
 use firebase_auth::{FirebaseAuth, FirebaseUser};
-use tracing::error;
 use igait_lib::microservice::StorageClient;
 
 use super::database::Database;
@@ -137,7 +136,7 @@ impl FromRequestParts<AppStatePtr> for FirebaseUser {
 
         match store.verify(&bearer) {
             Err(e) => {
-                error!("Failed to verify Token: {}", e);
+                eprintln!("Failed to verify Token: {}", e);
 
                 Err(UnauthorizedResponse {
                     msg: format!("Failed to verify Token: {}", e),
@@ -227,17 +226,16 @@ impl AppState {
 #[derive(Debug)]
 pub struct AppError(pub anyhow::Error);
 impl IntoResponse for AppError {
-    #[tracing::instrument]
     fn into_response(self) -> Response<Body> {
         let err = &self.0;
 
-        error!("Encountered an error: {err:#?}");
+        eprintln!("Encountered an error: {err:#?}");
         for (ind, ctx) in err.chain().enumerate() {
-            error!("  [{ind}] {ctx:#?}");
+            eprintln!("  [{ind}] {ctx:#?}");
         }
 
-        error!("Full backtrace...");
-        error!("{:#?}", err.backtrace());
+        eprintln!("Full backtrace...");
+        eprintln!("{:#?}", err.backtrace());
 
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,

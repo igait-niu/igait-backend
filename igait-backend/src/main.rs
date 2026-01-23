@@ -8,7 +8,6 @@ use axum::{
 };
 use helper::lib::{AppState, AppStatePtr};
 use std::sync::Arc;
-use tracing_subscriber;
 use dotenv::dotenv;
 
 pub const ASD_CLASSIFICATION_THRESHOLD: f32 = 0.5;
@@ -30,21 +29,10 @@ pub const DISABLE_RESULT_EMAIL: bool = true;
 /// * The API is served with a body limit of 500MB
 /// * The API is served with the V1 API nested under `/api/v1`
 #[tokio::main]
-#[tracing::instrument]
 async fn main() -> Result<()> {
     
     // Enable loading on WSL
     dotenv().ok();
-
-    // Initialize the logger
-    tracing_subscriber::fmt()
-        .compact()
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_ids(true)
-        .with_target(false)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
 
     // Create a thread-safe mutex lock to hold the app state
     let state: Arc<AppState> = Arc::new(

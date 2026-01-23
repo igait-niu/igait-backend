@@ -7,7 +7,6 @@ use std::{collections::HashMap, sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
 use anyhow::{Result, Context, anyhow};
-use tracing::info;
 
 use igait_lib::microservice::{StoragePaths, StageJobRequest, StageNumber, JobMetadata};
 
@@ -43,7 +42,6 @@ struct UploadRequestFile {
 ///
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-#[tracing::instrument]
 async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequestArguments> {
     // Initialize all of the fields as options
     let mut uid_option:       Option<String> = None;
@@ -68,7 +66,7 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
     {
         let name = field.name();
         let field_name = field.file_name();
-        info!("Field Incoming: {name:?} - File Attached: {field_name:?}");
+        println!("Field Incoming: {name:?} - File Attached: {field_name:?}");
 
         match field.name() {
             Some("fileuploadfront") => {
@@ -153,7 +151,7 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
                 );
             }
             _ => {
-                info!("Skipping unknown field: {name:?}");
+                println!("Skipping unknown field: {name:?}");
             }
         }
     }
@@ -206,14 +204,13 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
 /// * If the files fail to upload to Firebase Storage
 /// * If the job fails to save to the database
 /// * If the welcome email fails to send
-#[tracing::instrument(skip(app, multipart))]
 pub async fn upload_entrypoint(
     State(app): State<AppStatePtr>,
     mut multipart: Multipart,
 ) -> Result<(), AppError> {
     let app = app.state;
 
-    info!("Unpacking upload arguments...");
+    println!("Unpacking upload arguments...");
     let arguments = unpack_upload_arguments(&mut multipart)
         .await
         .context("Failed to unpack arguments!")?;
@@ -235,7 +232,7 @@ pub async fn upload_entrypoint(
 
     // Build job ID string (format: "{user_id}_{job_index}")
     let job_id = format!("{}_{}", arguments.uid, job_index);
-    info!("Created job ID: {}", job_id);
+    println!("Created job ID: {}", job_id);
 
     // Build the new job object
     let job = Job {
@@ -305,7 +302,7 @@ pub async fn upload_entrypoint(
         .await
         .context("Failed to update the status of the job!")?;
 
-    info!("Job {} submitted successfully!", job_id);
+    println!("Job {} submitted successfully!", job_id);
     Ok(())
 }
 
@@ -319,7 +316,6 @@ pub async fn upload_entrypoint(
 /// * `side_file` - The side video file
 /// * `age` - Patient age for metadata
 /// * `sex` - Patient sex for metadata
-#[tracing::instrument(skip(app, front_file, side_file))]
 async fn upload_and_dispatch(
     app: Arc<AppState>,
     job_id: &str,
@@ -345,19 +341,19 @@ async fn upload_and_dispatch(
     let front_key = StoragePaths::upload_front_video(job_id, front_extension);
     let side_key = StoragePaths::upload_side_video(job_id, side_extension);
 
-    info!("Uploading front video to: {}", front_key);
-    app.storage
+    println!("Uploading front video to: {}", front_key);
+    let _: () = app.storage
         .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
         .await
         .context("Failed to upload front video to Firebase Storage!")?;
 
-    info!("Uploading side video to: {}", side_key);
-    app.storage
+    println!("Uploading side video to: {}", side_key);
+    let _: () = app.storage
         .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
         .context("Failed to upload side video to Firebase Storage!")?;
 
-    info!("Files uploaded successfully, dispatching to Stage 1...");
+    println!("Files uploaded successfully, dispatching to Stage 1...");
 
     // Build the stage 1 request
     let mut input_keys = HashMap::new();
@@ -385,7 +381,7 @@ async fn upload_and_dispatch(
         .unwrap_or_else(|_| "http://localhost:8001/submit".to_string());
 
     let client = reqwest::Client::new();
-    let response = client
+    let response: reqwest::Response = client
         .post(&stage1_url)
         .json(&stage_request)
         .send()
@@ -402,6 +398,6 @@ async fn upload_and_dispatch(
         ));
     }
 
-    info!("Job {} dispatched to Stage 1 successfully!", job_id);
+    println!("Job {} dispatched to Stage 1 successfully!", job_id);
     Ok(())
 }

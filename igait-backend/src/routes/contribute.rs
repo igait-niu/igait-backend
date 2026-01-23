@@ -2,7 +2,6 @@ use std::{sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
 use anyhow::{ Result, Context, anyhow };
-use tracing::info;
 
 use crate::helper::{email::send_contribution_email, lib::{AppError, AppState, AppStatePtr}};
 
@@ -30,7 +29,6 @@ struct ContributeRequestFile {
 /// 
 /// # Arguments
 /// * `multipart` - The `Multipart` object to unpack.
-#[tracing::instrument]
 async fn unpack_contribute_arguments(
     multipart:   &mut Multipart
 ) -> Result<ContributeRequestArguments> {
@@ -52,7 +50,7 @@ async fn unpack_contribute_arguments(
     {
         let name = field.name();
         let field_name = field.file_name();
-        info!("Field Incoming: {name:?} - File Attached: {field_name:?}");
+        println!("Field Incoming: {name:?} - File Attached: {field_name:?}");
         
         match field.name() {
             Some("fileuploadfront") => {
@@ -91,7 +89,7 @@ async fn unpack_contribute_arguments(
                         .to_string());
             }
             _ => {
-                info!("Which had an unknown/no field name...");
+                println!("Which had an unknown/no field name...");
             }
         }
     }
@@ -134,14 +132,14 @@ async fn unpack_contribute_arguments(
 /// # Arguments
 /// * `app` - The application state.
 /// * `multipart` - The `Multipart` object to unpack.
-#[tracing::instrument]
+
 pub async fn contribute_entrypoint(
     State(app): State<AppStatePtr>,
     mut multipart: Multipart
 ) -> Result<(), AppError> {
     let app = app.state;
 
-    info!("Unpacking arguments...");
+    println!("Unpacking arguments...");
     // Unpack the arguments
     let arguments: ContributeRequestArguments = unpack_contribute_arguments(
             &mut multipart
@@ -171,7 +169,7 @@ pub async fn contribute_entrypoint(
     )
         .await
         .context("Failed to send contribution email!")?;
-    info!("Successfully sent contribution email!");
+    println!("Successfully sent contribution email!");
 
     Ok(())
 }
@@ -189,7 +187,6 @@ pub async fn contribute_entrypoint(
 /// * `user_id` - The user ID to save the files under.
 /// * `email` - The email to save the files under.
 /// * `name` - The name to save the files under.
-#[tracing::instrument]
 async fn save_upload_files<'a> (
     app:              Arc<AppState>,
     front_file:       ContributeRequestFile,
@@ -218,17 +215,17 @@ async fn save_upload_files<'a> (
     let side_key = format!("research/{}/{}/side.{}", email_user_id, unix_timestamp, side_extension);
 
     // Upload files to Firebase Storage
-    app.storage
+    let _: () = app.storage
         .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
-        .await 
+        .await
         .context("Failed to upload front file to Firebase Storage!")?;
-    info!("Successfully uploaded front file to Firebase Storage!");
+    println!("Successfully uploaded front file to Firebase Storage!");
     
-    app.storage
+    let _: () = app.storage
         .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
         .context("Failed to upload side file to Firebase Storage!")?;
-    info!("Successfully uploaded side file to Firebase Storage!");
+    println!("Successfully uploaded side file to Firebase Storage!");
     
     // Return as successful
     Ok(())

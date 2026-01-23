@@ -80,7 +80,7 @@ impl StorageClient {
     }
 
     /// Uploads bytes to a storage key.
-    pub async fn upload(&self, key: &str, data: Vec<u8>, content_type: Option<&str>) -> Result<()> {
+    pub async fn upload(&self, key: &str, data: Vec<u8>, _content_type: Option<&str>) -> Result<()> {
         let upload_type = UploadType::Simple(Media::new(key.to_string()));
         
         self.client

@@ -6,7 +6,7 @@ use chrono_tz::Tz;
 use aws_sdk_sesv2::types::{
     Content, Destination, EmailContent, Body, Message
 };
-use tracing::info;
+
 
 use crate::{ AppState, Arc, DISABLE_RESULT_EMAIL };
 
@@ -29,14 +29,14 @@ use super::lib::{Job, JobStatus};
 /// # Notes
 /// * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// # The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
-#[tracing::instrument]
+
 pub async fn send_email (
     app:     Arc<AppState>,
     to:      &str,
     subject: &str,
     body:    &str
 ) -> Result<()> {
-    info!("Sending email to '{to}'...");
+    println!("Sending email to '{to}'...");
 
     // Post the form to the Cloudflare Worker
     let destination = Destination::builder()
@@ -78,7 +78,7 @@ pub async fn send_email (
         .send()
         .await
         .context("Failed to send email!")?;
-    info!("Successfully sent email to '{to}'!");
+    println!("Successfully sent email to '{to}'!");
 
     Ok(())
 }
@@ -103,7 +103,7 @@ pub async fn send_email (
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
-#[tracing::instrument]
+
 pub async fn _send_success_email (
     app:                     Arc<AppState>,
     recipient_email_address: &str,
@@ -150,7 +150,7 @@ pub async fn _send_success_email (
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
-#[tracing::instrument]
+
 pub async fn _send_failure_email (
     app:                     Arc<AppState>,
     recipient_email_address: &str,
@@ -188,7 +188,7 @@ pub async fn _send_failure_email (
 /// 
 /// # Notes
 /// * Any changes to the email logic should be made to the `send_email` function first
-#[tracing::instrument]
+
 pub async fn send_welcome_email (
     app:         Arc<AppState>,
     job:         &Job,
@@ -251,7 +251,7 @@ pub async fn send_welcome_email (
 /// * Any changes to the email logic should be made to the `send_email` function first
 /// * * The email is sent to the Cloudflare Worker at `https://email-service.igaitniu.workers.dev/`
 /// * The environment variable `IGAIT_ACCESS_KEY` is used to authenticate the request and must be set
-#[tracing::instrument]
+
 pub async fn send_contribution_email (
     app: Arc<AppState>,
     email: &str,

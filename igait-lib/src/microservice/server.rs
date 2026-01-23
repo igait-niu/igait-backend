@@ -22,7 +22,6 @@ use std::{
     time::Instant,
 };
 use tokio::sync::RwLock;
-use tracing::{error, info};
 
 // ============================================================================
 // STAGE SERVICE TRAIT
@@ -100,7 +99,7 @@ async fn submit_job<P: StageProcessor>(
     let job_id = request.job_id.clone();
     let callback_url = request.callback_url.clone();
     
-    info!("Received job submission: {}", job_id);
+    println!("Received job submission: {}", job_id);
     
     // Check if job is already being processed
     {
@@ -140,7 +139,7 @@ async fn submit_job<P: StageProcessor>(
         let result = state_clone.processor.process(request_clone).await;
         let duration = start_time.elapsed();
         
-        info!(
+        println!(
             "Job {} completed with status {:?} in {:?}",
             result.job_id, result.status, duration
         );
@@ -159,9 +158,9 @@ async fn submit_job<P: StageProcessor>(
             .send()
             .await
         {
-            error!("Failed to send callback for job {}: {}", result.job_id, e);
+            eprintln!("Failed to send callback for job {}: {}", result.job_id, e);
         } else {
-            info!("Sent callback for job {}", result.job_id);
+            println!("Sent callback for job {}", result.job_id);
         }
     });
     
@@ -267,7 +266,7 @@ impl<P: StageProcessor> StageServer<P> {
         let router = self.build_router();
         
         let addr = format!("0.0.0.0:{}", port);
-        info!("Starting stage server on {}", addr);
+        println!("Starting stage server on {}", addr);
         
         let listener = tokio::net::TcpListener::bind(&addr).await?;
         axum::serve(listener, router).await?;
@@ -301,14 +300,6 @@ macro_rules! stage_main {
     ($processor:expr) => {
         #[tokio::main]
         async fn main() -> anyhow::Result<()> {
-            // Initialize tracing
-            tracing_subscriber::fmt()
-                .with_env_filter(
-                    tracing_subscriber::EnvFilter::from_default_env()
-                        .add_directive(tracing::Level::INFO.into()),
-                )
-                .init();
-
             let port = std::env::var("PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())

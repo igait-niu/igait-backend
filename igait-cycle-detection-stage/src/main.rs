@@ -9,7 +9,6 @@ use igait_lib::microservice::{
 };
 use std::collections::HashMap;
 use std::time::Instant;
-use tracing::{info, error};
 
 /// The cycle detection processor.
 pub struct CycleDetectionProcessor;
@@ -28,7 +27,7 @@ impl StageProcessor for CycleDetectionProcessor {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        info!("Processing job {}: Cycle Detection", request.job_id);
+        println!("Processing job {}: Cycle Detection", request.job_id);
         logs.push_str(&format!("Starting cycle detection for job {}\n", request.job_id));
 
         match self.do_cycle_detection(&request, &mut logs).await {
@@ -46,7 +45,7 @@ impl StageProcessor for CycleDetectionProcessor {
             }
             Err(e) => {
                 let duration = start_time.elapsed();
-                error!("Cycle detection failed for job {}: {}", request.job_id, e);
+                eprintln!("Cycle detection failed for job {}: {}", request.job_id, e);
                 logs.push_str(&format!("ERROR: {}\n", e));
                 
                 StageJobResult::failure(
@@ -92,19 +91,12 @@ impl CycleDetectionProcessor {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
-        .init();
-
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);
 
-    info!("Starting Stage 5 Cycle Detection service on port {}", port);
+    println!("Starting Stage 5 Cycle Detection service on port {}", port);
 
     StageServer::new(CycleDetectionProcessor)
         .port(port)

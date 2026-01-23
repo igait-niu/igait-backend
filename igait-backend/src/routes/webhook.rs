@@ -3,8 +3,6 @@
 //! This module handles callbacks from stage microservices when they complete
 //! processing a job (success or failure).
 
-use std::collections::HashMap;
-
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -12,7 +10,6 @@ use axum::{
     Json,
 };
 use anyhow::{Context, Result};
-use tracing::{info, error, warn};
 
 use igait_lib::microservice::{StageJobResult, StageJobRequest, StageNumber, StageResultStatus, JobMetadata};
 
@@ -30,13 +27,12 @@ use crate::helper::lib::{AppStatePtr, JobStatus, JobStatusCode};
 /// * `200 OK` if the result was processed successfully
 /// * `400 Bad Request` if the stage number is invalid
 /// * `500 Internal Server Error` if processing fails
-#[tracing::instrument(skip(state, result))]
 pub async fn stage_webhook_entrypoint(
     Path(stage_num): Path<u8>,
     State(state): State<AppStatePtr>,
     Json(result): Json<StageJobResult>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    info!(
+    println!(
         "Received webhook for stage {} - job {} - status {:?}",
         stage_num, result.job_id, result.status
     );
@@ -51,7 +47,7 @@ pub async fn stage_webhook_entrypoint(
 
     // Process the stage result
     if let Err(e) = process_stage_result(&state, stage_num, result).await {
-        error!("Failed to process stage {} result: {:?}", stage_num, e);
+        eprintln!("Failed to process stage {} result: {:?}", stage_num, e);
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to process stage result: {}", e),
@@ -75,7 +71,7 @@ async fn process_stage_result(
 
     match result.status {
         StageResultStatus::Success => {
-            info!(
+            println!(
                 "Stage {} succeeded for job {} (took {}ms)",
                 stage_num, result.job_id, result.duration_ms
             );
@@ -104,7 +100,7 @@ async fn process_stage_result(
         }
         StageResultStatus::Failed => {
             let error_msg = result.error.as_deref().unwrap_or("Unknown error");
-            error!(
+            eprintln!(
                 "Stage {} failed for job {}: {}",
                 stage_num, result.job_id, error_msg
             );
@@ -128,7 +124,7 @@ async fn process_stage_result(
             send_stage_failure_email(state, &uid, job_index, stage_num, error_msg).await?;
         }
         StageResultStatus::Skipped => {
-            info!("Stage {} was skipped for job {}", stage_num, result.job_id);
+            println!("Stage {} was skipped for job {}", stage_num, result.job_id);
 
             // Continue to next stage
             if stage_num < 7 {
@@ -159,7 +155,7 @@ fn parse_job_id(job_id: &str) -> Result<(String, usize)> {
 
 /// Dispatch a job to the next stage service.
 async fn dispatch_next_stage(
-    state: &AppStatePtr,
+    _state: &AppStatePtr,
     next_stage: u8,
     prev_result: &StageJobResult,
 ) -> Result<()> {
@@ -185,7 +181,7 @@ async fn dispatch_next_stage(
     // Get the service URL for this stage
     let service_url = get_stage_service_url(next_stage);
 
-    info!(
+    println!(
         "Dispatching job {} to stage {} at {}",
         prev_result.job_id, next_stage, service_url
     );
@@ -209,7 +205,7 @@ async fn dispatch_next_stage(
         );
     }
 
-    info!(
+    println!(
         "Successfully dispatched job {} to stage {}",
         prev_result.job_id, next_stage
     );
@@ -227,7 +223,7 @@ fn get_stage_service_url(stage: u8) -> String {
 async fn finalize_job(state: &AppStatePtr, result: &StageJobResult) -> Result<()> {
     let (uid, job_index) = parse_job_id(&result.job_id)?;
 
-    info!("Finalizing job {} - pipeline complete!", result.job_id);
+    println!("Finalizing job {} - pipeline complete!", result.job_id);
 
     // Get the prediction result from stage 7 output
     // The score should be in the output_keys under "prediction_score"
@@ -261,7 +257,7 @@ async fn finalize_job(state: &AppStatePtr, result: &StageJobResult) -> Result<()
     // Send success email
     send_success_email(state, &uid, job_index, &result.job_id, score).await?;
 
-    info!("Job {} finalized successfully!", result.job_id);
+    println!("Job {} finalized successfully!", result.job_id);
     Ok(())
 }
 
@@ -308,7 +304,7 @@ async fn send_stage_failure_email(
     let job = match db.get_job(uid, job_index).await {
         Ok(j) => j,
         Err(e) => {
-            warn!("Could not get job for failure email: {:?}", e);
+            eprintln!("Could not get job for failure email: {:?}", e);
             return Ok(());
         }
     };

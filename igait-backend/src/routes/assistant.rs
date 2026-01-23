@@ -12,7 +12,6 @@ use tokio::time::{Duration, sleep};
 use axum::{extract::{ws::WebSocket, State, WebSocketUpgrade}, response::Response};
 use serde::{Serialize, Deserialize};
 use firebase_auth::FirebaseUser;
-use tracing::{info, error};
 use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
 use crate::helper::lib::{AppState, AppStatePtr, Job};
@@ -73,7 +72,7 @@ struct SearchJobArguments {
 /// 
 /// # Returns
 /// * Nothing
-#[tracing::instrument(skip(app))]
+
 async fn send_response (
     app: &Arc<AppState>,
     client: &Client<OpenAIConfig>,
@@ -152,7 +151,7 @@ async fn send_response (
                     }
                 }
                 let event = AssistantUpdate::Message{ content: body.join("\n") };
-                info!("Sending message to client: {:?}", event);
+                println!("Sending message to client: {:?}", event);
                 socket.send(
                     axum::extract::ws::Message::Text(serde_json::to_string(&event)
                         .context("Failed to serialize 'done thinking' event!")?)
@@ -207,7 +206,7 @@ async fn send_response (
                     let function = &run_tool_call.function;
                     let function_name = &function.name;
 
-                    info!("Run ID requires action: {function_name}");
+                    println!("Run ID requires action: {function_name}");
 
                     let result = match function_name.as_str() {
                         "get_last_job" => {
@@ -224,7 +223,7 @@ async fn send_response (
 
                             // Send the job over the websocket
                             let event = AssistantUpdate::Jobs{ content: vec!(last_job.clone()) };
-                            info!("Sending jobs to client: {event:#?}");
+                            println!("Sending jobs to client: {event:#?}");
                             socket.send(
                                 axum::extract::ws::Message::Text(serde_json::to_string(&event)
                                     .context("Failed to serialize 'done thinking' event!")?)
@@ -244,7 +243,7 @@ async fn send_response (
 
                             // Send the job over the websocket
                             let event = AssistantUpdate::Jobs{ content: jobs.clone() };
-                            info!("Sending jobs to client: {event:#?}");
+                            println!("Sending jobs to client: {event:#?}");
                             socket.send(
                                 axum::extract::ws::Message::Text(serde_json::to_string(&event)
                                     .context("Failed to serialize 'done thinking' event!")?)
@@ -299,7 +298,7 @@ async fn send_response (
 
                             // Send the job over the websocket
                             let event = AssistantUpdate::Jobs{ content: jobs.clone() };
-                            info!("Sending jobs to client: {event:#?}");
+                            println!("Sending jobs to client: {event:#?}");
                             socket.send(
                                 axum::extract::ws::Message::Text(serde_json::to_string(&event)
                                     .context("Failed to serialize 'done thinking' event!")?)
@@ -344,12 +343,12 @@ async fn send_response (
 /// 
 /// # Returns
 /// * A response that upgrades the connection to a WebSocket and handles the socket connection.
-#[tracing::instrument(skip(app, ws))]
+
 pub async fn assistant_proxied_entrypoint (
     State(app): State<AppStatePtr>,
     ws: WebSocketUpgrade
 ) -> Response {
-    info!("Proxying connection for `assistant` route");
+    println!("Proxying connection for `assistant` route");
     
     ws.on_upgrade(move |socket| handle_proxied_socket_helper(app.state, socket))
 }
@@ -358,13 +357,13 @@ pub async fn assistant_proxied_entrypoint (
 /// # Arguments
 /// * `app` - The application state containing the OpenAI client and assistant.
 /// * `socket` - The WebSocket connection to handle.
-#[tracing::instrument(skip(app, socket))]
+
 async fn handle_proxied_socket_helper (
     app: Arc<AppState>,
     socket: WebSocket
 ) -> () {
     if let Err(e) = handle_proxied_socket(app, socket).await {
-        error!("Failed to handle socket! Error: {e:?}");
+        eprintln!("Failed to handle socket! Error: {e:?}");
     }
 }
 /// Handles the proxied socket connection.
@@ -384,7 +383,7 @@ async fn handle_proxied_socket_helper (
 /// 
 /// # Returns
 /// * Nothing
-#[tracing::instrument(skip(_app, socket))]
+
 async fn handle_proxied_socket (
     _app: Arc<AppState>,
     mut socket: WebSocket
@@ -402,7 +401,7 @@ async fn handle_proxied_socket (
         Err(e) => bail!("Failed to receive message from client! Error: {e:?}")
     };
 
-    info!("Received token: {token}");
+    println!("Received token: {token}");
 
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let mut request = (&format!("ws://localhost:{port}/api/v1/assistant")).into_client_request()?;
@@ -431,7 +430,7 @@ async fn handle_proxied_socket (
             }
         }
     {
-        info!("Received message: {msg_result:?}");
+        println!("Received message: {msg_result:?}");
         let msg_obj = if let Ok(msg_obj) = msg_result {
             msg_obj
         } else {
@@ -441,7 +440,7 @@ async fn handle_proxied_socket (
         let msg = match msg_obj {
             axum::extract::ws::Message::Text(text) => {
                 if text == "ping" {
-                    info!("Received ping, sending pong...");
+                    println!("Received ping, sending pong...");
                     socket.send(axum::extract::ws::Message::Text("pong".to_string().into())).await
                         .context("Couldn't send message!")?;
                     continue 'primary_loop;
@@ -454,12 +453,12 @@ async fn handle_proxied_socket (
             }
         };
 
-        info!("Got message on proxied connection, forwarding: {msg}");
+        println!("Got message on proxied connection, forwarding: {msg}");
 
         local_socket.send(tokio_tungstenite::tungstenite::Message::Text(msg.into())).await
             .context("Couldn't send message!")?;
 
-        info!("Sent!");
+        println!("Sent!");
 
         loop {
             while let Some(msg_result) = local_socket.next().await {
@@ -469,12 +468,12 @@ async fn handle_proxied_socket (
                             .context("Couldn't send message!")?;
 
                         if msg.starts_with("{\"type\":\"Message\"") {
-                            info!("Awaiting new message...");
+                            println!("Awaiting new message...");
                             continue 'primary_loop;
                         }
                     },
                     Err(e) => {
-                        error!("Failed to receive message from local socket! Error: {e:?}");
+                        eprintln!("Failed to receive message from local socket! Error: {e:?}");
 
                         break 'primary_loop;
                     }
@@ -499,13 +498,13 @@ async fn handle_proxied_socket (
 /// 
 /// # Returns
 /// * A response that upgrades the connection to a WebSocket and handles the socket connection.
-#[tracing::instrument(skip(current_user, app, ws))]
+
 pub async fn assistant_entrypoint (
     current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
     ws: WebSocketUpgrade
 ) -> Response {
-    info!("Upgrading WS connection...");
+    println!("Upgrading WS connection...");
     ws.on_upgrade(move |socket| handle_socket_helper(app.state, socket, current_user))
 }
 /// A helper function to handle the socket connection.
@@ -514,14 +513,14 @@ pub async fn assistant_entrypoint (
 /// * `app` - The application state containing the OpenAI client and assistant.
 /// * `socket` - The WebSocket connection to handle.
 /// * `current_user` - The authenticated Firebase user.
-#[tracing::instrument(skip(current_user, socket, app))]
+
 async fn handle_socket_helper (
     app: Arc<AppState>,
     socket: WebSocket,
     current_user: FirebaseUser
 ) -> () {
     if let Err(e) = handle_socket(app, socket, current_user).await {
-        error!("Failed to handle socket! Error: {e:?}");
+        eprintln!("Failed to handle socket! Error: {e:?}");
     }
 }
 /// Handles the socket connection for the assistant route.
@@ -543,7 +542,7 @@ async fn handle_socket_helper (
 /// 
 /// # Returns
 /// * Nothing
-#[tracing::instrument(skip(current_user, app, socket))]
+
 async fn handle_socket (
     app: Arc<AppState>,
     mut socket: WebSocket,
@@ -551,7 +550,7 @@ async fn handle_socket (
 ) -> Result<()> {
     let id = &current_user.user_id;
 
-    info!("User ID '{id}' connected to assistant!");
+    println!("User ID '{id}' connected to assistant!");
 
     let vector_store_id = std::env::var("OPENAI_VECTOR_STORE_ID")
         .context("Couldn't find the OpenAI vector store ID!")?;
@@ -570,7 +569,7 @@ async fn handle_socket (
     let thread = app.openai_client.threads().create(create_thread_request).await?;
 
     while let Some(msg_result) = socket.recv().await {
-        info!("Received message: {msg_result:?}");
+        println!("Received message: {msg_result:?}");
         let msg_obj = if let Ok(msg_obj) = msg_result {
             msg_obj
         } else {
@@ -604,7 +603,7 @@ async fn handle_socket (
 
     // Close the thread
     app.openai_client.threads().delete(&thread.id).await?;
-    info!("Thread closed!");
+    println!("Thread closed!");
 
     Ok(())
 }
