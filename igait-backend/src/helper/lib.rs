@@ -19,10 +19,13 @@ use super::database::Database;
 /// # Fields
 /// * `uid` - The user ID
 /// * `jobs` - The list of jobs
+/// * `administrator` - Whether the user has administrator privileges
 #[derive( Serialize, Deserialize, Debug )]
 pub struct User {
     pub uid: String,
-    pub jobs: Vec<Job>
+    pub jobs: Vec<Job>,
+    #[serde(default)]
+    pub administrator: bool,
 }
 
 /// The job struct, which contains the job
@@ -161,7 +164,7 @@ pub struct AppState {
     pub storage: StorageClient,
     pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
     pub openai_client: Client<OpenAIConfig>,
-    pub openai_assistant: AssistantObject,
+    pub openai_assistant: Option<AssistantObject>,
     pub firebase_auth: FirebaseAuth
 }
 impl AppState {
@@ -189,14 +192,27 @@ impl AppState {
         let firebase_auth = FirebaseAuth::new("network-technology-project")
             .await;
 
-        // Initialize the assistant
-        let assistant_id = std::env::var("OPENAI_ASSISTANT_ID")
-            .context("Couldn't find the OpenAI assistant ID!")?;
-        let assistant = client
-            .assistants()
-            .retrieve(&assistant_id)
-            .await
-            .context("Failed to retrieve assistant")?;
+        // Try to initialize the assistant (optional for upload route)
+        let assistant = match std::env::var("OPENAI_ASSISTANT_ID") {
+            Ok(assistant_id) => {
+                match client.assistants().retrieve(&assistant_id).await {
+                    Ok(a) => {
+                        println!("✅ OpenAI Assistant loaded successfully");
+                        Some(a)
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️  Failed to load OpenAI Assistant: {}", e);
+                        eprintln!("   Upload and processing will work, but AI assistant features will be disabled");
+                        None
+                    }
+                }
+            }
+            Err(_) => {
+                eprintln!("⚠️  OPENAI_ASSISTANT_ID not set");
+                eprintln!("   Upload and processing will work, but AI assistant features will be disabled");
+                None
+            }
+        };
 
         // Initialize Firebase Storage client
         let storage = StorageClient::new()

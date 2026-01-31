@@ -100,6 +100,32 @@ pub struct StageJobRequest {
     pub metadata: JobMetadata,
 }
 
+impl StageJobRequest {
+    /// Gets the input storage key for the front video from the previous stage.
+    /// For stage 1, this is the uploaded file (stage_0).
+    pub fn input_front_video(&self) -> String {
+        let prev_stage = self.stage.as_u8().saturating_sub(1);
+        format!("jobs/{}/stage_{}/front.mp4", self.job_id, prev_stage)
+    }
+
+    /// Gets the input storage key for the side video from the previous stage.
+    /// For stage 1, this is the uploaded file (stage_0).
+    pub fn input_side_video(&self) -> String {
+        let prev_stage = self.stage.as_u8().saturating_sub(1);
+        format!("jobs/{}/stage_{}/side.mp4", self.job_id, prev_stage)
+    }
+
+    /// Gets the output storage key for the front video for this stage.
+    pub fn output_front_video(&self) -> String {
+        format!("jobs/{}/stage_{}/front.mp4", self.job_id, self.stage.as_u8())
+    }
+
+    /// Gets the output storage key for the side video for this stage.
+    pub fn output_side_video(&self) -> String {
+        format!("jobs/{}/stage_{}/side.mp4", self.job_id, self.stage.as_u8())
+    }
+}
+
 /// Optional metadata that can be passed to stages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct JobMetadata {

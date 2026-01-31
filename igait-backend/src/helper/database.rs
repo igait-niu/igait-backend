@@ -80,7 +80,8 @@ impl Database {
                         timestamp: SystemTime::now(),
                         weight: 1
                     }
-                )
+                ),
+                administrator: false,
             }).await
                 .map_err(|e| anyhow!("{e:?}"))
                 .context("Failed to create a new user while ensuring they existed!")?;
@@ -158,10 +159,16 @@ impl Database {
             .context("Failed to get jobs!")?;
         jobs.push(job);
             
+        // Get existing user to preserve administrator status
+        let existing_user = self._state.at(uid).get::<User>().await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get existing user!")?;
+            
         // Update the user with the new job
         self._state.at(uid).update(&User {
             uid: String::from(uid),
-            jobs
+            jobs,
+            administrator: existing_user.administrator,
         }).await.map_err(|e| anyhow!("{e:?}")).context("Failed to update database with the new job array!")?;
 
         // Return as successful
@@ -210,10 +217,16 @@ impl Database {
         // Edit the status
         jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.status = status.clone();
         
+        // Get existing user to preserve administrator status
+        let existing_user = user_handle.get::<User>().await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get existing user!")?;
+        
         // Update the user with the modified job array
         user_handle.update(&User {
                 uid: String::from(uid),
-                jobs
+                jobs,
+                administrator: existing_user.administrator,
             }).await
             .map_err(|e| anyhow!("{e:?}"))
             .context("Failed to update the user object in the database!")?;

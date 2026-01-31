@@ -1,0 +1,97 @@
+[debug] [2026-01-31T02:23:22.277Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.294Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.294Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.295Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.392Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.394Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.399Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.402Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:22.414Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:29.375Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:29.377Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:23:29.379Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
+[debug] [2026-01-31T02:23:29.379Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"d2c6b81e-0ab7-4e6a-8d6f-5d069da976b5"}
+[debug] [2026-01-31T02:23:29.698Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
+[debug] [2026-01-31T02:23:29.698Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"HbLiYaNA953DXQXcc05ciRYmbvjDWNDt0c0_9j1HLxY"}
+[debug] [2026-01-31T02:25:22.956Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:22.957Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:22.958Z] >>> [apiv2][query] POST https://accounts.google.com/o/oauth2/token [none]
+[debug] [2026-01-31T02:25:22.958Z] >>> [apiv2][body] POST https://accounts.google.com/o/oauth2/token [omitted]
+[debug] [2026-01-31T02:25:23.189Z] <<< [apiv2][status] POST https://accounts.google.com/o/oauth2/token 200
+[debug] [2026-01-31T02:25:23.189Z] <<< [apiv2][body] POST https://accounts.google.com/o/oauth2/token [omitted]
+[debug] [2026-01-31T02:25:28.316Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:28.317Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:28.319Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:28.320Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:28.321Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:28.321Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:28.321Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/network-technology-project/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2026-01-31T02:25:28.321Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/network-technology-project/services/cloudresourcemanager.googleapis.com  x-goog-user-project=network-technology-project
+[debug] [2026-01-31T02:25:28.715Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/network-technology-project/services/cloudresourcemanager.googleapis.com 200
+[debug] [2026-01-31T02:25:28.716Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/network-technology-project/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2026-01-31T02:25:28.727Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:28.727Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:28.727Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/network-technology-project [none]
+[debug] [2026-01-31T02:25:29.112Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/network-technology-project 200
+[debug] [2026-01-31T02:25:29.112Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/network-technology-project {"projectNumber":"607332254529","projectId":"network-technology-project","lifecycleState":"ACTIVE","name":"igait-project","labels":{"firebase":"enabled"},"createTime":"2024-01-29T19:50:43.544467Z"}
+[info] Now using project network-technology-project
+[debug] [2026-01-31T02:25:31.175Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:31.176Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:31.176Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.176Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.176Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:31.394Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:31.394Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[debug] [2026-01-31T02:25:31.396Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:31.396Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:31.396Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.396Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.396Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:31.492Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:31.492Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[debug] [2026-01-31T02:25:31.493Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.493Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:31.493Z] >>> [apiv2][query] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds [none]
+[debug] [2026-01-31T02:25:31.493Z] >>> [apiv2][body] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds {"pageSize":2147483647}
+[debug] [2026-01-31T02:25:31.801Z] <<< [apiv2][status] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds 404
+[debug] [2026-01-31T02:25:31.801Z] <<< [apiv2][body] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds {"error":{"code":404,"message":"The database (default) does not exist for project network-technology-project Please visit https://console.cloud.google.com/datastore/setup?project=network-technology-project to add a Cloud Datastore or Cloud Firestore database. ","status":"NOT_FOUND"}}
+[debug] [2026-01-31T02:25:38.827Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:38.827Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:38.828Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:38.828Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:38.828Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:39.007Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:39.007Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[debug] [2026-01-31T02:25:39.009Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:39.009Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:39.009Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:39.009Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:39.009Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:39.243Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:39.243Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[info] 
+=== Firestore Setup Actuation
+[info] ✔  Wrote firestore.rules 
+[info] ✔  Wrote firestore.indexes.json 
+[info] ✔  Wrote configuration info to firebase.json 
+[info] ✔  Wrote project information to .firebaserc 
+[debug] [2026-01-31T02:25:42.111Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:42.111Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:42.111Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.111Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.111Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:42.331Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:42.331Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[debug] [2026-01-31T02:25:42.333Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-31T02:25:42.333Z] > authorizing via signed-in user (johnwallacewhite@gmail.com)
+[debug] [2026-01-31T02:25:42.333Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.333Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.333Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo [none]
+[debug] [2026-01-31T02:25:42.419Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo 200
+[debug] [2026-01-31T02:25:42.419Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/network-technology-project/billingInfo {"name":"projects/network-technology-project/billingInfo","projectId":"network-technology-project","billingAccountName":"","billingEnabled":false}
+[debug] [2026-01-31T02:25:42.420Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.420Z] Checked if tokens are valid: true, expires at: 1769829922189
+[debug] [2026-01-31T02:25:42.420Z] >>> [apiv2][query] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds [none]
+[debug] [2026-01-31T02:25:42.420Z] >>> [apiv2][body] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds {"pageSize":2147483647}
+[debug] [2026-01-31T02:25:42.762Z] <<< [apiv2][status] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds 404
+[debug] [2026-01-31T02:25:42.762Z] <<< [apiv2][body] POST https://firestore.googleapis.com/v1/projects/network-technology-project/databases/(default)/documents:listCollectionIds {"error":{"code":404,"message":"The database (default) does not exist for project network-technology-project Please visit https://console.cloud.google.com/datastore/setup?project=network-technology-project to add a Cloud Datastore or Cloud Firestore database. ","status":"NOT_FOUND"}}

@@ -1,8 +1,8 @@
 [package]
-name = "igait-media-conversion-stage"
+name = "igait-stage3-reframing"
 version = "0.1.0"
 edition = "2021"
-description = "Stage 1: Media conversion microservice for iGait pipeline"
+description = "Stage 3: Video reframing microservice for iGait pipeline"
 
 [dependencies]
 igait-lib = { workspace = true, features = ["microservice"] }

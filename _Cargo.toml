@@ -5,12 +5,12 @@ members = [
     "igait-backend",
     
     # Stage microservices
-    "igait-media-conversion-stage",
-    "igait-validity-check-stage",
-    "igait-reframing-stage",
-    "igait-pose-estimation-stage",
-    "igait-cycle-detection-stage",
-    "igait-prediction-stage",
+    #"igait-stages/igait-stage1-media-conversion",
+    #"igait-stages/igait-stage2-validity-check",
+    #"igait-stages/igait-stage3-reframing",
+    #"igait-stages/igait-stage4-pose-estimation",
+    #"igait-stages/igait-stage5-cycle-detection",
+    #"igait-stages/igait-stage6-prediction",
 ]
 
 [workspace.dependencies]

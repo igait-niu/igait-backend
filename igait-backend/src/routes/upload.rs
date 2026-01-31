@@ -378,11 +378,13 @@ async fn upload_and_dispatch(
 
     // Dispatch to Stage 1 microservice
     let stage1_url = std::env::var("STAGE1_SERVICE_URL")
-        .unwrap_or_else(|_| "http://localhost:8001/submit".to_string());
+        .unwrap_or_else(|_| "http://localhost:8001".to_string());
+    
+    let submit_url = format!("{}/submit", stage1_url);
 
     let client = reqwest::Client::new();
     let response: reqwest::Response = client
-        .post(&stage1_url)
+        .post(&submit_url)
         .json(&stage_request)
         .send()
         .await

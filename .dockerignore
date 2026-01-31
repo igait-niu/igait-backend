@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+.github
+
+# Rust build artifacts
+target/
+**/target/
+**/.cargo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+
+# Documentation and markdown
+*.md
+!README.md
+LICENSE
+
+# Docker files
+docker-compose.yml
+Dockerfile
+**/.dockerignore
+
+# Test videos (if you want to exclude them)
+# *.mp4
+# *.mov
+
+# Nix
+flake.nix
+flake.lock
+.direnv/
+
+# Credentials (should be mounted as volume)
+credentials/
+*.json
+!**/Cargo.toml
+!**/Cargo.lock
+
+# Misc
+.DS_Store

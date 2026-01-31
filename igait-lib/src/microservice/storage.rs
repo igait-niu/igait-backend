@@ -1,51 +1,48 @@
-//! Storage utilities for Firebase Storage / GCS access.
+//! Storage utilities for AWS S3 access.
 
+#[allow(unused_imports)]
 use anyhow::{Context, Result};
 use std::path::Path;
 
 #[cfg(feature = "microservice")]
-use google_cloud_storage::{
-    client::{Client, ClientConfig},
-    http::objects::{
-        download::Range,
-        get::GetObjectRequest,
-        upload::{Media, UploadObjectRequest, UploadType},
-        delete::DeleteObjectRequest,
-    },
+use aws_sdk_s3::{
+    Client,
+    primitives::ByteStream,
 };
 
 /// Configuration for storage access.
 #[derive(Debug, Clone)]
 pub struct StorageConfig {
-    /// Firebase Storage bucket name
+    /// AWS S3 bucket name
     pub bucket: String,
     
-    /// Optional endpoint override (for local emulator)
-    pub endpoint: Option<String>,
+    /// AWS region
+    pub region: String,
 }
 
 impl StorageConfig {
     /// Creates a new StorageConfig from environment variables.
     /// 
     /// Reads:
-    /// - `FIREBASE_STORAGE_BUCKET` (required)
-    /// - `STORAGE_ENDPOINT` (optional, for emulator)
+    /// - `AWS_S3_BUCKET` (defaults to "igait-storage")
+    /// - `AWS_REGION` (defaults to "us-east-2")
     pub fn from_env() -> Result<Self> {
-        let bucket = std::env::var("FIREBASE_STORAGE_BUCKET")
-            .unwrap_or_else(|_| "network-technology-project.firebasestorage.app".to_string());
+        let bucket = std::env::var("AWS_S3_BUCKET")
+            .unwrap_or_else(|_| "igait-storage".to_string());
         
-        let endpoint = std::env::var("STORAGE_ENDPOINT").ok();
+        let region = std::env::var("AWS_REGION")
+            .unwrap_or_else(|_| "us-east-2".to_string());
         
-        Ok(Self { bucket, endpoint })
+        Ok(Self { bucket, region })
     }
 
-    /// Returns the full GCS URI for a storage key.
-    pub fn gcs_uri(&self, key: &str) -> String {
-        format!("gs://{}/{}", self.bucket, key)
+    /// Returns the full S3 URI for a storage key.
+    pub fn s3_uri(&self, key: &str) -> String {
+        format!("s3://{}/{}", self.bucket, key)
     }
 }
 
-/// A wrapper around the GCS client for Firebase Storage operations.
+/// A wrapper around the AWS S3 client for storage operations.
 #[cfg(feature = "microservice")]
 #[derive(Clone)]
 pub struct StorageClient {
@@ -57,8 +54,8 @@ pub struct StorageClient {
 impl StorageClient {
     /// Creates a new StorageClient from environment configuration.
     /// 
-    /// Uses Application Default Credentials (ADC) for authentication.
-    /// Set `GOOGLE_APPLICATION_CREDENTIALS` to your service account JSON.
+    /// Uses AWS credentials from environment variables or IAM roles.
+    /// Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for authentication.
     pub async fn new() -> Result<Self> {
         let config = StorageConfig::from_env()?;
         Self::with_config(config).await
@@ -66,12 +63,8 @@ impl StorageClient {
 
     /// Creates a new StorageClient with a specific configuration.
     pub async fn with_config(config: StorageConfig) -> Result<Self> {
-        let client_config = ClientConfig::default()
-            .with_auth()
-            .await
-            .context("Failed to configure GCS auth (check GOOGLE_APPLICATION_CREDENTIALS)")?;
-        
-        let client = Client::new(client_config);
+        let aws_config = aws_config::load_from_env().await;
+        let client = Client::new(&aws_config);
         
         Ok(Self {
             client,
@@ -80,18 +73,21 @@ impl StorageClient {
     }
 
     /// Uploads bytes to a storage key.
-    pub async fn upload(&self, key: &str, data: Vec<u8>, _content_type: Option<&str>) -> Result<()> {
-        let upload_type = UploadType::Simple(Media::new(key.to_string()));
+    pub async fn upload(&self, key: &str, data: Vec<u8>, content_type: Option<&str>) -> Result<()> {
+        let body = ByteStream::from(data);
         
-        self.client
-            .upload_object(
-                &UploadObjectRequest {
-                    bucket: self.bucket.clone(),
-                    ..Default::default()
-                },
-                data,
-                &upload_type,
-            )
+        let mut request = self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .body(body);
+        
+        if let Some(ct) = content_type {
+            request = request.content_type(ct);
+        }
+        
+        request
+            .send()
             .await
             .context(format!("Failed to upload object: {}", key))?;
         
@@ -100,29 +96,28 @@ impl StorageClient {
 
     /// Downloads bytes from a storage key.
     pub async fn download(&self, key: &str) -> Result<Vec<u8>> {
-        let data = self.client
-            .download_object(
-                &GetObjectRequest {
-                    bucket: self.bucket.clone(),
-                    object: key.to_string(),
-                    ..Default::default()
-                },
-                &Range::default(),
-            )
+        let response = self.client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
             .await
             .context(format!("Failed to download object: {}", key))?;
         
-        Ok(data)
+        let data = response.body.collect()
+            .await
+            .context("Failed to read object body")?;
+        
+        Ok(data.into_bytes().to_vec())
     }
 
     /// Deletes an object from storage.
     pub async fn delete(&self, key: &str) -> Result<()> {
         self.client
-            .delete_object(&DeleteObjectRequest {
-                bucket: self.bucket.clone(),
-                object: key.to_string(),
-                ..Default::default()
-            })
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
             .await
             .context(format!("Failed to delete object: {}", key))?;
         
@@ -134,9 +129,9 @@ impl StorageClient {
         &self.bucket
     }
 
-    /// Returns a GCS URI for a key.
-    pub fn gcs_uri(&self, key: &str) -> String {
-        format!("gs://{}/{}", self.bucket, key)
+    /// Returns an S3 URI for a key.
+    pub fn s3_uri(&self, key: &str) -> String {
+        format!("s3://{}/{}", self.bucket, key)
     }
 }
 
@@ -179,6 +174,16 @@ impl StoragePaths {
     /// Returns the full path for an uploaded side video.
     pub fn upload_side_video(job_id: &str, extension: &str) -> String {
         format!("jobs/{}/stage_0/side.{}", job_id, extension)
+    }
+
+    /// Returns the full path for a stage output front video.
+    pub fn stage_front_video(job_id: &str, stage: u8, extension: &str) -> String {
+        format!("jobs/{}/stage_{}/front.{}", job_id, stage, extension)
+    }
+
+    /// Returns the full path for a stage output side video.
+    pub fn stage_side_video(job_id: &str, stage: u8, extension: &str) -> String {
+        format!("jobs/{}/stage_{}/side.{}", job_id, stage, extension)
     }
 
     /// Returns the path for the final results archive.

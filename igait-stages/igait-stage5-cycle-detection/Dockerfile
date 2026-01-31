@@ -14,15 +14,15 @@ RUN apk add --no-cache \
 COPY Cargo.toml ./
 COPY igait-lib ./igait-lib
 COPY igait-backend ./igait-backend
-COPY igait-media-conversion-stage ./igait-media-conversion-stage
-COPY igait-validity-check-stage ./igait-validity-check-stage
-COPY igait-reframing-stage ./igait-reframing-stage
-COPY igait-pose-estimation-stage ./igait-pose-estimation-stage
-COPY igait-cycle-detection-stage ./igait-cycle-detection-stage
-COPY igait-prediction-stage ./igait-prediction-stage
+COPY igait-stages/igait-stage1-media-conversion ./igait-stages/igait-stage1-media-conversion
+COPY igait-stages/igait-stage2-validity-check ./igait-stages/igait-stage2-validity-check
+COPY igait-stages/igait-stage3-reframing ./igait-stages/igait-stage3-reframing
+COPY igait-stages/igait-stage4-pose-estimation ./igait-stages/igait-stage4-pose-estimation
+COPY igait-stages/igait-stage5-cycle-detection ./igait-stages/igait-stage5-cycle-detection
+COPY igait-stages/igait-stage6-prediction ./igait-stages/igait-stage6-prediction
 
 # Build the stage service
-RUN cargo build --release -p igait-cycle-detection-stage
+RUN cargo build --release -p igait-stage5-cycle-detection
 
 # Runtime stage
 FROM alpine:latest

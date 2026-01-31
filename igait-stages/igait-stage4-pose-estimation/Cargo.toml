@@ -1,8 +1,8 @@
 [package]
-name = "igait-prediction-stage"
+name = "igait-stage4-pose-estimationx"
 version = "0.1.0"
 edition = "2021"
-description = "Stage 6: ML prediction microservice for iGait pipeline"
+description = "Stage 4: Pose estimation microservice for iGait pipeline"
 
 [dependencies]
 igait-lib = { workspace = true, features = ["microservice"] }

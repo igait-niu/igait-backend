@@ -1,8 +1,8 @@
 [package]
-name = "igait-cycle-detection-stage"
+name = "igait-stage6-prediction"
 version = "0.1.0"
 edition = "2021"
-description = "Stage 5: Gait cycle detection microservice for iGait pipeline"
+description = "Stage 6: ML prediction microservice for iGait pipeline"
 
 [dependencies]
 igait-lib = { workspace = true, features = ["microservice"] }

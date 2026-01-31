@@ -583,11 +583,24 @@ async fn handle_socket (
             }
         };
 
+        let assistant = match &app.openai_assistant {
+            Some(a) => a,
+            None => {
+                let event = AssistantUpdate::Error { 
+                    content: "AI Assistant is not configured. Please set OPENAI_ASSISTANT_ID.".to_string() 
+                };
+                socket.send(
+                    axum::extract::ws::Message::Text(serde_json::to_string(&event)?)
+                ).await?;
+                return Ok(());
+            }
+        };
+
         if let Err(e) = send_response(
             &app,
             &app.openai_client,
             &thread,
-            &app.openai_assistant,
+            assistant,
             &msg,
             &mut socket,
             &id

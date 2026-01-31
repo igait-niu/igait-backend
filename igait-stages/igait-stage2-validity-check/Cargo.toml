@@ -1,8 +1,8 @@
 [package]
-name = "igait-pose-estimation-stage"
+name = "igait-stage2-validity-check"
 version = "0.1.0"
 edition = "2021"
-description = "Stage 4: Pose estimation microservice for iGait pipeline"
+description = "Stage 2: Validity check microservice for iGait pipeline"
 
 [dependencies]
 igait-lib = { workspace = true, features = ["microservice"] }

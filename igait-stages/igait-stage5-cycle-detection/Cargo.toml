@@ -1,8 +1,8 @@
 [package]
-name = "igait-validity-check-stage"
+name = "igait-stage5-cycle-detection"
 version = "0.1.0"
 edition = "2021"
-description = "Stage 2: Validity check microservice for iGait pipeline"
+description = "Stage 5: Gait cycle detection microservice for iGait pipeline"
 
 [dependencies]
 igait-lib = { workspace = true, features = ["microservice"] }

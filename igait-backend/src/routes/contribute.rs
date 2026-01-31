@@ -214,13 +214,13 @@ async fn save_upload_files<'a> (
     let side_key = format!("research/{}/{}/side.{}", email_user_id, unix_timestamp, side_extension);
 
     // Upload files to Firebase Storage
-    let _: () = app.storage
+    app.storage
         .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
         .await
         .context("Failed to upload front file to Firebase Storage!")?;
     println!("Successfully uploaded front file to Firebase Storage!");
     
-    let _: () = app.storage
+    app.storage
         .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
         .context("Failed to upload side file to Firebase Storage!")?;

@@ -9,31 +9,25 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files
-COPY Cargo.toml ./
+# Copy lib and backend
 COPY igait-lib ./igait-lib
 COPY igait-backend ./igait-backend
-COPY igait-media-conversion-stage ./igait-media-conversion-stage
-COPY igait-validity-check-stage ./igait-validity-check-stage
-COPY igait-reframing-stage ./igait-reframing-stage
-COPY igait-pose-estimation-stage ./igait-pose-estimation-stage
-COPY igait-cycle-detection-stage ./igait-cycle-detection-stage
-COPY igait-prediction-stage ./igait-prediction-stage
 
 # Build the backend
+WORKDIR /app/igait-backend
 RUN cargo build --release -p igait-backend
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Runtime stage - use matching Debian version
+FROM debian:trixie-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libssl3 \
+    libssl3t64 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the binary
-COPY --from=builder /app/target/release/igait-backend /usr/local/bin/igait-backend
+COPY --from=builder /app/igait-backend/target/release/igait-backend /usr/local/bin/igait-backend
 
 # Set environment
 ENV RUST_LOG=info

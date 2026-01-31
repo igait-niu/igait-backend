@@ -1,32 +1,18 @@
-rules_version='2';
+rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Jobs collection - core of the microservices pipeline
-    match /jobs/{jobId} {
-      // Users can read their own jobs (jobId format: {userId}_{jobIndex})
-      allow read: if request.auth != null && 
-                    jobId.split('_')[0] == request.auth.uid;
-      
-      // Only backend service can create/update jobs
-      // In production, this would check for a service account
-      allow create, update: if request.auth != null;
-      
-      // No direct deletes from clients
-      allow delete: if false;
-    }
-    
-    // Users collection (existing - for backward compatibility)
-    match /users/{userId} {
-      allow read, write: if request.auth != null && 
-                           request.auth.uid == userId;
-    }
-    
-    // Temporary dev rule - remove before production!
-    // Expires Feb 22, 2026
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 2, 22);
+      // This rule allows anyone with your database reference to view, edit,
+      // and delete all data in your database. It is useful for getting
+      // started, but it is configured to expire after 30 days because it
+      // leaves your app open to attackers. At that time, all client
+      // requests to your database will be denied.
+      //
+      // Make sure to write security rules for your app before that time, or
+      // else all client requests to your database will be denied until you
+      // update your rules.
+      allow read, write: if request.time < timestamp.date(2026, 3, 1);
     }
   }
 }
