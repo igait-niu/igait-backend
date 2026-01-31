@@ -9,3 +9,4 @@ test.sh
 batch_process.pbs
 !Cargo.toml
 firebase-debug.log
+*.mp4
