@@ -45,7 +45,7 @@ services:
       - igait-network
     depends_on:
       - stage1
-      # - stage2
+      - stage2
       # - stage3
       # - stage4
       # - stage5
@@ -70,19 +70,22 @@ services:
       - igait-network
 
   # Stage 2: Validity Check
-  # stage2:
-  #   build:
-  #     context: .
-  #     dockerfile: igait-validity-check-stage/Dockerfile
-  #   environment:
-  #     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
-  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/2
-  #     - PORT=8080
-  #     - RUST_LOG=info
-  #   volumes:
-  #     - ./credentials:/app/credentials:ro
-  #   networks:
-  #     - igait-network
+  stage2:
+    build:
+      context: .
+      dockerfile: igait-stages/igait-stage2-validity-check/Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-igait-storage}
+      - AWS_REGION=${AWS_REGION:-us-east-2}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/2
+      - PORT=8080
+      - RUST_LOG=info
+    networks:
+      - igait-network
 
   # # Stage 3: Reframing
   # stage3:

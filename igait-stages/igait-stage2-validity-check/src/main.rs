@@ -1,7 +1,8 @@
 //! Stage 2: Validity Check Microservice
 //! 
 //! Verifies that a person can be detected in the uploaded videos.
-//! Uses OpenCV/MediaPipe for person detection.
+//! 
+//! NOTE: This is currently a placeholder that passes through immediately.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -28,69 +29,34 @@ impl StageProcessor for ValidityCheckProcessor {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        println!("Processing job {}: Validity Check", request.job_id);
+        println!("Processing job {}: Validity Check (pass-through)", request.job_id);
         logs.push_str(&format!("Starting validity check for job {}\n", request.job_id));
 
-        match self.do_validity_check(&request, &mut logs).await {
-            Ok(output_keys) => {
-                let duration = start_time.elapsed();
-                logs.push_str(&format!("Validity check completed in {:?}\n", duration));
-                
-                StageJobResult::success(
-                    request.job_id,
-                    StageNumber::Stage2ValidityCheck,
-                    output_keys,
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-            Err(e) => {
-                let duration = start_time.elapsed();
-                eprintln!("Validity check failed for job {}: {}", request.job_id, e);
-                logs.push_str(&format!("ERROR: {}\n", e));
-                
-                StageJobResult::failure(
-                    request.job_id,
-                    StageNumber::Stage2ValidityCheck,
-                    e.to_string(),
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-        }
-    }
-}
+        // Get input paths (from stage 1)
+        let front_input = request.input_front_video();
+        let side_input = request.input_side_video();
 
-impl ValidityCheckProcessor {
-    async fn do_validity_check(
-        &self,
-        request: &StageJobRequest,
-        logs: &mut String,
-    ) -> Result<HashMap<String, String>> {
-        // Get input file paths from request
-        let front_input = request.input_keys.get("front_video")
-            .ok_or_else(|| anyhow::anyhow!("Missing front_video input key"))?;
-        let side_input = request.input_keys.get("side_video")
-            .ok_or_else(|| anyhow::anyhow!("Missing side_video input key"))?;
+        logs.push_str(&format!("Input front video: {}\n", front_input));
+        logs.push_str(&format!("Input side video: {}\n", side_input));
 
-        logs.push_str(&format!("Checking front video: {}\n", front_input));
-        logs.push_str(&format!("Checking side video: {}\n", side_input));
-
-        // TODO: Download files from storage
-        // TODO: Run person detection (Python subprocess or native)
-        // TODO: Upload validation report
-
-        // For now, return placeholder output keys
-        let stage_prefix = format!("jobs/{}/stage_2", request.job_id);
+        // For now, just pass through - output the same paths as input
+        // (Stage 2 doesn't modify videos, just validates them)
         let mut output_keys = HashMap::new();
-        output_keys.insert("validation_report".to_string(), format!("{}/validation.json", stage_prefix));
-        // Pass through video keys for next stage
-        output_keys.insert("front_video".to_string(), front_input.clone());
-        output_keys.insert("side_video".to_string(), side_input.clone());
+        output_keys.insert("front_video".to_string(), front_input);
+        output_keys.insert("side_video".to_string(), side_input);
 
-        logs.push_str("Validity check complete (placeholder)\n");
-        
-        Ok(output_keys)
+        logs.push_str("Validity check complete (placeholder - no actual validation performed)\n");
+
+        let duration = start_time.elapsed();
+        logs.push_str(&format!("Completed in {:?}\n", duration));
+
+        StageJobResult::success(
+            request.job_id,
+            StageNumber::Stage2ValidityCheck,
+            output_keys,
+            logs,
+            duration.as_millis() as u64,
+        )
     }
 }
 

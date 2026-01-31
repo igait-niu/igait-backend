@@ -1,51 +1,39 @@
-# Multi-stage build for Stage 2: Validity Check
-FROM rust:1.93-slim as builder
+FROM rust:1.93-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    openssl-dev \
+    openssl-libs-static \
+    pkgconfig
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    python3 \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy workspace files
-COPY Cargo.toml ./
+# Copy lib and stage files
 COPY igait-lib ./igait-lib
-COPY igait-backend ./igait-backend
-COPY igait-stages/igait-stage1-media-conversion ./igait-stages/igait-stage1-media-conversion
 COPY igait-stages/igait-stage2-validity-check ./igait-stages/igait-stage2-validity-check
-COPY igait-stages/igait-stage3-reframing ./igait-stages/igait-stage3-reframing
-COPY igait-stages/igait-stage4-pose-estimation ./igait-stages/igait-stage4-pose-estimation
-COPY igait-stages/igait-stage5-cycle-detection ./igait-stages/igait-stage5-cycle-detection
-COPY igait-stages/igait-stage6-prediction ./igait-stages/igait-stage6-prediction
 
-# Build the stage service
-RUN cargo build --release -p igait-stage2-validity-check
+# Build the service
+WORKDIR /app/igait-stages/igait-stage2-validity-check
+RUN cargo build --release
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Runtime image
+FROM alpine:latest
 
-# Install runtime dependencies (Python + OpenCV)
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies
+RUN apk add --no-cache \
     ca-certificates \
-    libssl3 \
-    python3 \
-    python3-pip \
-    python3-opencv \
-    && rm -rf /var/lib/apt/lists/*
+    libgcc
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir --break-system-packages mediapipe numpy
+# Copy binary from builder
+COPY --from=builder /app/igait-stages/igait-stage2-validity-check/target/release/igait-stage2-validity-check /usr/local/bin/stage-service
 
-# Copy the binary
-COPY --from=builder /app/target/release/igait-validity-check-stage /usr/local/bin/stage-service
-
+# Set environment variables
 ENV RUST_LOG=info
 ENV PORT=8080
 
 EXPOSE 8080
+
+CMD ["stage-service"]
 
 CMD ["stage-service"]

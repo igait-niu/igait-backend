@@ -166,6 +166,7 @@ async fn dispatch_next_stage(
 
     // Build callback URL for this stage
     let callback_url = std::env::var("BACKEND_CALLBACK_URL")
+        .map(|base_url| format!("{}/{}", base_url, next_stage))
         .unwrap_or_else(|_| format!("http://localhost:3000/api/v1/webhook/stage/{}", next_stage));
 
     // The output_keys from the previous stage become input_keys for the next stage

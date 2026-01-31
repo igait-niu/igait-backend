@@ -23,7 +23,6 @@ echo "  User ID: $USER_ID"
 echo "  Age: $AGE"
 echo "  Email: $EMAIL"
 echo ""
-
 echo "📤 Uploading videos to backend..."
 echo ""
 
