@@ -151,16 +151,29 @@ async fn submit_job<P: StageProcessor>(
         }
         
         // Send callback to backend
-        if let Err(e) = state_clone
+        println!("Sending callback for job {} to {}", result.job_id, callback_url);
+        let callback_result = state_clone
             .callback_client
             .post(&callback_url)
             .json(&result)
             .send()
-            .await
-        {
-            eprintln!("Failed to send callback for job {}: {}", result.job_id, e);
+            .await;
+        let callback_response = match callback_result {
+            Ok(resp) => resp,
+            Err(e) => {
+                eprintln!("Callback request failed for job {}: {}", result.job_id, e);
+            
+                return;
+            }
+        }; 
+            
+        if !callback_response.status().is_success() {
+            eprintln!(
+                "Callback failed for job {}: HTTP {}",
+                result.job_id, callback_response.status()
+            );
         } else {
-            println!("Sent callback for job {}", result.job_id);
+            println!("Callback succeeded for job {}", result.job_id);
         }
     });
     

@@ -4,7 +4,7 @@
 //! processing a job (success or failure).
 
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -28,10 +28,10 @@ use crate::helper::lib::{AppStatePtr, JobStatus, JobStatusCode};
 /// * `400 Bad Request` if the stage number is invalid
 /// * `500 Internal Server Error` if processing fails
 pub async fn stage_webhook_entrypoint(
-    Path(stage_num): Path<u8>,
     State(state): State<AppStatePtr>,
     Json(result): Json<StageJobResult>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let stage_num = result.stage.as_u8();
     println!(
         "Received webhook for stage {} - job {} - status {:?}",
         stage_num, result.job_id, result.status
@@ -166,8 +166,7 @@ async fn dispatch_next_stage(
 
     // Build callback URL for this stage
     let callback_url = std::env::var("BACKEND_CALLBACK_URL")
-        .map(|base_url| format!("{}/{}", base_url, next_stage))
-        .unwrap_or_else(|_| format!("http://localhost:3000/api/v1/webhook/stage/{}", next_stage));
+        .unwrap_or("http://localhost:3000/api/v1/webhook/stage".to_string());
 
     // The output_keys from the previous stage become input_keys for the next stage
     let request = StageJobRequest {

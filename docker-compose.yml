@@ -28,6 +28,7 @@ services:
       - OPENAI_VECTOR_STORE_ID=${OPENAI_VECTOR_STORE_ID}
       
       # Service URLs (point to local services)
+      # Note: BACKEND_CALLBACK_URL should NOT have a stage number - it will be appended by the code
       - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
       - STAGE1_SERVICE_URL=http://stage1:8080
       - STAGE2_SERVICE_URL=http://stage2:8080
@@ -63,7 +64,7 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-2}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/1
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
       - PORT=8080
       - RUST_LOG=info
     networks:
@@ -81,7 +82,7 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-2}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/2
+      - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
       - PORT=8080
       - RUST_LOG=info
     networks:
@@ -94,7 +95,7 @@ services:
   #     dockerfile: igait-reframing-stage/Dockerfile
   #   environment:
   #     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
-  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/3
+  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
   #     - PORT=8080
   #     - RUST_LOG=info
   #   volumes:
@@ -109,7 +110,7 @@ services:
   #     dockerfile: igait-pose-estimation-stage/Dockerfile
   #   environment:
   #     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
-  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/4
+  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
   #     - PORT=8080
   #     - RUST_LOG=info
   #   volumes:
@@ -124,7 +125,7 @@ services:
   #     dockerfile: igait-cycle-detection-stage/Dockerfile
   #   environment:
   #     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
-  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/5
+  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
   #     - PORT=8080
   #     - RUST_LOG=info
   #   volumes:
@@ -139,7 +140,7 @@ services:
   #     dockerfile: igait-prediction-stage/Dockerfile
   #   environment:
   #     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
-  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage/6
+  #     - BACKEND_CALLBACK_URL=http://backend:3000/api/v1/webhook/stage
   #     - PORT=8080
   #     - RUST_LOG=info
   #   volumes:

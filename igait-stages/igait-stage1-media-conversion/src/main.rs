@@ -37,11 +37,6 @@ impl StageProcessor for MediaConversionProcessor {
         println!("Processing job {}: Media Conversion", request.job_id);
         logs.push_str(&format!("Starting media conversion for job {}\n", request.job_id));
 
-        // TODO: Implement actual processing:
-        // 1. Download input files from Firebase Storage
-        // 2. Run FFmpeg conversion
-        // 3. Upload output files to Firebase Storage
-
         match self.do_conversion(&request, &mut logs).await {
             Ok(output_keys) => {
                 let duration = start_time.elapsed();

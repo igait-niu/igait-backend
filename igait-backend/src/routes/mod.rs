@@ -8,7 +8,7 @@
 /// The backend then either dispatches to the next stage or finalizes the job.
 /// 
 /// # Endpoint
-/// `POST /api/v1/webhook/stage/{stage_num}`
+/// `POST /api/v1/webhook/stage`
 /// 
 /// # Body
 /// `StageJobResult` JSON from `igait-lib::microservice`

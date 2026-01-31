@@ -361,7 +361,7 @@ async fn upload_and_dispatch(
     input_keys.insert("side_video".to_string(), side_key);
 
     let callback_url = std::env::var("BACKEND_CALLBACK_URL")
-        .unwrap_or_else(|_| "http://localhost:3000/api/v1/webhook/stage/1".to_string());
+        .unwrap_or_else(|_| "http://localhost:3000/api/v1/webhook/stage".to_string());
 
     let stage_request = StageJobRequest {
         job_id: job_id.to_string(),
