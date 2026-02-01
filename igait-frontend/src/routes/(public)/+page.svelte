@@ -10,18 +10,18 @@
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="relative overflow-hidden py-20 sm:py-32">
-	<div class="mx-auto max-w-7xl px-4">
-		<div class="text-center">
-			<h1 class="text-4xl font-bold tracking-tight sm:text-6xl">
+<section class="hero-section">
+	<div class="page-container">
+		<div class="hero-content">
+			<h1 class="hero-title">
 				AI-Powered
 				<span class="text-primary"> Gait Analysis</span>
 			</h1>
-			<p class="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+			<p class="hero-description">
 				Upload your walking videos and receive detailed analysis powered by machine learning. 
 				Early detection of gait abnormalities can help identify potential health concerns.
 			</p>
-			<div class="mt-10 flex items-center justify-center gap-4">
+			<div class="hero-actions">
 				<Button size="lg" href="/signup">
 					Get Started
 					<ArrowRight class="ml-2 h-4 w-4" />
@@ -35,17 +35,17 @@
 </section>
 
 <!-- Features Section -->
-<section class="border-t bg-muted/50 py-20">
-	<div class="mx-auto max-w-7xl px-4">
-		<h2 class="text-center text-3xl font-bold">How It Works</h2>
-		<p class="mx-auto mt-4 max-w-2xl text-center text-muted-foreground">
+<section class="features-section">
+	<div class="page-container">
+		<h2 class="section-title">How It Works</h2>
+		<p class="section-description">
 			Our advanced pipeline processes your walking videos to provide detailed gait analysis.
 		</p>
 		
-		<div class="mt-16 grid gap-8 sm:grid-cols-3">
+		<div class="features-grid">
 			<Card.Root>
 				<Card.Header>
-					<div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+					<div class="feature-icon">
 						<Activity class="h-6 w-6 text-primary" />
 					</div>
 					<Card.Title>Upload Videos</Card.Title>
@@ -57,7 +57,7 @@
 			
 			<Card.Root>
 				<Card.Header>
-					<div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+					<div class="feature-icon">
 						<Zap class="h-6 w-6 text-primary" />
 					</div>
 					<Card.Title>AI Processing</Card.Title>
@@ -69,7 +69,7 @@
 			
 			<Card.Root>
 				<Card.Header>
-					<div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+					<div class="feature-icon">
 						<Shield class="h-6 w-6 text-primary" />
 					</div>
 					<Card.Title>Get Results</Card.Title>
@@ -83,18 +83,18 @@
 </section>
 
 <!-- CTA Section -->
-<section class="py-20">
-	<div class="mx-auto max-w-7xl px-4">
-		<div class="rounded-2xl bg-primary px-8 py-16 text-center text-primary-foreground">
-			<h2 class="text-3xl font-bold">Ready to Get Started?</h2>
-			<p class="mx-auto mt-4 max-w-xl text-primary-foreground/80">
+<section class="page-section">
+	<div class="page-container">
+		<div class="cta-card">
+			<h2 class="cta-title">Ready to Get Started?</h2>
+			<p class="cta-description">
 				Create your free account today and start analyzing your gait patterns.
 			</p>
 			<Button 
 				size="lg" 
 				variant="secondary" 
 				href="/signup"
-				class="mt-8"
+				class="cta-button"
 			>
 				Create Free Account
 				<ArrowRight class="ml-2 h-4 w-4" />
@@ -102,3 +102,124 @@
 		</div>
 	</div>
 </section>
+
+<style>
+	/* Hero Section */
+	.hero-section {
+		position: relative;
+		overflow: hidden;
+		padding-top: var(--section-padding-y);
+		padding-bottom: var(--section-padding-y);
+	}
+
+	@media (min-width: 640px) {
+		.hero-section {
+			padding-top: 8rem;
+			padding-bottom: 8rem;
+		}
+	}
+
+	.hero-content {
+		text-align: center;
+	}
+
+	.hero-title {
+		font-size: 2.25rem;
+		font-weight: 700;
+		line-height: 1.1;
+		letter-spacing: -0.025em;
+	}
+
+	@media (min-width: 640px) {
+		.hero-title {
+			font-size: 3.75rem;
+		}
+	}
+
+	.hero-description {
+		margin-left: auto;
+		margin-right: auto;
+		margin-top: 1.5rem;
+		max-width: var(--container-narrow);
+		font-size: 1.125rem;
+		line-height: 1.75rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.hero-actions {
+		margin-top: 2.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+	}
+
+	/* Features Section */
+	.features-section {
+		border-top: 1px solid hsl(var(--border));
+		background-color: hsl(var(--muted) / 0.5);
+		padding-top: var(--section-padding-y);
+		padding-bottom: var(--section-padding-y);
+	}
+
+	.section-title {
+		text-align: center;
+		font-size: 1.875rem;
+		font-weight: 700;
+	}
+
+	.section-description {
+		margin-left: auto;
+		margin-right: auto;
+		margin-top: 1rem;
+		max-width: var(--container-narrow);
+		text-align: center;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.features-grid {
+		margin-top: 4rem;
+		display: grid;
+		gap: var(--grid-gap);
+		grid-template-columns: 1fr;
+	}
+
+	@media (min-width: 640px) {
+		.features-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+
+	.feature-icon {
+		margin-bottom: 1rem;
+		display: inline-flex;
+		height: 3rem;
+		width: 3rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-lg);
+		background-color: hsl(var(--primary) / 0.1);
+	}
+
+	/* CTA Section */
+	.cta-card {
+		border-radius: 1rem;
+		background-color: hsl(var(--primary));
+		padding: 4rem 2rem;
+		text-align: center;
+		color: hsl(var(--primary-foreground));
+	}
+
+	.cta-title {
+		font-size: 1.875rem;
+		font-weight: 700;
+	}
+
+	.cta-description {
+		margin-left: auto;
+		margin-right: auto;
+		margin-top: 1rem;
+		max-width: 36rem;
+		color: hsl(var(--primary-foreground) / 0.8);
+	}
+</style>

@@ -65,10 +65,10 @@
 	<title>Log In - iGait</title>
 </svelte:head>
 
-<div class="flex min-h-[calc(100vh-12rem)] items-center justify-center py-12">
-	<Card.Root class="w-full max-w-md">
-		<Card.Header class="text-center">
-			<Card.Title class="text-2xl">Welcome Back</Card.Title>
+<div class="auth-container">
+	<Card.Root class="auth-card">
+		<Card.Header class="auth-header">
+			<Card.Title class="auth-title">Welcome Back</Card.Title>
 			<Card.Description>
 				Sign in to your account to continue
 			</Card.Description>
@@ -76,7 +76,7 @@
 		<Card.Content>
 			<!-- Error Alert -->
 			{#if error.isSome()}
-				<Alert variant="destructive" class="mb-6">
+				<Alert variant="destructive" class="error-alert">
 					<AlertCircle class="h-4 w-4" />
 					<AlertDescription>
 						{error.value.displayMessage}
@@ -87,7 +87,7 @@
 			<!-- Google Sign In -->
 			<Button
 				variant="outline"
-				class="w-full"
+				class="social-button"
 				onclick={handleGoogleLogin}
 				disabled={isLoading}
 			>
@@ -116,18 +116,18 @@
 				Continue with Google
 			</Button>
 
-			<div class="relative my-6">
-				<div class="absolute inset-0 flex items-center">
+			<div class="auth-divider">
+				<div class="divider-line">
 					<Separator class="w-full" />
 				</div>
-				<div class="relative flex justify-center text-xs uppercase">
+				<div class="divider-text">
 					<span class="bg-card px-2 text-muted-foreground">Or continue with email</span>
 				</div>
 			</div>
 
 			<!-- Email/Password Form -->
-			<form onsubmit={handleEmailLogin} class="space-y-4">
-				<div class="space-y-2">
+			<form onsubmit={handleEmailLogin} class="auth-form">
+				<div class="form-field">
 					<Label for="email">Email</Label>
 					<Input
 						id="email"
@@ -139,7 +139,7 @@
 					/>
 				</div>
 
-				<div class="space-y-2">
+				<div class="form-field">
 					<Label for="password">Password</Label>
 					<Input
 						id="password"
@@ -151,7 +151,7 @@
 					/>
 				</div>
 
-				<Button type="submit" class="w-full" disabled={isLoading}>
+				<Button type="submit" class="submit-button" disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 					{/if}
@@ -159,13 +159,103 @@
 				</Button>
 			</form>
 		</Card.Content>
-		<Card.Footer class="flex flex-col gap-4">
-			<p class="text-center text-sm text-muted-foreground">
+		<Card.Footer class="auth-footer">
+			<p class="footer-text">
 				Don't have an account?
-				<a href="/signup" class="text-primary underline-offset-4 hover:underline">
+				<a href="/signup" class="footer-link">
 					Sign up
 				</a>
 			</p>
 		</Card.Footer>
 	</Card.Root>
 </div>
+
+<style>
+	.auth-container {
+		display: flex;
+		min-height: calc(100vh - 12rem);
+		align-items: center;
+		justify-content: center;
+		padding-top: var(--spacing-lg);
+		padding-bottom: var(--spacing-lg);
+	}
+
+	.auth-card {
+		width: 100%;
+		max-width: 28rem;
+	}
+
+	.auth-header {
+		text-align: center;
+	}
+
+	.auth-title {
+		font-size: 1.5rem;
+	}
+
+	.error-alert {
+		margin-bottom: 1.5rem;
+	}
+
+	.social-button {
+		width: 100%;
+	}
+
+	.auth-divider {
+		position: relative;
+		margin-top: 1.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.divider-line {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+	}
+
+	.divider-text {
+		position: relative;
+		display: flex;
+		justify-content: center;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+	}
+
+	.auth-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--stack-sm);
+	}
+
+	.form-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.submit-button {
+		width: 100%;
+	}
+
+	.auth-footer {
+		display: flex;
+		flex-direction: column;
+		gap: var(--stack-sm);
+	}
+
+	.footer-text {
+		text-align: center;
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.footer-link {
+		color: hsl(var(--primary));
+		text-underline-offset: 4px;
+	}
+
+	.footer-link:hover {
+		text-decoration: underline;
+	}
+</style>

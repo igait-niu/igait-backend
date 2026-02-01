@@ -109,6 +109,39 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* === Spacing System === */
+  /* Consistent spacing values for layout */
+  --spacing-xs: 0.5rem;      /* 8px */
+  --spacing-sm: 1rem;        /* 16px */
+  --spacing-md: 1.5rem;      /* 24px */
+  --spacing-lg: 2rem;        /* 32px */
+  --spacing-xl: 3rem;        /* 48px */
+  --spacing-2xl: 4rem;       /* 64px */
+  --spacing-3xl: 5rem;       /* 80px */
+
+  /* Page sections */
+  --section-padding-y: 5rem;      /* py-20 */
+  --section-padding-y-sm: 3rem;   /* py-12 */
+  --section-gap: 2rem;            /* space-y-8 */
+
+  /* Containers */
+  --container-max-width: 80rem;   /* max-w-7xl */
+  --container-padding: 1rem;      /* px-4 */
+  --container-narrow: 42rem;      /* max-w-2xl */
+  --container-medium: 48rem;      /* max-w-3xl */
+
+  /* Cards and components */
+  --card-padding: 1.5rem;         /* p-6 */
+  --card-gap: 1rem;               /* gap-4 */
+  --grid-gap: 2rem;               /* gap-8 */
+  --grid-gap-sm: 1rem;            /* gap-4 */
+
+  /* Vertical rhythm */
+  --stack-xs: 0.5rem;    /* space-y-2 */
+  --stack-sm: 1rem;      /* space-y-4 */
+  --stack-md: 1.5rem;    /* space-y-6 */
+  --stack-lg: 2rem;      /* space-y-8 */
 }
 
 @layer base {
@@ -118,4 +151,69 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* === Semantic Layout Classes === */
+/* Use these instead of inline Tailwind for consistent spacing */
+
+/* Page containers */
+.page-container {
+  max-width: var(--container-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+}
+
+.page-container-narrow {
+  max-width: var(--container-narrow);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+}
+
+.page-container-medium {
+  max-width: var(--container-medium);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Page sections */
+.page-section {
+  padding-top: var(--section-padding-y);
+  padding-bottom: var(--section-padding-y);
+}
+
+.page-section-sm {
+  padding-top: var(--section-padding-y-sm);
+  padding-bottom: var(--section-padding-y-sm);
+}
+
+/* Vertical stacking */
+.stack-xs { display: flex; flex-direction: column; gap: var(--stack-xs); }
+.stack-sm { display: flex; flex-direction: column; gap: var(--stack-sm); }
+.stack-md { display: flex; flex-direction: column; gap: var(--stack-md); }
+.stack-lg { display: flex; flex-direction: column; gap: var(--stack-lg); }
+
+/* Grid layouts */
+.grid-2 {
+  display: grid;
+  gap: var(--grid-gap);
+  grid-template-columns: 1fr;
+}
+
+.grid-3 {
+  display: grid;
+  gap: var(--grid-gap);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
 }
