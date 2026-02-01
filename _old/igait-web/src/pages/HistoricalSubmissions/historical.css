@@ -1,0 +1,139 @@
+.request-button {
+    gap: 10px;
+    background: #007bff;
+    color: #fff;
+    font-size: 1rem;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 50%;
+}
+
+.historical-email-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.email-icon {
+    color: #007bff;
+    margin-bottom: 1rem;
+}
+
+.email-info-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    width: 100%;
+    text-align: left;
+}
+
+.email-info-card h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.email-info-card ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 1rem 0 0 0;
+}
+
+.email-info-card li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.email-info-card li:before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: #007bff;
+    font-weight: bold;
+}
+
+.email-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #007bff;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 1rem 0;
+}
+
+.email-button:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.email-button:active {
+    transform: translateY(0);
+}
+
+.success-message {
+    color: #28a745;
+    font-weight: 600;
+    margin-top: 1rem;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.contact-info {
+    margin-top: 2rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.contact-info a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.contact-info a:hover {
+    text-decoration: underline;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .request-button {
+        font-size: 14px; 
+        padding: 10px 20px; 
+    }
+
+    .historical-email-container {
+        padding: 1rem;
+    }
+    
+    .email-button {
+        font-size: 0.9rem;
+        padding: 0.8rem 1.5rem;
+    }
+}

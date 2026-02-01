@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { getAuth, signOut } from "firebase/auth";
+import { useState } from 'react';
 import './signout.css'
 
 /**
@@ -7,6 +8,7 @@ import './signout.css'
  */
 function Signout() {
     const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(false);
     
     /**
      * @brief Signs the user out of the application.
@@ -19,6 +21,7 @@ function Signout() {
      * @return {void}
      */
     function handleSignOut(){    
+        setIsLoading(true);
         const auth = getAuth();
         signOut(auth).then(() => {    
             localStorage.setItem("privacyPolicy", "false");
@@ -26,15 +29,39 @@ function Signout() {
             navigate('/menu');     
         }).catch((error) => {
             console.log(error);
+            setIsLoading(false);
         });
-    }    
+    }
+
+    function handleCancel() {
+        navigate(-1); // Go back to previous page
+    }
+    
     return(
-        <div className='Signout'>  
-        <div className='background'></div>
-            <div className='logout-container'>
-                <h1 className='signout-text'>Signout</h1>
-                <p className='signout-text-small'>Are you sure you want to sign out?</p>
-                <button className='logout-button' onClick={handleSignOut}>Logout</button>
+        <div className='signout-page'>  
+            <div className='signout-overlay' onClick={handleCancel}></div>
+            <div className='signout-modal'>
+                <div className='signout-icon'>👋</div>
+                <h1 className='signout-title'>Sign Out?</h1>
+                <p className='signout-description'>
+                    Are you sure you want to sign out? You'll need to log back in to access your submissions and use iGAIT.
+                </p>
+                <div className='signout-buttons'>
+                    <button 
+                        className='button-cancel' 
+                        onClick={handleCancel}
+                        disabled={isLoading}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        className='button-signout' 
+                        onClick={handleSignOut}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Signing out...' : 'Sign Out'}
+                    </button>
+                </div>
             </div>
         </div>
     )

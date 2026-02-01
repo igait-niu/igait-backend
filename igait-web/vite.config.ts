@@ -12,10 +12,6 @@ export default defineConfig({
       usePolling: true
     }
   },
-  preview: {
-    host: true,
-    port: 4173
-  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

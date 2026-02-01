@@ -1,0 +1,187 @@
+body {
+    margin: 0;
+    padding: 0;
+    color: white;
+}
+
+.hippa {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    overflow-y: hidden;
+}
+
+.top-header-test h1{
+    display: flex;
+    flex-direction: column;
+}
+
+.background20 {
+    background-color: #d6d6d6;
+}
+
+.hippa-header20 {
+    background-color: #d6d6d6;
+}
+
+.h1 {
+    display: flex;
+    margin: auto;
+    color: white;
+    font-size: 3vw; 
+    text-align: center;
+    padding-top: 20px; 
+}
+
+.hippa-form-outer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 90%;
+    max-width: 600px;
+    height: auto;
+    max-height: 80%;
+    background-color: white;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid black;
+    margin: auto; 
+}
+
+.hippa-form-inner {
+    border-radius: 15px;
+    overflow-y: auto;
+    padding: 1em;
+}
+.accept-decline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem; 
+}
+
+.accept-button p {
+    color: white !important;
+}
+
+.decline-button p {
+    color: white !important;
+}
+
+.decline-button,
+.accept-button {
+    font-size: 1rem;
+    padding: 0.1em .1em; 
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    color: white !important;
+    flex-grow: 0.1;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+}
+
+.decline-button {
+    background-color: #f04a4a;
+}
+
+.accept-button {
+    background-color: #157EFB;
+}
+
+.decline-button ,
+.accept-button {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.decline-button:hover {
+    background-color: #e00c0c;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.accept-button:hover {
+    background-color: #136ddb; 
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.decline-button:focus,
+.accept-button:focus {
+    outline: 2px solid #f5f5f5; 
+    outline-offset: 2px; 
+}
+
+/* Media Queries */
+
+/* Phones */
+@media (max-width: 600px) {
+    .h1 {
+        font-size: 5vw; 
+    }
+
+    .hippa-form-outer {
+        width: 95%;
+        max-width: 100%;
+        margin: 10% auto; 
+    }
+
+    .accept-decline {
+        gap: 5px;
+        padding: 0.5em;
+    }
+
+    .accept-decline button {
+        width: 3rem;
+        height: 1.5rem;
+        font-size: 0.7rem;
+    }
+
+    .accept-decline span {
+        font-size: 4vw;
+    }
+}
+
+/* Tablets */
+@media (min-width: 601px) and (max-width: 1024px) {
+    .h1 {
+        font-size: 4vw; 
+    }
+
+    .hippa-form-outer {
+        width: 90%;
+        max-width: 700px;
+        margin: 5% auto; 
+    }
+
+    .accept-decline {
+        gap: 10px;
+        padding: 1em;
+    }
+
+    .accept-decline button {
+        width: 4rem;
+        height: 2rem;
+        font-size: 0.8rem;
+    }
+
+    .accept-decline span {
+        font-size: 3vw;
+    }
+}
+
+/* Desktops */
+@media (min-width: 1025px) {
+    .h1 {
+        font-size: 50px; 
+    }
+
+    .hippa-form-outer {
+        width: 60%;
+        max-width: 800px;
+        margin: 2% auto; 
+    }
+}

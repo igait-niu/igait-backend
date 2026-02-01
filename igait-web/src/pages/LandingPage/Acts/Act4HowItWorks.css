@@ -1,0 +1,210 @@
+/* Act 4: How It Works Section */
+
+.how-it-works-section {
+  width: 100vw;
+  min-height: 100vh;
+  background: 
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.98) 100%);
+  position: relative;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(80px + var(--space-2xl)) 0 var(--space-2xl) 0;
+  margin: 0;
+}
+
+.how-it-works-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+
+.how-it-works-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1600px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+  align-items: center;
+  padding: 0 var(--space-xl);
+}
+
+.how-it-works-title {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: var(--font-weight-black);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  margin: 0;
+}
+
+.steps-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.step-card {
+  background: white;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-2xl);
+  box-shadow: var(--shadow-lg);
+  border: 2px solid transparent;
+  transition: all var(--transition-slow);
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 200px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  align-items: center;
+  text-align: center;
+}
+
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-2xl);
+  border-color: var(--color-primary);
+}
+
+.step-card:hover::before {
+  transform: scaleX(1);
+}
+
+.step-number {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 36px;
+  height: 36px;
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.step-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-sm);
+}
+
+.step-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.step-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+.step-arrow {
+  font-size: 3rem;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: var(--space-3xl);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-primary);
+  opacity: 0.7;
+  animation: float 3s ease-in-out infinite;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.scroll-indicator svg {
+  width: 32px;
+  height: 32px;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .steps-container {
+    gap: var(--space-md);
+  }
+
+  .step-card {
+    max-width: 240px;
+  }
+
+  .step-arrow {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .how-it-works-section {
+    padding: calc(80px + var(--space-xl)) var(--space-md) var(--space-xl);
+    min-height: auto;
+  }
+
+  .steps-container {
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .step-card {
+    max-width: 100%;
+  }
+
+  .step-arrow {
+    transform: rotate(90deg);
+    font-size: 2.5rem;
+  }
+}

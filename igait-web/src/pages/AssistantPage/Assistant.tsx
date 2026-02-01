@@ -144,41 +144,63 @@ function Assistant() {
     };
 
     return (
-        <div className="Assistant">
-            <div className='about-header'>
+        <div className="assistant-page">
+            <div className="assistant-hero">
+                <h1 className="assistant-hero-title">AI Assistant</h1>
+                <p className="assistant-hero-subtitle">
+                    Ask questions about your submissions, next steps, or how iGAIT works
+                </p>
             </div>
-            <div className='about-header'>
-            </div>
+
             {isClosed && (
-                <div className="error-message">
+                <div className="connection-error">
+                    <div className="error-icon">⚠️</div>
                     <h2>Connection Closed</h2>
-                    <p>The connection was closed. Please refresh the page to re-open it.</p>
+                    <p>The connection was closed. Please refresh the page to reconnect.</p>
+                    <button onClick={() => window.location.reload()} className="button-primary">
+                        Refresh Page
+                    </button>
                 </div>
             )}
-            <div className="message-container">
-                {renderMessages()}
-            </div>
-            <div className="input-container">
-                {waitingStatus ? (
-                    <input
-                        type = "text"
-                        value = {waitingStatus}
-                        onChange = {handleInputChange}
-                        placeholder = "Type your message..."
-                        disabled
-                    />
-                    ) : (
-                    <input
-                        type="text"
-                        value={inputMessage}
-                        onChange={handleInputChange}
-                        placeholder="Type your message..."
-                        onKeyDown={handleKeyDown}
-                    />
-                )}
-                {!waitingStatus &&
-                    <button className='assistant-submit' onClick={handleClickSendMessage}>Send</button>
-                }
+
+            <div className="chat-container">
+                <div className="message-list">
+                    {renderMessages()}
+                </div>
+                
+                <div className="input-area">
+                    {waitingStatus ? (
+                        <div className="waiting-indicator">
+                            <div className="loading-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <span className="waiting-text">{waitingStatus}</span>
+                        </div>
+                    ) : null}
+                    
+                    <div className="input-wrapper">
+                        <input
+                            type="text"
+                            value={inputMessage}
+                            onChange={handleInputChange}
+                            placeholder="Type your message..."
+                            onKeyDown={handleKeyDown}
+                            disabled={!!waitingStatus}
+                            className="chat-input"
+                        />
+                        <button 
+                            className='send-button' 
+                            onClick={handleClickSendMessage}
+                            disabled={!!waitingStatus || !inputMessage.trim()}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

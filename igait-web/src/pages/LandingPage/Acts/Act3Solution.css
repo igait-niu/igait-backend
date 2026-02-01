@@ -1,0 +1,258 @@
+/* Act 3: Solution Section with Auto-Cycling Carousel */
+.solution-section {
+  width: 100vw;
+  min-height: 100vh;
+  background: 
+    linear-gradient(135deg, 
+      rgba(20, 184, 166, 0.95) 0%, 
+      rgba(124, 58, 237, 0.95) 50%,
+      rgba(236, 72, 153, 0.95) 100%
+    );
+  background-size: 200% 200%;
+  animation: gradientShift 20s ease infinite;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(80px + var(--space-2xl)) 0 var(--space-2xl) 0;
+  gap: var(--space-xl);
+  margin: 0;
+}
+
+.solution-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Solution Header */
+.solution-header {
+  text-align: center;
+  z-index: 2;
+  margin-bottom: var(--space-lg);
+}
+
+.solution-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: var(--font-weight-black);
+  color: white;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 0;
+}
+
+/* Full-width Carousel Viewport */
+.carousel-viewport-full {
+  width: 100vw;
+  height: 500px; /* Increased from 400px to prevent clipping */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+}
+
+.carousel-film-strip {
+  display: flex;
+  gap: var(--space-xl);
+  will-change: transform;
+  padding-left: 0; /* Start from edge so carousel is full from the start */
+  padding-top: var(--space-lg); /* Add vertical padding to prevent clipping */
+  padding-bottom: var(--space-lg);
+}
+
+.feature-card-film {
+  flex-shrink: 0;
+  width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-2xl);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 400px; /* Increased from 380px */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-md);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card-film::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--gradient-primary);
+}
+
+.feature-card-film:hover {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.feature-icon-large {
+  font-size: 4rem;
+  display: inline-block;
+}
+
+.feature-title-large {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.feature-highlight {
+  display: inline-block;
+  background: var(--gradient-primary);
+  color: white;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-md);
+}
+
+.feature-desc-large {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+/* Carousel Navigation Dots */
+.carousel-dots {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+  margin-top: var(--space-lg);
+}
+
+.carousel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+}
+
+.carousel-dot:hover {
+  background: rgba(255, 255, 255, 0.7);
+  transform: scale(1.2);
+}
+
+.carousel-dot.active {
+  background: white;
+  border-color: white;
+  transform: scale(1.3);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: var(--space-3xl);
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  opacity: 0.7;
+  animation: float 3s ease-in-out infinite;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.scroll-indicator svg {
+  width: 32px;
+  height: 32px;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .feature-card-film {
+    width: 350px;
+    min-height: 340px;
+    padding: var(--space-xl);
+  }
+  
+  .carousel-film-strip {
+    padding-left: calc(50vw - 175px);
+  }
+}
+
+@media (max-width: 768px) {
+  .solution-section {
+    padding: calc(80px + var(--space-xl)) 0 var(--space-xl);
+  }
+  
+  .carousel-viewport-full {
+    height: 350px;
+  }
+  
+  .feature-card-film {
+    width: 300px;
+    min-height: 300px;
+    padding: var(--space-lg);
+  }
+  
+  .carousel-film-strip {
+    padding-left: calc(50vw - 150px);
+  }
+  
+  .feature-icon-large {
+    font-size: 3rem;
+  }
+  
+  .feature-title-large {
+    font-size: var(--font-size-xl);
+  }
+  
+  .feature-desc-large {
+    font-size: var(--font-size-sm);
+  }
+
+  .solution-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+}

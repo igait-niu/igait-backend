@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useState, useEffect, useRef } from 'react';
 import './navbar.css';
@@ -21,6 +21,12 @@ function NavBar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownMenuRef = useRef<HTMLDivElement | null>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // State variable for managing the current location
+  const location = useLocation();
+
+  // Check if we're on the landing page
+  const isLandingPage = location.pathname === '/menu' || location.pathname === '/';
 
   /**
    * @brief Monitors changes to the authentication state.
@@ -82,6 +88,7 @@ function NavBar() {
   const toggleDropdown = () => {
     setDropdownOpen(prevState => !prevState);
   };
+
   return (
     <div className="top-menu">
       <div className="igait-text">
@@ -102,48 +109,52 @@ function NavBar() {
         className={`dropdown-menu ${dropdownOpen ? 'open' : 'hidden'}`}
         ref={dropdownMenuRef}
       >
-        { loggedIn && 
-          <Link to={"/home"} onClick={toggleDropdown} className="menu-links">Try iGAIT</Link>
-        }
-        <Link to={"/menu"} className="menu-links">Home</Link>
-        { loggedIn && 
-          <>
-          <Link to={"/assistant"} className="menu-links">Assistant</Link>
-          <Link to={"/data_submission"} onClick={toggleDropdown} className="menu-links">Data Submission</Link>
-          <Link to={"/history"} className="menu-links">History</Link>
-          </>
-        }
+        {!isLandingPage && (
+          <Link to={"/menu"} onClick={toggleDropdown} className="menu-links">Home</Link>
+        )}
         <Link to={"/about"} onClick={toggleDropdown} className="menu-links">About</Link>
         <Link to={"mailto:GaitStudy@niu.edu"} onClick={toggleDropdown} className="menu-links">Contact</Link>
-        {!loggedIn ? (
+        {loggedIn && (
           <>
-          <Link to={"/login"} onClick={toggleDropdown} className="menu-links">LOGIN</Link>
-          <Link to={"/signup"} onClick={toggleDropdown} className="menu-links">SIGN UP</Link>
+            <Link to={"/assistant"} onClick={toggleDropdown} className="menu-links">Assistant</Link>
+            <Link to={"/data_submission"} onClick={toggleDropdown} className="menu-links">Data Submission</Link>
+            <Link to={"/history"} onClick={toggleDropdown} className="menu-links">History</Link>
+            <Link to={"/home"} onClick={toggleDropdown} className="menu-links">Try iGAIT</Link>
+            <Link to={"/signout"} onClick={toggleDropdown} className="menu-links">Sign Out</Link>
           </>
-        ) : (
-          <Link to={"/signout"} onClick={toggleDropdown} className="menu-links">LOGGED IN</Link>
+        )}
+        {!loggedIn && (
+          <>
+            <Link to={"/login"} onClick={toggleDropdown} className="menu-links">Log In</Link>
+            <Link to={"/signup"} onClick={toggleDropdown} className="menu-links">Sign Up</Link>
+          </>
         )}
       </div>
 
       {/* Regular Menu for Larger Screens */}
       <div className={`menu-links-container ${dropdownOpen ? 'hidden' : ''}`}>
-        { loggedIn && 
-          <Link to={"/home"} className="btn">Try iGAIT</Link>
-        }
-        <Link to={"/menu"} className="menu-links">Home</Link>
-        { loggedIn && 
-          <>
-          <Link to={"/assistant"} className="menu-links">Assistant</Link>
-          <Link to={"/data_submission"} className="menu-links">Data Submission</Link>
-          </>
-        }
+        {!isLandingPage && (
+          <Link to={"/menu"} className="menu-links">Home</Link>
+        )}
         <Link to={"/about"} className="menu-links">About</Link>
         <Link to={"mailto:GaitStudy@niu.edu"} className="menu-links">Contact</Link>
-        {loggedIn && 
-          <Link to={"/history"} className="menu-links">History</Link>
-        }
+        {loggedIn && (
+          <>
+            <Link to={"/assistant"} className="menu-links">Assistant</Link>
+            <Link to={"/data_submission"} className="menu-links">Data Submission</Link>
+            <Link to={"/history"} className="menu-links">History</Link>
+          </>
+        )}
 
-        {!loggedIn ? (
+        {/* Action buttons on the right */}
+        {loggedIn ? (
+          <>
+            <Link to={"/home"} className="btn">Try iGAIT</Link>
+            <div className="login-button">
+              <Link to={"/signout"} className="text">SIGN OUT</Link>
+            </div>
+          </>
+        ) : (
           <>
             <div className="signup-button">
               <Link to={"/login"} className="text">LOG IN</Link>
@@ -151,13 +162,8 @@ function NavBar() {
             <div className="login-button">
               <Link to={"/signup"} className="text">SIGN UP</Link>
             </div>
-            </>
-        ) :
-          <div className="login-button">
-            <Link to={"/signout"} className="text">SIGN OUT</Link>
-            </div>
-        }
-        
+          </>
+        )}
       </div>
     </div>
   );

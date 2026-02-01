@@ -9,6 +9,9 @@ flake.nix
 .envrc
 /.direnv
 
+# Lock files (will be regenerated in container)
+bun.lockb
+
 # Git
 .git
 .gitignore

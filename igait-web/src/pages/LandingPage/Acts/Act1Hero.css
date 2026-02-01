@@ -1,0 +1,117 @@
+/* Act 1: Hero Section */
+.hero-section {
+  width: 100vw;
+  min-height: 100vh;
+  background: var(--gradient-hero);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(80px + var(--space-2xl)) 0 var(--space-2xl) 0;
+  margin: 0;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(251, 146, 60, 0.2) 0%, transparent 50%);
+  animation: float 20s ease-in-out infinite;
+}
+
+.hero-content {
+  text-align: center;
+  color: white;
+  position: relative;
+  z-index: 1;
+  max-width: 1000px;
+  padding: 0 var(--space-xl);
+}
+
+.hero-statement {
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-weight: var(--font-weight-black);
+  line-height: 1.1;
+  margin-bottom: var(--space-xl);
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.03em;
+}
+
+.hero-subtext {
+  font-size: clamp(1.125rem, 3vw, 1.75rem);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-relaxed);
+  opacity: 0.95;
+  margin-bottom: var(--space-3xl);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: white;
+  color: var(--color-primary);
+  padding: var(--space-lg) var(--space-3xl);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-base);
+  text-decoration: none;
+}
+
+.hero-cta:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+  color: var(--color-primary);
+}
+
+.scroll-indicator {
+  position: absolute;
+  bottom: var(--space-3xl);
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  opacity: 0.7;
+  animation: float 3s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.scroll-indicator svg {
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: calc(80px + var(--space-xl)) 0 var(--space-xl);
+  }
+  
+  .hero-statement {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+  
+  .hero-content {
+    padding: 0 var(--space-md);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+}

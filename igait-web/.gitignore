@@ -12,7 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Bun
+bun.lockb
+
 # Nix
+flake.lock
 result
 /.direnv
 .envrc
