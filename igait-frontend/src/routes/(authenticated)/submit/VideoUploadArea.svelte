@@ -11,12 +11,60 @@
 	}
 
 	let { label, id, file = $bindable(), disabled, onchange }: Props = $props();
+	
+	let isDragging = $state(false);
+
+	function handleDragOver(e: DragEvent) {
+		if (disabled) return;
+		e.preventDefault();
+		e.stopPropagation();
+		isDragging = true;
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		if (disabled) return;
+		e.preventDefault();
+		e.stopPropagation();
+		isDragging = false;
+	}
+
+	function handleDrop(e: DragEvent) {
+		if (disabled) return;
+		e.preventDefault();
+		e.stopPropagation();
+		isDragging = false;
+
+		const files = e.dataTransfer?.files;
+		if (files && files.length > 0) {
+			const droppedFile = files[0];
+			// Check if it's a video file
+			if (droppedFile.type.startsWith('video/')) {
+				file = droppedFile;
+				// Trigger the onchange handler with a synthetic event
+				const syntheticEvent = new Event('change', { bubbles: true });
+				Object.defineProperty(syntheticEvent, 'target', {
+					value: { files: [droppedFile] },
+					enumerable: true
+				});
+				onchange(syntheticEvent);
+			}
+		}
+	}
 </script>
 
 <div class="form-group">
 	<Label for={id}>{label}</Label>
 	<div class="upload-container">
-		<label for={id} class="upload-area" class:has-file={file} class:disabled>
+		<label 
+			for={id} 
+			class="upload-area" 
+			class:has-file={file} 
+			class:disabled
+			class:dragging={isDragging}
+			ondragover={handleDragOver}
+			ondragleave={handleDragLeave}
+			ondrop={handleDrop}
+		>
 			<input
 				{id}
 				type="file"
@@ -33,7 +81,9 @@
 				</span>
 			{:else}
 				<Video class="upload-icon" />
-				<span class="upload-placeholder">Click to upload {label.toLowerCase()}</span>
+				<span class="upload-placeholder">
+					{isDragging ? 'Drop video here' : `Click or drag to upload ${label.toLowerCase()}`}
+				</span>
 			{/if}
 		</label>
 	</div>
@@ -55,14 +105,14 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: var(--spacing-2xl);
+		padding: 1.25rem;
 		border: 2px dashed hsl(var(--border));
 		border-radius: var(--radius-lg);
 		cursor: pointer;
 		transition: all 0.2s;
 		background-color: hsl(var(--muted) / 0.3);
-		min-height: 180px;
-		gap: var(--spacing-sm);
+		min-height: 140px;
+		gap: 0.5rem;
 	}
 
 	.upload-area:hover:not(.disabled) {
@@ -80,9 +130,46 @@
 		cursor: not-allowed;
 	}
 
+	.upload-area.dragging {
+		border-color: hsl(var(--primary));
+		background-color: hsl(var(--primary) / 0.15);
+		transform: scale(1.02);
+	}
+
 	:global(.upload-icon) {
-		width: 3rem;
-		height: 3rem;
+		width: 2.5rem;
+		height: 2.5rem;
+		color: hsl(var(--muted-foreground));
+		transition: transform 0.2s;
+	}
+	
+	.dragging :global(.upload-icon) {
+		transform: scale(1.1);
+		color: hsl(var(--primary));
+	}
+
+	:global(.upload-icon-success) {
+		width: 2.5rem;
+		height: 2.5rem;
+		color: hsl(var(--primary));
+	}
+
+	.upload-placeholder {
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		text-align: center;
+	}
+
+	.upload-filename {
+		font-weight: 500;
+		font-size: 0.875rem;
+		text-align: center;
+		word-break: break-word;
+		max-width: 100%;
+	}
+
+	.upload-filesize {
+		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
 	}
 	

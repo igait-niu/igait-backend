@@ -137,8 +137,8 @@
 	<title>New Submission - iGait</title>
 </svelte:head>
 
-<div class="submit-page stack-lg">
-	<section>
+<div class="submit-page">
+	<section class="page-header">
 		<h1 class="page-title">New Submission</h1>
 		<p class="page-description">
 			Upload your walking videos for gait analysis
@@ -146,11 +146,10 @@
 	</section>
 
 	<Card.Root class="submit-card">
-		<Card.Header>
-			<Card.Title>Upload Videos</Card.Title>
+		<Card.Header class="compact-header">
+			<Card.Title>Patient & Video Information</Card.Title>
 			<Card.Description>
-				Please upload both a front view and side view video of walking.
-				Videos should be clear and show the full body.
+				Please provide patient details and upload both front and side view videos.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
@@ -167,7 +166,7 @@
 				<fieldset class="form-section">
 					<legend class="form-section__title">Patient Information</legend>
 					
-					<div class="form-row form-row--two-col">
+					<div class="form-grid">
 						<div class="form-group">
 							<Label for="age">Age *</Label>
 							<Input
@@ -191,96 +190,90 @@
 							required
 							disabled={isSubmitting}
 						/>
-					</div>
 
-					<FormSelect
-						label="Ethnicity"
-						id="ethnicity"
-						bind:value={ethnicity}
-						options={ethnicityOptions}
-						placeholder="Select ethnicity"
-						required
-						disabled={isSubmitting}
-					/>
+						<FormSelect
+							label="Ethnicity"
+							id="ethnicity"
+							bind:value={ethnicity}
+							options={ethnicityOptions}
+							placeholder="Select ethnicity"
+							required
+							disabled={isSubmitting}
+						/>
 
-					<div class="form-row form-row--height">
+						<FormSelect
+							label="Your Role"
+							id="role"
+							bind:value={role}
+							options={roleOptions}
+							placeholder="Your relationship"
+							required
+							disabled={isSubmitting}
+						/>
+
+						<div class="form-group height-group">
+							<Label>Height *</Label>
+							<div class="height-inputs">
+								<Input
+									id="heightFeet"
+									type="number"
+									min="1"
+									max="8"
+									placeholder="Feet"
+									bind:value={heightFeet}
+									disabled={isSubmitting}
+									required
+								/>
+								<Input
+									id="heightInches"
+									type="number"
+									min="0"
+									max="11"
+									placeholder="Inches"
+									bind:value={heightInches}
+									disabled={isSubmitting}
+									required
+								/>
+							</div>
+						</div>
+
 						<div class="form-group">
-							<Label for="heightFeet">Height (feet) *</Label>
+							<Label for="weight">Weight (lbs) *</Label>
 							<Input
-								id="heightFeet"
+								id="weight"
 								type="number"
 								min="1"
-								max="8"
-								placeholder="Feet"
-								bind:value={heightFeet}
-								disabled={isSubmitting}
-								required
-							/>
-						</div>
-						<div class="form-group">
-							<Label for="heightInches">Height (inches) *</Label>
-							<Input
-								id="heightInches"
-								type="number"
-								min="0"
-								max="11"
-								placeholder="Inches"
-								bind:value={heightInches}
+								max="500"
+								placeholder="Enter weight"
+								bind:value={weight}
 								disabled={isSubmitting}
 								required
 							/>
 						</div>
 					</div>
-
-					<div class="form-group">
-						<Label for="weight">Weight (lbs) *</Label>
-						<Input
-							id="weight"
-							type="number"
-							min="1"
-							max="500"
-							placeholder="Enter weight in pounds"
-							bind:value={weight}
-							disabled={isSubmitting}
-							required
-						/>
-					</div>
-				</fieldset>
-
-				<!-- Submitter Information Section -->
-				<fieldset class="form-section">
-					<legend class="form-section__title">Submitter Information</legend>
-					
-					<FormSelect
-						label="Your Role"
-						id="role"
-						bind:value={role}
-						options={roleOptions}
-						placeholder="Select your relationship to patient"
-						required
-						disabled={isSubmitting}
-					/>
 				</fieldset>
 
 				<!-- Video Uploads Section -->
 				<fieldset class="form-section">
 					<legend class="form-section__title">Video Uploads</legend>
 					
-					<VideoUploadArea
-						label="Front View Video"
-						id="frontVideo"
-						bind:file={frontVideo}
-						disabled={isSubmitting}
-						onchange={(e) => handleFileChange(e, 'front')}
-					/>
+					<div class="video-grid">
+						<VideoUploadArea
+							label="Front View"
+							id="frontVideo"
+							bind:file={frontVideo}
+							disabled={isSubmitting}
+							onchange={(e) => handleFileChange(e, 'front')}
+						/>
 
-					<VideoUploadArea
-						label="Side View Video"
-						id="sideVideo"
-						bind:file={sideVideo}
-						disabled={isSubmitting}
-						onchange={(e) => handleFileChange(e, 'side')}
-					/>
+						<VideoUploadArea
+							label="Side View"
+							id="sideVideo"
+							bind:file={sideVideo}
+							disabled={isSubmitting}
+							onchange={(e) => handleFileChange(e, 'side')}
+						/>
+					</div>
 				</fieldset>
 
 				<!-- Progress bar -->
@@ -317,6 +310,16 @@
 </div>
 
 <style>
+	.submit-page {
+		max-width: 1000px;
+		margin: 0 auto;
+		padding: 1.5rem 1rem;
+	}
+
+	.page-header {
+		margin-bottom: 1.5rem;
+	}
+
 	.page-title {
 		font-size: 1.875rem;
 		font-weight: 700;
@@ -325,14 +328,23 @@
 	}
 
 	.page-description {
-		margin-top: 0.5rem;
+		margin-top: 0.375rem;
+		font-size: 0.875rem;
 		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.compact-header) {
+		padding-bottom: 1rem !important;
 	}
 
 	.submit-form {
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		gap: 1.5rem;
+	}
+
+	:global(.form-error) {
+		margin-bottom: 1rem;
 	}
 
 	.form-section {
@@ -345,37 +357,49 @@
 	}
 
 	.form-section__title {
-		font-size: 1rem;
+		font-size: 0.9375rem;
 		font-weight: 600;
 		color: hsl(var(--foreground));
 		padding-bottom: 0.5rem;
 		border-bottom: 1px solid hsl(var(--border));
-		margin-bottom: 0.5rem;
+		margin: 0 0 0.75rem 0;
+	}
+
+	.form-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1rem;
 	}
 
 	.form-group {
 		display: flex;
 		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	.height-group {
+		grid-column: span 1;
+	}
+
+	.height-inputs {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
 		gap: 0.5rem;
 	}
 
-	.form-row {
+	.video-grid {
 		display: grid;
+		grid-template-columns: repeat(2, 1fr);
 		gap: 1rem;
-	}
-
-	.form-row--two-col {
-		grid-template-columns: 1fr 1fr;
-	}
-
-	.form-row--height {
-		grid-template-columns: 1fr 1fr;
 	}
 
 	.progress-container {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+		padding: 1rem;
+		border-radius: var(--radius-lg);
+		background-color: hsl(var(--muted) / 0.3);
 	}
 
 	.progress-bar {
@@ -395,18 +419,33 @@
 	.progress-text {
 		text-align: center;
 		font-size: 0.875rem;
-		color: hsl(var(--muted-foreground));
+		font-weight: 500;
+		color: hsl(var(--foreground));
 	}
 
-	@media (max-width: 640px) {
+	:global(.submit-button) {
+		margin-top: 0.5rem;
+	}
+
+	@media (max-width: 768px) {
+		.submit-page {
+			padding: 1rem 0.75rem;
+		}
+
 		.page-title {
 			font-size: 1.5rem;
 		}
 
-		.form-row--two-col,
-		.form-row--height {
+		.form-grid {
 			grid-template-columns: 1fr;
+		}
+
+		.video-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.height-group {
+			grid-column: span 1;
 		}
 	}
 </style>
-
