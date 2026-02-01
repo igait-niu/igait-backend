@@ -54,6 +54,11 @@ If you're using WSL2, you may need to normalize `.envrc` from CRLF to LF format.
 
 Next, run `direnv allow` as it suggests, and it should automatically download all dependencies, and load all environment variables. Neat, right?
 
+**Optional**:
+I strongly recommend using [Visual Studio Code](https://code.visualstudio.com/) with the Svelte and `rust-analyzer` extensions! 
+
+Additionally, if you choose to use GitHub Copilot, repository context and MCPs are tracked in this repostitory.
+
 ### Starting iGait
 Please save any work open on your machine before starting the application - Docker will try to build the entire application in parallel by default, which even beefy machines will struggle with for a first-time build. My laptop usually bricks itself when I try.
 

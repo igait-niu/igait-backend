@@ -11,8 +11,32 @@ use async_openai::{
 use tokio::sync::Mutex;
 use firebase_auth::{FirebaseAuth, FirebaseUser};
 use igait_lib::microservice::{EmailClient, StorageClient};
+use ts_rs::TS;
 
 use super::database::Database;
+
+/// Custom serialization module for SystemTime as Unix timestamp (seconds)
+mod systemtime_as_secs {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let duration = time.duration_since(UNIX_EPOCH)
+            .map_err(serde::ser::Error::custom)?;
+        serializer.serialize_u64(duration.as_secs())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(UNIX_EPOCH + std::time::Duration::from_secs(secs))
+    }
+}
 
 /// The user struct, which contains a user ID and a list of jobs.
 /// 
@@ -20,7 +44,8 @@ use super::database::Database;
 /// * `uid` - The user ID
 /// * `jobs` - The list of jobs
 /// * `administrator` - Whether the user has administrator privileges
-#[derive( Serialize, Deserialize, Debug )]
+#[derive( Serialize, Deserialize, Debug, TS )]
+#[ts(export)]
 pub struct User {
     pub uid: String,
     pub jobs: Vec<Job>,
@@ -36,16 +61,19 @@ pub struct User {
 /// * `sex` - The assigned sex of the patient
 /// * `height` - The height of the patient
 /// * `status` - The status of the job
-/// * `timestamp` - The timestamp of the job
+/// * `timestamp` - The timestamp of the job (Unix timestamp in seconds)
 /// * `weight` - The weight of the patient
 /// * `email` - The email of the person who submitted the job
-#[derive( Serialize, Deserialize, Clone, Debug )]
+#[derive( Serialize, Deserialize, Clone, Debug, TS )]
+#[ts(export)]
 pub struct Job {
     pub age: i16,
     pub ethnicity: String,
     pub sex: char,
     pub height: String,
     pub status: JobStatus,
+    #[serde(with = "systemtime_as_secs")]
+    #[ts(type = "number")]
     pub timestamp: SystemTime,
     pub weight: i16,
     pub email: String
@@ -56,7 +84,8 @@ pub struct Job {
 /// # Fields
 /// * `code` - The status code of the job
 /// * `value` - The human-readable value of the status
-#[derive( Serialize, Deserialize, Clone, Debug )]
+#[derive( Serialize, Deserialize, Clone, Debug, TS )]
+#[ts(export)]
 pub struct JobStatus {
     pub code: JobStatusCode,
     pub value: String,
@@ -71,7 +100,8 @@ pub struct JobStatus {
 /// * `Processing` - The job is processing on Metis
 /// * `InferenceErr` - The job has errored during inference on Metis
 /// * `Complete` - The job has completed successfully
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, TS)]
+#[ts(export)]
 pub enum JobStatusCode {
     Submitting,
     SubmissionErr,

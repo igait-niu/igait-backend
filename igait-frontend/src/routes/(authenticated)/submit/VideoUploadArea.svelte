@@ -85,6 +85,7 @@
 		height: 3rem;
 		color: hsl(var(--muted-foreground));
 	}
+	
 
 	:global(.upload-icon-success) {
 		width: 3rem;

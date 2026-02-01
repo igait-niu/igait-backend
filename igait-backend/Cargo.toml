@@ -31,3 +31,4 @@ futures-util = "0.3"
 rand = "0.8"
 time-util = { version = "0.3", features = ["chrono", "serde"] }
 tokio-tungstenite = "0.24"
+ts-rs = "12.0.1"
