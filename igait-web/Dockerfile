@@ -1,5 +1,5 @@
 # build environment
-FROM oven/bun:1 as builder
+FROM oven/bun:1 AS builder
 WORKDIR /usr/src/app
 ENV PATH /usr/src/app/node_modules/.bin:$PATH
 COPY package.json /usr/src/app/

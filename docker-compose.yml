@@ -15,6 +15,16 @@ x-common-env: &common-env
   RUST_LOG: info
 
 services:
+  # Frontend Web Application
+  web:
+    build:
+      context: ./igait-web
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
   # Backend API (handles uploads, pushes to queue 1)
   backend:
     build:
