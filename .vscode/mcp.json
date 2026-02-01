@@ -4,6 +4,9 @@
             "type": "stdio",
             "command": "npx",
             "args": ["-y", "firebase-tools@latest", "mcp"]
-        }
+        },
+		"svelte": {
+			"url": "https://mcp.svelte.dev/mcp"
+		}
     }
 }
