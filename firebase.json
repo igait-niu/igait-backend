@@ -4,5 +4,8 @@
     "location": "us-central1",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

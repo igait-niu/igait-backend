@@ -10,7 +10,7 @@ use async_openai::{
 };
 use tokio::sync::Mutex;
 use firebase_auth::{FirebaseAuth, FirebaseUser};
-use igait_lib::microservice::StorageClient;
+use igait_lib::microservice::{EmailClient, StorageClient};
 
 use super::database::Database;
 
@@ -86,7 +86,7 @@ pub enum JobStatusCode {
 /// # Fields
 /// * `db` - The database handle (Firebase RTDB)
 /// * `storage` - Firebase Storage client (GCS-backed)
-/// * `aws_ses_client` - AWS SES client for sending emails
+/// * `email_client` - Email client for sending notifications
 /// * `openai_client` - OpenAI client for AI assistant
 /// * `openai_assistant` - The loaded OpenAI assistant
 /// * `firebase_auth` - Firebase Auth for user verification
@@ -98,7 +98,7 @@ impl std::fmt::Debug for AppState {
         f.debug_struct("AppState")
             .field("db", &self.db)
             .field("storage", &self.storage)
-            .field("aws_ses_client", &self.aws_ses_client)
+            .field("email_client", &self.email_client)
             .field("openai_client", &self.openai_client)
             .field("openai_assistant", &self.openai_assistant)
             .field("firebase_auth", &"<firebase_auth>")
@@ -162,7 +162,7 @@ impl IntoResponse for UnauthorizedResponse {
 pub struct AppState {
     pub db: Mutex<Database>,
     pub storage: StorageClient,
-    pub aws_ses_client: Mutex<aws_sdk_sesv2::Client>,
+    pub email_client: EmailClient,
     pub openai_client: Client<OpenAIConfig>,
     pub openai_assistant: Option<AssistantObject>,
     pub firebase_auth: FirebaseAuth
@@ -187,7 +187,6 @@ impl AppState {
     ///   - `OPENAI_ASSISTANT_ID` - OpenAI assistant ID
     ///   - AWS credentials for SES
     pub async fn new() -> Result<Self> {
-        let aws_config = aws_config::load_from_env().await;
         let client = Client::new();
         let firebase_auth = FirebaseAuth::new("network-technology-project")
             .await;
@@ -219,10 +218,15 @@ impl AppState {
             .await
             .context("Failed to initialize Firebase Storage client")?;
 
+        // Initialize email client
+        let email_client = EmailClient::from_env()
+            .await
+            .context("Failed to initialize email client")?;
+
         Ok(Self {
             db: Mutex::new(Database::init().await.context("Failed to initialize database while setting up app state!")?),
             storage,
-            aws_ses_client: Mutex::new(aws_sdk_sesv2::Client::new(&aws_config)),
+            email_client,
             openai_client: client,
             openai_assistant: assistant,
             firebase_auth

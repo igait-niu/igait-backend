@@ -14,7 +14,7 @@ pub enum StageNumber {
     Stage4PoseEstimation,
     Stage5CycleDetection,
     Stage6Prediction,
-    Stage7Archive,
+    Stage7Finalize,
 }
 
 impl StageNumber {
@@ -27,7 +27,7 @@ impl StageNumber {
             Self::Stage4PoseEstimation => 4,
             Self::Stage5CycleDetection => 5,
             Self::Stage6Prediction => 6,
-            Self::Stage7Archive => 7,
+            Self::Stage7Finalize => 7,
         }
     }
 
@@ -40,7 +40,7 @@ impl StageNumber {
             4 => Some(Self::Stage4PoseEstimation),
             5 => Some(Self::Stage5CycleDetection),
             6 => Some(Self::Stage6Prediction),
-            7 => Some(Self::Stage7Archive),
+            7 => Some(Self::Stage7Finalize),
             _ => None,
         }
     }
@@ -54,7 +54,7 @@ impl StageNumber {
             Self::Stage4PoseEstimation => "Pose Estimation",
             Self::Stage5CycleDetection => "Cycle Detection",
             Self::Stage6Prediction => "Prediction",
-            Self::Stage7Archive => "Archive",
+            Self::Stage7Finalize => "Finalize",
         }
     }
 
@@ -67,7 +67,7 @@ impl StageNumber {
             Self::Stage4PoseEstimation => "stage_4",
             Self::Stage5CycleDetection => "stage_5",
             Self::Stage6Prediction => "stage_6",
-            Self::Stage7Archive => "stage_7",
+            Self::Stage7Finalize => "stage_7",
         }
     }
 }
@@ -126,14 +126,35 @@ impl StageJobRequest {
     }
 }
 
-/// Optional metadata that can be passed to stages.
+/// Metadata passed through the pipeline with each job.
+/// 
+/// This contains patient information and contact details needed for
+/// email notifications and result tracking.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct JobMetadata {
-    /// Patient age (for stages that need it)
+    /// Email address for sending notifications
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    
+    /// Patient age
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub age: Option<i16>,
     
-    /// Patient sex (for stages that need it)
+    /// Patient sex ('M', 'F', etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sex: Option<char>,
+    
+    /// Patient ethnicity
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ethnicity: Option<String>,
+    
+    /// Patient height (as string, e.g., "5'10\"")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<String>,
+    
+    /// Patient weight in pounds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i16>,
     
     /// Any additional key-value pairs
     #[serde(flatten)]

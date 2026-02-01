@@ -1,20 +1,22 @@
 //! Stage 6: Prediction Microservice
-//! 
+//!
 //! Runs the ML model to predict ASD classification from gait data.
+//!
+//! NOTE: This is currently a placeholder that passes through immediately.
 
 use anyhow::Result;
 use async_trait::async_trait;
 use igait_lib::microservice::{
-    StageJobRequest, StageJobResult, StageNumber, StageProcessor, StageServer,
+    run_stage_worker, ProcessingResult, QueueItem, StageNumber, StageWorker,
 };
 use std::collections::HashMap;
 use std::time::Instant;
 
-/// The prediction processor.
-pub struct PredictionProcessor;
+/// The prediction worker.
+pub struct PredictionWorker;
 
 #[async_trait]
-impl StageProcessor for PredictionProcessor {
+impl StageWorker for PredictionWorker {
     fn stage(&self) -> StageNumber {
         StageNumber::Stage6Prediction
     }
@@ -23,85 +25,46 @@ impl StageProcessor for PredictionProcessor {
         "igait-stage6-prediction"
     }
 
-    async fn process(&self, request: StageJobRequest) -> StageJobResult {
+    async fn process(&self, job: &QueueItem) -> ProcessingResult {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        println!("Processing job {}: Prediction", request.job_id);
-        logs.push_str(&format!("Starting prediction for job {}\n", request.job_id));
+        println!("Processing job {}: Prediction (pass-through)", job.job_id);
+        logs.push_str(&format!("Starting prediction for job {}\n", job.job_id));
 
-        match self.do_prediction(&request, &mut logs).await {
-            Ok(output_keys) => {
-                let duration = start_time.elapsed();
-                logs.push_str(&format!("Prediction completed in {:?}\n", duration));
-                
-                StageJobResult::success(
-                    request.job_id,
-                    StageNumber::Stage6Prediction,
-                    output_keys,
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-            Err(e) => {
-                let duration = start_time.elapsed();
-                eprintln!("Prediction failed for job {}: {}", request.job_id, e);
-                logs.push_str(&format!("ERROR: {}\n", e));
-                
-                StageJobResult::failure(
-                    request.job_id,
-                    StageNumber::Stage6Prediction,
-                    e.to_string(),
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-        }
-    }
-}
+        let stage = StageNumber::Stage6Prediction;
 
-impl PredictionProcessor {
-    async fn do_prediction(
-        &self,
-        request: &StageJobRequest,
-        logs: &mut String,
-    ) -> Result<HashMap<String, String>> {
-        let cycles = request.input_keys.get("cycles")
-            .ok_or_else(|| anyhow::anyhow!("Missing cycles input key"))?;
-        let front_keypoints = request.input_keys.get("front_keypoints")
-            .ok_or_else(|| anyhow::anyhow!("Missing front_keypoints input key"))?;
+        // Get input paths (from stage 5)
+        let front_input = job.input_front_video(stage);
+        let side_input = job.input_side_video(stage);
 
-        logs.push_str(&format!("Loading cycle data: {}\n", cycles));
-        logs.push_str(&format!("Loading keypoint data: {}\n", front_keypoints));
+        logs.push_str(&format!("Input front video: {}\n", front_input));
+        logs.push_str(&format!("Input side video: {}\n", side_input));
 
-        // TODO: Run Python ML model subprocess
-        // The model outputs a probability score for ASD classification
-
-        let stage_prefix = format!("jobs/{}/stage_6", request.job_id);
+        // For now, just pass through - output the same paths as input
+        // TODO: Implement actual ML prediction logic
         let mut output_keys = HashMap::new();
-        output_keys.insert("prediction".to_string(), format!("{}/prediction.json", stage_prefix));
-        
-        // Include the score directly in the output for the archiver
-        // In real implementation, this would come from the ML model
-        output_keys.insert("score".to_string(), "0.42".to_string()); // Placeholder
+        output_keys.insert("front_video".to_string(), front_input);
+        output_keys.insert("side_video".to_string(), side_input);
+        // In the future, this should include prediction results
+        // output_keys.insert("prediction".to_string(), prediction_path);
+        // output_keys.insert("score".to_string(), score_string);
 
-        logs.push_str("Prediction complete (placeholder)\n");
-        
-        Ok(output_keys)
+        logs.push_str("Prediction complete (placeholder - no actual prediction performed)\n");
+
+        let duration = start_time.elapsed();
+        logs.push_str(&format!("Completed in {:?}\n", duration));
+
+        ProcessingResult::Success {
+            output_keys,
+            logs,
+            duration_ms: duration.as_millis() as u64,
+        }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
-
-    println!("Starting Stage 6 Prediction service on port {}", port);
-
-    StageServer::new(PredictionProcessor)
-        .port(port)
-        .run()
-        .await
+    println!("Starting Stage 6 Prediction worker...");
+    run_stage_worker(PredictionWorker).await
 }

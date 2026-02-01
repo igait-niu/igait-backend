@@ -1,20 +1,22 @@
 //! Stage 5: Cycle Detection Microservice
-//! 
+//!
 //! Analyzes pose keypoint data to identify individual gait cycles.
+//!
+//! NOTE: This is currently a placeholder that passes through immediately.
 
 use anyhow::Result;
 use async_trait::async_trait;
 use igait_lib::microservice::{
-    StageJobRequest, StageJobResult, StageNumber, StageProcessor, StageServer,
+    run_stage_worker, ProcessingResult, QueueItem, StageNumber, StageWorker,
 };
 use std::collections::HashMap;
 use std::time::Instant;
 
-/// The cycle detection processor.
-pub struct CycleDetectionProcessor;
+/// The cycle detection worker.
+pub struct CycleDetectionWorker;
 
 #[async_trait]
-impl StageProcessor for CycleDetectionProcessor {
+impl StageWorker for CycleDetectionWorker {
     fn stage(&self) -> StageNumber {
         StageNumber::Stage5CycleDetection
     }
@@ -23,83 +25,51 @@ impl StageProcessor for CycleDetectionProcessor {
         "igait-stage5-cycle-detection"
     }
 
-    async fn process(&self, request: StageJobRequest) -> StageJobResult {
+    async fn process(&self, job: &QueueItem) -> ProcessingResult {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        println!("Processing job {}: Cycle Detection", request.job_id);
-        logs.push_str(&format!("Starting cycle detection for job {}\n", request.job_id));
+        println!(
+            "Processing job {}: Cycle Detection (pass-through)",
+            job.job_id
+        );
+        logs.push_str(&format!(
+            "Starting cycle detection for job {}\n",
+            job.job_id
+        ));
 
-        match self.do_cycle_detection(&request, &mut logs).await {
-            Ok(output_keys) => {
-                let duration = start_time.elapsed();
-                logs.push_str(&format!("Cycle detection completed in {:?}\n", duration));
-                
-                StageJobResult::success(
-                    request.job_id,
-                    StageNumber::Stage5CycleDetection,
-                    output_keys,
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-            Err(e) => {
-                let duration = start_time.elapsed();
-                eprintln!("Cycle detection failed for job {}: {}", request.job_id, e);
-                logs.push_str(&format!("ERROR: {}\n", e));
-                
-                StageJobResult::failure(
-                    request.job_id,
-                    StageNumber::Stage5CycleDetection,
-                    e.to_string(),
-                    logs,
-                    duration.as_millis() as u64,
-                )
-            }
-        }
-    }
-}
+        let stage = StageNumber::Stage5CycleDetection;
 
-impl CycleDetectionProcessor {
-    async fn do_cycle_detection(
-        &self,
-        request: &StageJobRequest,
-        logs: &mut String,
-    ) -> Result<HashMap<String, String>> {
-        let front_keypoints = request.input_keys.get("front_keypoints")
-            .ok_or_else(|| anyhow::anyhow!("Missing front_keypoints input key"))?;
-        let side_keypoints = request.input_keys.get("side_keypoints")
-            .ok_or_else(|| anyhow::anyhow!("Missing side_keypoints input key"))?;
+        // Get input paths (from stage 4)
+        let front_input = job.input_front_video(stage);
+        let side_input = job.input_side_video(stage);
 
-        logs.push_str(&format!("Analyzing front keypoints: {}\n", front_keypoints));
-        logs.push_str(&format!("Analyzing side keypoints: {}\n", side_keypoints));
+        logs.push_str(&format!("Input front video: {}\n", front_input));
+        logs.push_str(&format!("Input side video: {}\n", side_input));
 
-        // TODO: Implement cycle detection algorithm
-
-        let stage_prefix = format!("jobs/{}/stage_5", request.job_id);
+        // For now, just pass through - output the same paths as input
+        // TODO: Implement actual cycle detection logic
         let mut output_keys = HashMap::new();
-        output_keys.insert("cycles".to_string(), format!("{}/cycles.json", stage_prefix));
-        // Pass through keypoints for next stage
-        output_keys.insert("front_keypoints".to_string(), front_keypoints.clone());
-        output_keys.insert("side_keypoints".to_string(), side_keypoints.clone());
+        output_keys.insert("front_video".to_string(), front_input);
+        output_keys.insert("side_video".to_string(), side_input);
+        // In the future, this should include cycle data
+        // output_keys.insert("cycles".to_string(), cycles_path);
 
-        logs.push_str("Cycle detection complete (placeholder)\n");
-        
-        Ok(output_keys)
+        logs.push_str("Cycle detection complete (placeholder - no actual detection performed)\n");
+
+        let duration = start_time.elapsed();
+        logs.push_str(&format!("Completed in {:?}\n", duration));
+
+        ProcessingResult::Success {
+            output_keys,
+            logs,
+            duration_ms: duration.as_millis() as u64,
+        }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
-
-    println!("Starting Stage 5 Cycle Detection service on port {}", port);
-
-    StageServer::new(CycleDetectionProcessor)
-        .port(port)
-        .run()
-        .await
+    println!("Starting Stage 5 Cycle Detection worker...");
+    run_stage_worker(CycleDetectionWorker).await
 }

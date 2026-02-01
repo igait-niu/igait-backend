@@ -1,0 +1,302 @@
+//! Stage 7: Finalize Microservice
+//!
+//! Handles post-processing completion tasks:
+//! - Checks for prediction.json in S3 to determine success/failure
+//! - Sends success/failure emails to users
+//! - Archives processing results
+//!
+//! This is the terminal stage that receives jobs from the finalize queue.
+
+use anyhow::{Context, Result};
+use async_trait::async_trait;
+use igait_lib::microservice::{
+    EmailClient, EmailTemplates, FinalizeQueueItem, ProcessingResult, StorageClient,
+};
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::time::{Instant, SystemTime};
+use chrono::{DateTime, Utc};
+
+/// The expected format of prediction.json from Stage 6.
+#[derive(Debug, Deserialize)]
+struct PredictionResult {
+    score: f64,
+}
+
+/// ASD threshold - scores >= this value indicate ASD markers.
+const ASD_THRESHOLD: f64 = 0.5;
+
+/// The finalize worker handles the final stage of the pipeline.
+pub struct FinalizeStageWorker {
+    email_client: EmailClient,
+    storage: StorageClient,
+}
+
+impl FinalizeStageWorker {
+    /// Creates a new finalize worker with required clients.
+    pub async fn new() -> Result<Self> {
+        let email_client = EmailClient::from_env()
+            .await
+            .context("Failed to create email client")?;
+        let storage = StorageClient::new()
+            .await
+            .context("Failed to create storage client")?;
+
+        Ok(Self {
+            email_client,
+            storage,
+        })
+    }
+
+    /// Attempts to read prediction.json from S3 for a given job.
+    ///
+    /// Returns `Some(score)` if found and valid, `None` otherwise.
+    async fn get_prediction_score(&self, job_id: &str) -> Option<f64> {
+        let prediction_path = format!("jobs/{}/stage_6/prediction.json", job_id);
+        
+        match self.storage.download(&prediction_path).await {
+            Ok(data) => {
+                match serde_json::from_slice::<PredictionResult>(&data) {
+                    Ok(result) => {
+                        println!("Found prediction.json for {}: score = {}", job_id, result.score);
+                        Some(result.score)
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to parse prediction.json for {}: {}", job_id, e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                println!("No prediction.json found for {} (error: {})", job_id, e);
+                None
+            }
+        }
+    }
+
+    /// Sends a success email with the prediction results.
+    async fn send_success_email(
+        &self,
+        job: &FinalizeQueueItem,
+        score: f64,
+        logs: &mut String,
+    ) -> Result<()> {
+        let email = job.metadata.email.as_deref()
+            .ok_or_else(|| anyhow::anyhow!("No email address in job metadata"))?;
+        
+        let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+        let dt_now_cst = dt_now_utc.with_timezone(&chrono_tz::US::Central);
+        
+        let is_asd = score >= ASD_THRESHOLD;
+        
+        let (subject, body) = EmailTemplates::prediction_success(
+            &dt_now_cst.to_string(),
+            score,
+            is_asd,
+            job.metadata.age,
+            job.metadata.ethnicity.as_deref(),
+            job.metadata.sex,
+            job.metadata.height.as_deref(),
+            job.metadata.weight,
+            &job.user_id,
+            &job.job_id,
+        );
+
+        logs.push_str(&format!("Sending success email to {}\n", email));
+        logs.push_str(&format!("Score: {:.2}, ASD indicator: {}\n", score, is_asd));
+        
+        self.email_client.send(email, &subject, &body).await?;
+        logs.push_str("Success email sent\n");
+        
+        Ok(())
+    }
+
+    /// Sends a failure email with error information.
+    async fn send_failure_email(
+        &self,
+        job: &FinalizeQueueItem,
+        error: &str,
+        logs: &mut String,
+    ) -> Result<()> {
+        let email = job.metadata.email.as_deref()
+            .ok_or_else(|| anyhow::anyhow!("No email address in job metadata"))?;
+        
+        let dt_now_utc: DateTime<Utc> = SystemTime::now().into();
+        let dt_now_cst = dt_now_utc.with_timezone(&chrono_tz::US::Central);
+        
+        let (subject, body) = EmailTemplates::processing_failure(
+            &dt_now_cst.to_string(),
+            job.failed_at_stage,
+            error,
+            &job.user_id,
+            &job.job_id,
+        );
+
+        logs.push_str(&format!("Sending failure email to {}\n", email));
+        logs.push_str(&format!("Failed at stage: {:?}, Error: {}\n", job.failed_at_stage, error));
+        
+        self.email_client.send(email, &subject, &body).await?;
+        logs.push_str("Failure email sent\n");
+        
+        Ok(())
+    }
+}
+
+/// Trait for finalize workers (separate from regular StageWorker).
+#[async_trait]
+pub trait FinalizeWorker: Send + Sync + 'static {
+    /// Human-readable service name.
+    fn service_name(&self) -> &'static str;
+
+    /// Process a finalize job.
+    async fn process(&self, job: &FinalizeQueueItem) -> ProcessingResult;
+}
+
+#[async_trait]
+impl FinalizeWorker for FinalizeStageWorker {
+    fn service_name(&self) -> &'static str {
+        "igait-stage7-finalize"
+    }
+
+    async fn process(&self, job: &FinalizeQueueItem) -> ProcessingResult {
+        let start_time = Instant::now();
+        let mut logs = String::new();
+
+        println!("Processing finalize job {}", job.job_id);
+        logs.push_str(&format!("Starting finalization for job {}\n", job.job_id));
+        logs.push_str(&format!("Queue item success flag: {}\n", job.success));
+
+        // Check for prediction.json in S3 - this is the source of truth
+        let prediction_score = self.get_prediction_score(&job.job_id).await;
+
+        let result = if let Some(score) = prediction_score {
+            // Prediction file exists - this was a successful pipeline run
+            logs.push_str(&format!("Prediction found: score = {:.4}\n", score));
+            
+            match self.send_success_email(job, score, &mut logs).await {
+                Ok(_) => {
+                    logs.push_str("Job completed successfully\n");
+                }
+                Err(e) => {
+                    // Log email failure but don't fail the job
+                    eprintln!("Failed to send success email for {}: {}", job.job_id, e);
+                    logs.push_str(&format!("WARNING: Failed to send email: {}\n", e));
+                }
+            }
+            
+            // TODO: Update job status in database to "completed"
+            
+            ProcessingResult::Success {
+                output_keys: HashMap::from([
+                    ("score".to_string(), score.to_string()),
+                    ("is_asd".to_string(), (score >= ASD_THRESHOLD).to_string()),
+                ]),
+                logs,
+                duration_ms: start_time.elapsed().as_millis() as u64,
+            }
+        } else {
+            // No prediction file - pipeline failed somewhere
+            let error_msg = job.error.clone()
+                .or_else(|| job.error_logs.clone())
+                .unwrap_or_else(|| "Unknown error - no prediction.json found".to_string());
+            
+            logs.push_str(&format!("No prediction found, treating as failure\n"));
+            logs.push_str(&format!("Error info: {}\n", error_msg));
+            
+            if let Some(stage) = job.failed_at_stage {
+                logs.push_str(&format!("Failed at stage: {}\n", stage));
+            }
+            
+            match self.send_failure_email(job, &error_msg, &mut logs).await {
+                Ok(_) => {
+                    logs.push_str("Failure notification sent\n");
+                }
+                Err(e) => {
+                    eprintln!("Failed to send failure email for {}: {}", job.job_id, e);
+                    logs.push_str(&format!("WARNING: Failed to send email: {}\n", e));
+                }
+            }
+            
+            // TODO: Update job status in database to "failed"
+            
+            // Return success because finalization completed (even though the job itself failed)
+            ProcessingResult::Success {
+                output_keys: HashMap::new(),
+                logs,
+                duration_ms: start_time.elapsed().as_millis() as u64,
+            }
+        };
+
+        result
+    }
+}
+
+/// Runs the finalize worker in a continuous loop.
+/// 
+/// This is a standalone worker loop since FinalizeWorker has different
+/// queue handling than regular StageWorker.
+pub async fn run_finalize_worker(worker: FinalizeStageWorker) -> Result<()> {
+    use igait_lib::microservice::{
+        ClaimResult, FirebaseRtdb, QueueOps,
+        generate_worker_id,
+    };
+    use std::time::Duration;
+
+    let db = FirebaseRtdb::from_env()?;
+    let worker_id = generate_worker_id(worker.service_name());
+    let queue_ops = QueueOps::new(db, worker_id.clone());
+    
+    println!("[{}] Starting Finalize worker...", worker_id);
+
+    loop {
+        // Try to claim a job from the finalize queue
+        match queue_ops.claim_finalize_job().await {
+            ClaimResult::Claimed(job) => {
+                println!("[{}] Claimed finalize job {}", worker_id, job.job_id);
+                
+                // Process the job
+                let result = worker.process(&job).await;
+                
+                match result {
+                    ProcessingResult::Success { duration_ms, .. } => {
+                        println!(
+                            "[{}] Finalize job {} completed in {}ms",
+                            worker_id, job.job_id, duration_ms
+                        );
+                        
+                        // Remove from finalize queue (job is done)
+                        if let Err(e) = queue_ops.complete_finalize(&job.job_id).await {
+                            eprintln!("Failed to remove job from finalize queue: {}", e);
+                        }
+                    }
+                    ProcessingResult::Failure { error, duration_ms, .. } => {
+                        // This shouldn't really happen since we always return Success
+                        eprintln!(
+                            "[{}] Finalize job {} failed after {}ms: {}",
+                            worker_id, job.job_id, duration_ms, error
+                        );
+                    }
+                }
+            }
+            ClaimResult::QueueEmpty | ClaimResult::AllClaimed => {
+                // No jobs available, wait before polling again
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+            ClaimResult::Error(e) => {
+                eprintln!("[{}] Error claiming job: {}", worker_id, e);
+                tokio::time::sleep(Duration::from_secs(10)).await;
+            }
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    println!("Starting Stage 7 Finalize worker...");
+    
+    let worker = FinalizeStageWorker::new()
+        .await
+        .context("Failed to create finalize worker")?;
+    
+    run_finalize_worker(worker).await
+}

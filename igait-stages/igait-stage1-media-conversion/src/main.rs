@@ -9,7 +9,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use igait_lib::microservice::{
-    StageJobRequest, StageJobResult, StageNumber, StageProcessor, StageServer, StorageClient,
+    run_stage_worker, ProcessingResult, QueueItem, StageNumber, StageWorker, StorageClient,
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -17,11 +17,11 @@ use std::time::Instant;
 use tokio::fs;
 use tokio::process::Command;
 
-/// The media conversion processor.
-pub struct MediaConversionProcessor;
+/// The media conversion worker.
+pub struct MediaConversionWorker;
 
 #[async_trait]
-impl StageProcessor for MediaConversionProcessor {
+impl StageWorker for MediaConversionWorker {
     fn stage(&self) -> StageNumber {
         StageNumber::Stage1MediaConversion
     }
@@ -30,52 +30,50 @@ impl StageProcessor for MediaConversionProcessor {
         "igait-stage1-media-conversion"
     }
 
-    async fn process(&self, request: StageJobRequest) -> StageJobResult {
+    async fn process(&self, job: &QueueItem) -> ProcessingResult {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        println!("Processing job {}: Media Conversion", request.job_id);
-        logs.push_str(&format!("Starting media conversion for job {}\n", request.job_id));
+        println!("Processing job {}: Media Conversion", job.job_id);
+        logs.push_str(&format!("Starting media conversion for job {}\n", job.job_id));
 
-        match self.do_conversion(&request, &mut logs).await {
+        match self.do_conversion(job, &mut logs).await {
             Ok(output_keys) => {
                 let duration = start_time.elapsed();
                 logs.push_str(&format!("Conversion completed in {:?}\n", duration));
                 
-                StageJobResult::success(
-                    request.job_id,
-                    StageNumber::Stage1MediaConversion,
+                ProcessingResult::Success {
                     output_keys,
                     logs,
-                    duration.as_millis() as u64,
-                )
+                    duration_ms: duration.as_millis() as u64,
+                }
             }
             Err(e) => {
                 let duration = start_time.elapsed();
-                eprintln!("Conversion failed for job {}: {}", request.job_id, e);
+                eprintln!("Conversion failed for job {}: {}", job.job_id, e);
                 logs.push_str(&format!("ERROR: {}\n", e));
                 
-                StageJobResult::failure(
-                    request.job_id,
-                    StageNumber::Stage1MediaConversion,
-                    e.to_string(),
+                ProcessingResult::Failure {
+                    error: e.to_string(),
                     logs,
-                    duration.as_millis() as u64,
-                )
+                    duration_ms: duration.as_millis() as u64,
+                }
             }
         }
     }
 }
 
-impl MediaConversionProcessor {
+impl MediaConversionWorker {
     async fn do_conversion(
         &self,
-        request: &StageJobRequest,
+        job: &QueueItem,
         logs: &mut String,
     ) -> Result<HashMap<String, String>> {
-        // Construct input paths from the request
-        let front_input = request.input_front_video();
-        let side_input = request.input_side_video();
+        let stage = StageNumber::Stage1MediaConversion;
+
+        // Construct input paths from the job
+        let front_input = job.input_front_video(stage);
+        let side_input = job.input_side_video(stage);
 
         logs.push_str(&format!("Input front: {}\n", front_input));
         logs.push_str(&format!("Input side: {}\n", side_input));
@@ -86,7 +84,7 @@ impl MediaConversionProcessor {
             .context("Failed to initialize storage client")?;
 
         // Create temporary directory for processing
-        let temp_dir = PathBuf::from("/tmp").join(&request.job_id);
+        let temp_dir = PathBuf::from("/tmp").join(&job.job_id);
         fs::create_dir_all(&temp_dir).await
             .context("Failed to create temp directory")?;
         logs.push_str(&format!("Created temp directory: {:?}\n", temp_dir));
@@ -123,8 +121,8 @@ impl MediaConversionProcessor {
         logs.push_str("Side video conversion done.\n");
 
         // Construct output paths using helper methods
-        let front_output_key = request.output_front_video();
-        let side_output_key = request.output_side_video();
+        let front_output_key = job.output_front_video(stage);
+        let side_output_key = job.output_side_video(stage);
         
         logs.push_str("Uploading converted front video...\n");
         let front_output_data = fs::read(&front_output_path).await
@@ -202,15 +200,6 @@ async fn standardize_video(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
-
-    println!("Starting Stage 1 Media Conversion service on port {}", port);
-
-    StageServer::new(MediaConversionProcessor)
-        .port(port)
-        .run()
-        .await
+    println!("Starting Stage 1 Media Conversion worker...");
+    run_stage_worker(MediaConversionWorker).await
 }

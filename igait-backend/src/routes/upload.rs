@@ -1,14 +1,14 @@
 //! Upload endpoint for submitting new gait analysis jobs.
 //!
 //! This module handles video uploads and initiates the processing pipeline
-//! by uploading to Firebase Storage and dispatching to Stage 1.
+//! by uploading to Firebase Storage and pushing to the Stage 1 queue.
 
 use std::{collections::HashMap, sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
 use anyhow::{Result, Context, anyhow};
 
-use igait_lib::microservice::{StoragePaths, StageJobRequest, StageNumber, JobMetadata};
+use igait_lib::microservice::{StoragePaths, JobMetadata, QueueItem, StageNumber, FirebaseRtdb, queue_item_path};
 
 use crate::helper::{
     email::send_welcome_email,
@@ -254,10 +254,6 @@ pub async fn upload_entrypoint(
         .await
         .context("Failed to add the new job to the database!")?;
 
-    // Extract values we need before moving files
-    let age = arguments.age;
-    let sex = arguments.sex;
-
     // Upload files to Firebase Storage and dispatch to Stage 1
     if let Err(err) = upload_and_dispatch(
         app.clone(),
@@ -265,8 +261,7 @@ pub async fn upload_entrypoint(
         &arguments.uid,
         arguments.front_file,
         arguments.side_file,
-        age,
-        sex,
+        &job,
     )
     .await
     {
@@ -306,7 +301,7 @@ pub async fn upload_entrypoint(
     Ok(())
 }
 
-/// Uploads files to Firebase Storage and dispatches the job to Stage 1.
+/// Uploads files to Firebase Storage and pushes the job to the Stage 1 queue.
 ///
 /// # Arguments
 /// * `app` - The application state
@@ -314,16 +309,14 @@ pub async fn upload_entrypoint(
 /// * `user_id` - The user ID
 /// * `front_file` - The front video file
 /// * `side_file` - The side video file
-/// * `age` - Patient age for metadata
-/// * `sex` - Patient sex for metadata
+/// * `job` - The job containing all metadata
 async fn upload_and_dispatch(
     app: Arc<AppState>,
     job_id: &str,
     user_id: &str,
     front_file: UploadRequestFile,
     side_file: UploadRequestFile,
-    age: i16,
-    sex: char,
+    job: &Job,
 ) -> Result<()> {
     // Extract file extensions
     let front_extension = front_file
@@ -353,53 +346,40 @@ async fn upload_and_dispatch(
         .await
         .context("Failed to upload side video to Firebase Storage!")?;
 
-    println!("Files uploaded successfully, dispatching to Stage 1...");
+    println!("Files uploaded successfully, pushing to Stage 1 queue...");
 
-    // Build the stage 1 request
+    // Build the queue item for Stage 1
     let mut input_keys = HashMap::new();
     input_keys.insert("front_video".to_string(), front_key);
     input_keys.insert("side_video".to_string(), side_key);
 
-    let callback_url = std::env::var("BACKEND_CALLBACK_URL")
-        .unwrap_or_else(|_| "http://localhost:3000/api/v1/webhook/stage".to_string());
-
-    let stage_request = StageJobRequest {
-        job_id: job_id.to_string(),
-        user_id: user_id.to_string(),
-        stage: StageNumber::Stage1MediaConversion,
-        callback_url,
-        input_keys,
-        metadata: JobMetadata {
-            age: Some(age),
-            sex: Some(sex),
-            extra: HashMap::new(),
-        },
+    // Include all job metadata so it's available in the finalize stage
+    let metadata = JobMetadata {
+        email: Some(job.email.clone()),
+        age: Some(job.age),
+        sex: Some(job.sex),
+        ethnicity: Some(job.ethnicity.clone()),
+        height: Some(job.height.clone()),
+        weight: Some(job.weight),
+        extra: HashMap::new(),
     };
 
-    // Dispatch to Stage 1 microservice
-    let stage1_url = std::env::var("STAGE1_SERVICE_URL")
-        .unwrap_or_else(|_| "http://localhost:8001".to_string());
+    let queue_item = QueueItem::new(
+        job_id.to_string(),
+        user_id.to_string(),
+        input_keys,
+        metadata,
+    );
+
+    // Push to Stage 1 queue in Firebase RTDB
+    let rtdb = FirebaseRtdb::from_env()
+        .context("Failed to initialize Firebase RTDB client")?;
     
-    let submit_url = format!("{}/submit", stage1_url);
-
-    let client = reqwest::Client::new();
-    let response: reqwest::Response = client
-        .post(&submit_url)
-        .json(&stage_request)
-        .send()
+    let queue_path = queue_item_path(StageNumber::Stage1MediaConversion, job_id);
+    rtdb.set(&queue_path, &queue_item)
         .await
-        .context("Failed to connect to Stage 1 service!")?;
+        .context("Failed to push job to Stage 1 queue")?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        return Err(anyhow!(
-            "Stage 1 service returned error {}: {}",
-            status,
-            body
-        ));
-    }
-
-    println!("Job {} dispatched to Stage 1 successfully!", job_id);
+    println!("Job {} pushed to Stage 1 queue successfully!", job_id);
     Ok(())
 }

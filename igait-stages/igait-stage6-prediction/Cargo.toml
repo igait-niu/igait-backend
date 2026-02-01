@@ -5,7 +5,7 @@ edition = "2021"
 description = "Stage 6: ML prediction microservice for iGait pipeline"
 
 [dependencies]
-igait-lib = { workspace = true, features = ["microservice"] }
-anyhow = { workspace = true }
-async-trait = { workspace = true }
-tokio = { workspace = true }
+igait-lib = { path = "../../igait-lib", features = ["microservice"] }
+anyhow = "1"
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }

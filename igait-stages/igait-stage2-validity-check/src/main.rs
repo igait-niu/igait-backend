@@ -1,22 +1,22 @@
 //! Stage 2: Validity Check Microservice
-//! 
+//!
 //! Verifies that a person can be detected in the uploaded videos.
-//! 
+//!
 //! NOTE: This is currently a placeholder that passes through immediately.
 
 use anyhow::Result;
 use async_trait::async_trait;
 use igait_lib::microservice::{
-    StageJobRequest, StageJobResult, StageNumber, StageProcessor, StageServer,
+    run_stage_worker, ProcessingResult, QueueItem, StageNumber, StageWorker,
 };
 use std::collections::HashMap;
 use std::time::Instant;
 
-/// The validity check processor.
-pub struct ValidityCheckProcessor;
+/// The validity check worker.
+pub struct ValidityCheckWorker;
 
 #[async_trait]
-impl StageProcessor for ValidityCheckProcessor {
+impl StageWorker for ValidityCheckWorker {
     fn stage(&self) -> StageNumber {
         StageNumber::Stage2ValidityCheck
     }
@@ -25,16 +25,24 @@ impl StageProcessor for ValidityCheckProcessor {
         "igait-stage2-validity-check"
     }
 
-    async fn process(&self, request: StageJobRequest) -> StageJobResult {
+    async fn process(&self, job: &QueueItem) -> ProcessingResult {
         let start_time = Instant::now();
         let mut logs = String::new();
 
-        println!("Processing job {}: Validity Check (pass-through)", request.job_id);
-        logs.push_str(&format!("Starting validity check for job {}\n", request.job_id));
+        println!(
+            "Processing job {}: Validity Check (pass-through)",
+            job.job_id
+        );
+        logs.push_str(&format!(
+            "Starting validity check for job {}\n",
+            job.job_id
+        ));
+
+        let stage = StageNumber::Stage2ValidityCheck;
 
         // Get input paths (from stage 1)
-        let front_input = request.input_front_video();
-        let side_input = request.input_side_video();
+        let front_input = job.input_front_video(stage);
+        let side_input = job.input_side_video(stage);
 
         logs.push_str(&format!("Input front video: {}\n", front_input));
         logs.push_str(&format!("Input side video: {}\n", side_input));
@@ -50,27 +58,16 @@ impl StageProcessor for ValidityCheckProcessor {
         let duration = start_time.elapsed();
         logs.push_str(&format!("Completed in {:?}\n", duration));
 
-        StageJobResult::success(
-            request.job_id,
-            StageNumber::Stage2ValidityCheck,
+        ProcessingResult::Success {
             output_keys,
             logs,
-            duration.as_millis() as u64,
-        )
+            duration_ms: duration.as_millis() as u64,
+        }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let port: u16 = std::env::var("PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
-
-    println!("Starting Stage 2 Validity Check service on port {}", port);
-
-    StageServer::new(ValidityCheckProcessor)
-        .port(port)
-        .run()
-        .await
+    println!("Starting Stage 2 Validity Check worker...");
+    run_stage_worker(ValidityCheckWorker).await
 }

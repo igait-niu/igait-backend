@@ -2,24 +2,10 @@
 //! 
 //! To learn more about a route and how it works, click on the module name at the bottom of the page.
 
-/// This module contains the webhook endpoints for stage completion callbacks.
-/// 
-/// Stage microservices call these endpoints when they finish processing a job.
-/// The backend then either dispatches to the next stage or finalizes the job.
-/// 
-/// # Endpoint
-/// `POST /api/v1/webhook/stage`
-/// 
-/// # Body
-/// `StageJobResult` JSON from `igait-lib::microservice`
-/// 
-/// # Returns
-/// * `200 OK` - Result processed successfully
-/// * `400 Bad Request` - Invalid stage number
-/// * `500 Internal Server Error` - Processing failed
-pub mod webhook;
-
 /// This module contains the job upload endpoint for the API.
+///
+/// Uploads are processed by pushing to a Firebase RTDB queue, which is then
+/// picked up by the Stage 1 worker for processing.
 /// 
 /// # Arguments
 /// * `uid`: The Google Firebase user ID. Use the Firebase JS SDK to obtain before submitting.
