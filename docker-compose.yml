@@ -21,7 +21,7 @@ services:
       context: ./igait-web
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "4173:4173"
     depends_on:
       - backend
 
