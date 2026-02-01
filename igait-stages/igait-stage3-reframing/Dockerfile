@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage3-reframing ./igait-stages/igait-stage3-reframing
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage3-reframing
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest

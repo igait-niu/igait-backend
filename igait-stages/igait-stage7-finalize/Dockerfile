@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage7-finalize ./igait-stages/igait-stage7-finalize
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage7-finalize
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest

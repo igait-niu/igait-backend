@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage1-media-conversion ./igait-stages/igait-stage1-medi
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage1-media-conversion
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest

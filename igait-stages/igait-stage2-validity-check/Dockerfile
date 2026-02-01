@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage2-validity-check ./igait-stages/igait-stage2-validi
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage2-validity-check
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest

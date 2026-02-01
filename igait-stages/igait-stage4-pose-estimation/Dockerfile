@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage4-pose-estimation ./igait-stages/igait-stage4-pose-
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage4-pose-estimation
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM debian:bookworm-slim

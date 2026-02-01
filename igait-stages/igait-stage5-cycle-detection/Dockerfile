@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage5-cycle-detection ./igait-stages/igait-stage5-cycle
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage5-cycle-detection
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest

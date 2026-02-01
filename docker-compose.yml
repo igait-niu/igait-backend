@@ -1,5 +1,3 @@
-version: '3.8'
-
 # iGait Microservices - Queue-based Architecture
 # All services are independent workers polling Firebase RTDB queues
 

@@ -23,6 +23,8 @@ COPY igait-stages/igait-stage6-prediction ./igait-stages/igait-stage6-prediction
 
 # Build with actual source
 WORKDIR /app/igait-stages/igait-stage6-prediction
+# Clean the dummy build artifacts first
+RUN cargo clean --release
 RUN cargo build --release
 
 FROM debian:bookworm-slim
