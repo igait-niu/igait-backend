@@ -1,11 +1,23 @@
 <script lang="ts">
-	import { getUser } from '$lib/hooks';
+	import { onDestroy } from 'svelte';
+	import { getUser, subscribeToJobs, type JobsState } from '$lib/hooks';
 	import QuickActionsSection from './QuickActionsSection.svelte';
 	import StatsSection from './StatsSection.svelte';
 	import RecentActivitySection from './RecentActivitySection.svelte';
 
 	// Get the authenticated user - guaranteed to exist in (authenticated) routes
 	const user = getUser();
+
+	// Subscribe to jobs for real-time data
+	let jobsState: JobsState = $state({ status: 'loading' });
+
+	const unsubscribe = subscribeToJobs(user.uid, (state) => {
+		jobsState = state;
+	});
+
+	onDestroy(() => {
+		unsubscribe();
+	});
 </script>
 
 <svelte:head>
@@ -24,8 +36,7 @@
 	</section>
 
 	<QuickActionsSection />
-	<StatsSection />
-	<RecentActivitySection />
+	<StatsSection {jobsState} />
 </div>
 
 <style>

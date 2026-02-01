@@ -6,6 +6,7 @@
 mod types;
 mod storage;
 mod queue;
+mod backend_status;
 
 #[cfg(feature = "microservice")]
 mod worker;
@@ -16,6 +17,7 @@ mod email;
 pub use types::*;
 pub use storage::*;
 pub use queue::*;
+pub use backend_status::*;
 
 #[cfg(feature = "microservice")]
 pub use worker::*;

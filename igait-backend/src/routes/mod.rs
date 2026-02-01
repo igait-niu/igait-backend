@@ -65,3 +65,9 @@ pub mod assistant;
 /// # Potential Reasons for Failure
 /// See each individual function for potential reasons for failure.
 pub mod contribute;
+
+/// Internal endpoints for microservice communication
+/// 
+/// These endpoints are NOT exposed publicly and should only be called
+/// by internal microservices.
+pub mod internal;

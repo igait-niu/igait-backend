@@ -289,7 +289,7 @@ async fn send_response (
                                 }).collect();
                             }
                             if let Some(result_type) = search_args.result_type {
-                                jobs = jobs.into_iter().filter(|job| job.status.value == result_type).collect();
+                                jobs = jobs.into_iter().filter(|job| job.status.description() == result_type).collect();
                             }
 
                             // Serialized the now-filtered jobs

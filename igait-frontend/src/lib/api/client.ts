@@ -10,23 +10,34 @@ import type { ContributionRequest, ProgressCallback } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
 /**
- * Submit a gait analysis contribution
+ * Validate all submission fields
  */
-export async function submitContribution(
-	request: ContributionRequest,
-	onProgress?: ProgressCallback
-): Promise<Result<string, AppError>> {
-	// Validate all fields first
+function validateSubmission(request: ContributionRequest): Result<void, AppError> {
+	// Validate email
 	const emailResult = validateEmail(request.email);
 	if (emailResult.isErr()) {
 		return Err(emailResult.error.withContext('Invalid submission'));
 	}
 
-	const nameResult = validateRequired(request.name, 'Name');
-	if (nameResult.isErr()) {
-		return Err(nameResult.error.withContext('Invalid submission'));
+	// Validate age
+	if (request.age < 1 || request.age > 115) {
+		return Err(new AppError('Age must be between 1 and 115').withContext('Invalid submission'));
 	}
 
+	// Validate weight
+	if (request.weight < 1 || request.weight > 500) {
+		return Err(new AppError('Weight must be between 1 and 500 lbs').withContext('Invalid submission'));
+	}
+
+	// Validate height
+	if (request.heightFeet < 1 || request.heightFeet > 8) {
+		return Err(new AppError('Height (feet) must be between 1 and 8').withContext('Invalid submission'));
+	}
+	if (request.heightInches < 0 || request.heightInches > 11) {
+		return Err(new AppError('Height (inches) must be between 0 and 11').withContext('Invalid submission'));
+	}
+
+	// Validate videos
 	const frontVideoResult = validateVideoFile(request.frontVideo, 'front video');
 	if (frontVideoResult.isErr()) {
 		return Err(frontVideoResult.error.withContext('Invalid submission'));
@@ -37,17 +48,37 @@ export async function submitContribution(
 		return Err(sideVideoResult.error.withContext('Invalid submission'));
 	}
 
-	onProgress?.(10);
+	return Ok(undefined);
+}
 
-	// Build form data
+/**
+ * Submit a gait analysis contribution
+ */
+export async function submitContribution(
+	request: ContributionRequest,
+	onProgress?: ProgressCallback
+): Promise<Result<string, AppError>> {
+	// Validate all fields first
+	const validationResult = validateSubmission(request);
+	if (validationResult.isErr()) {
+		return validationResult as unknown as Result<string, AppError>;
+	}
+
+	onProgress?.(5);
+
+	// Build form data matching backend UploadRequestArguments
 	const formData = new FormData();
 	formData.append('uid', request.uid);
+	formData.append('age', request.age.toString());
+	formData.append('ethnicity', request.ethnicity);
+	formData.append('sex', request.sex);
+	formData.append('height', `${request.heightFeet}'${request.heightInches}`);
+	formData.append('weight', request.weight.toString());
 	formData.append('email', request.email);
-	formData.append('name', request.name);
 	formData.append('fileuploadfront', request.frontVideo);
 	formData.append('fileuploadside', request.sideVideo);
 
-	onProgress?.(20);
+	onProgress?.(15);
 
 	// Create abort controller for timeout
 	const controller = new AbortController();
@@ -55,7 +86,7 @@ export async function submitContribution(
 
 	const result = await tryAsync(
 		async () => {
-			const response = await fetch(API_ENDPOINTS.contribute, {
+			const response = await fetch(API_ENDPOINTS.upload, {
 				method: 'POST',
 				body: formData,
 				signal: controller.signal

@@ -19,9 +19,9 @@
 			variant: 'outline' as const
 		},
 		{
-			title: 'View History',
+			title: 'View Submissions',
 			description: 'See your past submissions and results',
-			href: '/history',
+			href: '/submissions',
 			icon: History,
 			variant: 'outline' as const
 		}

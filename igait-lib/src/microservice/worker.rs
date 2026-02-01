@@ -9,6 +9,7 @@ use crate::microservice::{
         CLAIM_TIMEOUT_MS, HEARTBEAT_INTERVAL_SECS,
         generate_worker_id, next_stage, now_ms, queue_item_path, queue_path,
     },
+    backend_status::JobStatus,
     StageNumber,
 };
 use anyhow::{Context, Result};
@@ -392,6 +393,30 @@ impl QueueOps {
         let path = queue_item_path(StageNumber::Stage7Finalize, job_id);
         self.db.delete(&path).await
     }
+
+    /// Updates the job status directly in Firebase RTDB.
+    /// 
+    /// This writes to `users/{user_id}/jobs/{job_index}/status`
+    pub async fn update_job_status(&self, user_id: &str, job_index: usize, status: &JobStatus) -> Result<()> {
+        let path = format!("users/{}/jobs/{}/status", user_id, job_index);
+        self.db.set(&path, status).await
+    }
+
+    /// Parses a job_id string into (user_id, job_index).
+    /// 
+    /// Job IDs are formatted as "{user_id}_{job_index}"
+    pub fn parse_job_id(job_id: &str) -> Result<(String, usize)> {
+        let parts: Vec<&str> = job_id.rsplitn(2, '_').collect();
+        if parts.len() != 2 {
+            anyhow::bail!("Invalid job_id format: {}", job_id);
+        }
+        
+        let job_index: usize = parts[0].parse()
+            .context("Failed to parse job index from job_id")?;
+        let user_id = parts[1].to_string();
+        
+        Ok((user_id, job_index))
+    }
 }
 
 // ============================================================================
@@ -567,6 +592,10 @@ impl<W: StageWorker> WorkerRunner<W> {
             "[{}] Claimed job {} for processing",
             self.worker_id, job.job_id
         );
+        
+        // Update job status to "Processing" in RTDB
+        let stage_num = stage.as_u8();
+        self.update_job_status(&job.job_id, JobStatus::processing(stage_num)).await;
 
         // Spawn heartbeat task for long-running jobs
         let heartbeat_db = self.queue_ops.db.clone();
@@ -620,6 +649,10 @@ impl<W: StageWorker> WorkerRunner<W> {
                     "[{}] Job {} completed successfully in {}ms",
                     self.worker_id, job.job_id, duration_ms
                 );
+                
+                // Note: We don't update status here for intermediate stages.
+                // The next stage will update to its "Processing" status.
+                // Only the finalize stage sets the final Complete/Error status.
 
                 // Check if this is the last processing stage (stage 6)
                 // Stage 7 is finalize, so stage 6 sends to finalize on success
@@ -640,6 +673,9 @@ impl<W: StageWorker> WorkerRunner<W> {
                     "[{}] Job {} failed after {}ms: {}",
                     self.worker_id, job.job_id, duration_ms, error
                 );
+                
+                // Update job status to "Error" in RTDB
+                self.update_job_status(&job.job_id, JobStatus::error(logs.clone())).await;
 
                 self.queue_ops
                     .move_to_finalize_failure(stage, &job, error, Some(logs))
@@ -649,6 +685,20 @@ impl<W: StageWorker> WorkerRunner<W> {
         }
 
         Ok(true)
+    }
+    
+    /// Update job status directly in RTDB
+    async fn update_job_status(&self, job_id: &str, status: JobStatus) {
+        match QueueOps::parse_job_id(job_id) {
+            Ok((user_id, job_index)) => {
+                if let Err(e) = self.queue_ops.update_job_status(&user_id, job_index, &status).await {
+                    eprintln!("Failed to update job status in RTDB: {:?}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to parse job_id: {:?}", e);
+            }
+        }
     }
 }
 

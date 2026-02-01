@@ -35,8 +35,8 @@ pub async fn send_welcome_email(
     let (subject, body) = EmailTemplates::submission_received(
         &dt_now_cst.to_string(),
         job.age,
-        &job.ethnicity,
-        job.sex,
+        &job.ethnicity.to_string(),
+        job.sex.to_string().chars().next().unwrap_or('O'),
         &job.height,
         job.weight,
         uid,

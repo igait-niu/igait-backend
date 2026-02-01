@@ -12,15 +12,15 @@ use igait_lib::microservice::{StoragePaths, JobMetadata, QueueItem, StageNumber,
 
 use crate::helper::{
     email::send_welcome_email,
-    lib::{AppError, AppState, AppStatePtr, Job, JobStatus, JobStatusCode},
+    lib::{AppError, AppState, AppStatePtr, Job, JobStatus, Sex, Ethnicity},
 };
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
     uid:        String,
     age:        i16,
-    ethnicity:  String,
-    sex:        char,
+    ethnicity:  Ethnicity,
+    sex:        Sex,
     height:     String,
     weight:     i16,
     email:      String,
@@ -44,10 +44,10 @@ struct UploadRequestFile {
 /// * `multipart` - The `Multipart` object to unpack.
 async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequestArguments> {
     // Initialize all of the fields as options
-    let mut uid_option:       Option<String> = None;
-    let mut age_option:       Option<i16>    = None;
-    let mut ethnicity_option: Option<String> = None;
-    let mut sex_option:       Option<char>   = None;
+    let mut uid_option:       Option<String>    = None;
+    let mut age_option:       Option<i16>       = None;
+    let mut ethnicity_option: Option<Ethnicity> = None;
+    let mut sex_option:       Option<Sex>       = None;
     let mut height_option:    Option<String> = None;
     let mut weight_option:    Option<i16>    = None;
     let mut email_option:     Option<String> = None;
@@ -110,7 +110,9 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
                     field
                         .text()
                         .await
-                        .context("Field 'ethnicity' wasn't readable as text!")?,
+                        .context("Field 'ethnicity' wasn't readable as text!")?
+                        .parse()
+                        .context("Field 'ethnicity' wasn't a valid ethnicity value!")?,
                 );
             }
             Some("email") => {
@@ -127,9 +129,8 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
                         .text()
                         .await
                         .context("Field 'sex' wasn't readable as text!")?
-                        .chars()
-                        .next()
-                        .context("Field 'sex' was empty!")?,
+                        .parse()
+                        .context("Field 'sex' wasn't a valid sex value!")?,
                 );
             }
             Some("height") => {
@@ -216,10 +217,7 @@ pub async fn upload_entrypoint(
         .context("Failed to unpack arguments!")?;
 
     // Build a new status object
-    let mut status = JobStatus {
-        code: JobStatusCode::Submitting,
-        value: String::from("Uploading files..."),
-    };
+    let mut status = JobStatus::submitted();
 
     // Generate the new job ID (0-indexed)
     let job_index = app
@@ -266,8 +264,7 @@ pub async fn upload_entrypoint(
     .await
     {
         // Populate the status object with error
-        status.code = JobStatusCode::SubmissionErr;
-        status.value = err.to_string();
+        status = JobStatus::error(format!("Upload failed: {}", err));
 
         // Update the status of the job
         app.db
@@ -280,9 +277,8 @@ pub async fn upload_entrypoint(
         return Err(AppError(err.context("Failed to upload files or dispatch job!")));
     }
 
-    // Update status to Queue
-    status.code = JobStatusCode::Queue;
-    status.value = String::from("Job submitted for processing.");
+    // Update status - job has been submitted and is ready for Stage 1
+    status = JobStatus::submitted();
 
     // Send the welcome email
     send_welcome_email(app.clone(), &job, &arguments.uid, job_index)
@@ -357,8 +353,8 @@ async fn upload_and_dispatch(
     let metadata = JobMetadata {
         email: Some(job.email.clone()),
         age: Some(job.age),
-        sex: Some(job.sex),
-        ethnicity: Some(job.ethnicity.clone()),
+        sex: Some(job.sex.to_string().chars().next().unwrap_or('O')),
+        ethnicity: Some(job.ethnicity.to_string()),
         height: Some(job.height.clone()),
         weight: Some(job.weight),
         extra: HashMap::new(),

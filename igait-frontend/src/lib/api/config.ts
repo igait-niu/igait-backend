@@ -2,12 +2,12 @@
  * API configuration and base URL
  */
 
-export const API_BASE_URL = 'https://api.igaitapp.com/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.igaitapp.com/api/v1';
 
 export const API_ENDPOINTS = {
 	contribute: `${API_BASE_URL}/contribute`,
 	upload: `${API_BASE_URL}/upload`,
-	assistant: `wss://api.igaitapp.com/api/v1/assistant_proxied`
+	assistant: `${API_BASE_URL.replace(/^http/, 'ws')}/assistant_proxied`
 } as const;
 
 /**

@@ -1,43 +1,94 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { FileVideo, Activity, Clock } from '@lucide/svelte';
+	import { FileVideo, Activity, Clock, Loader2 } from '@lucide/svelte';
+	import { isJobsLoaded, type JobsState } from '$lib/hooks';
+	import type { Job } from '../../../types/Job';
 
-	const stats = [
-		{
-			label: 'Total Submissions',
-			value: '12',
-			description: 'All time submissions',
-			icon: FileVideo
-		},
-		{
-			label: 'Analyses Complete',
-			value: '10',
-			description: 'Successfully processed',
-			icon: Activity
-		},
-		{
-			label: 'In Progress',
-			value: '2',
-			description: 'Currently processing',
-			icon: Clock
+	type Props = {
+		jobsState: JobsState;
+	};
+
+	let { jobsState }: Props = $props();
+
+	// Calculate stats from real jobs data
+	const stats = $derived.by(() => {
+		if (!isJobsLoaded(jobsState)) {
+			return [
+				{
+					label: 'Total Submissions',
+					value: '---',
+					description: 'Loading...',
+					icon: FileVideo,
+					href: '/submissions'
+				},
+				{
+					label: 'Analyses Complete',
+					value: '---',
+					description: 'Loading...',
+					icon: Activity,
+					href: '/submissions?filter=complete'
+				},
+				{
+					label: 'In Progress',
+					value: '---',
+					description: 'Loading...',
+					icon: Clock,
+					href: '/submissions?filter=processing'
+				}
+			];
 		}
-	];
+
+		const jobs = jobsState.jobs;
+		const totalSubmissions = jobs.length;
+		const completedJobs = jobs.filter((job: Job) => job.status.code === 'Complete').length;
+		const inProgressJobs = jobs.filter((job: Job) => 
+			job.status.code === 'Processing' || 
+			job.status.code === 'Submitted'
+		).length;
+
+		return [
+			{
+				label: 'Total Submissions',
+				value: totalSubmissions.toString(),
+				description: 'All time submissions',
+				icon: FileVideo,
+				href: '/submissions'
+			},
+			{
+				label: 'Analyses Complete',
+				value: completedJobs.toString(),
+				description: 'Successfully processed',
+				icon: Activity,
+				href: '/submissions?filter=completed'
+			},
+			{
+				label: 'In Progress',
+				value: inProgressJobs.toString(),
+				description: 'Currently processing',
+				icon: Clock,
+				href: '/submissions?filter=processing'
+			}
+		];
+	});
 </script>
 
 <section>
 	<h2 class="section-heading">Your Activity</h2>
 	<div class="stats-grid">
 		{#each stats as stat}
-			<Card.Root class="stat-card">
-				<Card.Header class="stat-header">
-					<Card.Title class="stat-label">{stat.label}</Card.Title>
-					<svelte:component this={stat.icon} class="h-4 w-4 text-muted-foreground" />
-				</Card.Header>
-				<Card.Content>
-					<div class="stat-value">{stat.value}</div>
-					<p class="stat-description">{stat.description}</p>
-				</Card.Content>
-			</Card.Root>
+			<a href={stat.href} class="stat-link">
+				<Card.Root class="stat-card">
+					<Card.Header class="stat-header">
+						<Card.Title class="stat-label">{stat.label}</Card.Title>
+					{@const Icon = stat.icon}
+					<Icon class="h-4 w-4 text-muted-foreground" />
+					</Card.Header>
+					<Card.Content>
+						<div class="stat-value">{stat.value}</div>
+						<p class="stat-description">{stat.description}</p>
+					</Card.Content>
+				</Card.Root>
+			</a>
 		{/each}
 	</div>
 </section>
@@ -55,8 +106,16 @@
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 	}
 
+	.stat-link {
+		text-decoration: none;
+		color: inherit;
+		display: block;
+	}
+
 	:global(.stat-card) {
 		transition: all 0.2s;
+		cursor: pointer;
+		height: 100%;
 	}
 
 	:global(.stat-card:hover) {

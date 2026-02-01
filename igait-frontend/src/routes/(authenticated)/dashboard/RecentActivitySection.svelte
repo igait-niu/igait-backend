@@ -2,31 +2,42 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
-	import { ArrowRight, Activity, Upload, FileVideo } from '@lucide/svelte';
+	import { ArrowRight, Activity, Upload, FileVideo, Loader2 } from '@lucide/svelte';
+	import { isJobsLoaded, isJobsLoading, type JobsState } from '$lib/hooks';
+	import type { Job } from '../../../types/Job';
 
-	// Mock recent activity - would come from API in real implementation
-	const recentActivity = [
-		{ 
-			id: 1, 
-			type: 'submission', 
-			status: 'completed', 
-			date: 'Jan 28, 2026',
-			description: 'Gait analysis completed'
-		},
-		{ 
-			id: 2, 
-			type: 'submission', 
-			status: 'processing', 
-			date: 'Jan 30, 2026',
-			description: 'Video being processed'
+	type Props = {
+		jobsState: JobsState;
+	};
+
+	let { jobsState }: Props = $props();
+
+	// Get recent activity from jobs (last 3)
+	const recentActivity = $derived.by(() => {
+		if (!isJobsLoaded(jobsState)) {
+			return [];
 		}
-	];
+
+		return jobsState.jobs.slice(0, 3).map((job: Job, index: number) => {
+			const date = new Date(job.timestamp * 1000);
+			const isCompleted = job.status.code === 'Complete';
+			const isError = job.status.code.includes('Error') || job.status.code.includes('Failed');
+			
+			return {
+				id: index,
+				type: 'submission',
+				status: isCompleted ? 'completed' : isError ? 'error' : 'processing',
+				date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+				description: job.status.value
+			};
+		});
+	});
 </script>
 
 <section>
 	<div class="recent-header">
 		<h2 class="section-heading">Recent Activity</h2>
-		<Button variant="ghost" size="sm" href="/history">
+		<Button variant="ghost" size="sm" href="/submissions">
 			View All
 			<ArrowRight class="ml-2 h-4 w-4" />
 		</Button>
@@ -34,7 +45,15 @@
 	
 	<Card.Root>
 		<Card.Content class="p-0">
-			{#if recentActivity.length === 0}
+			{#if isJobsLoading(jobsState)}
+				<div class="empty-state">
+					<Loader2 class="empty-icon animate-spin" />
+					<h3 class="empty-title">Loading activity...</h3>
+					<p class="empty-description">
+						Fetching your recent submissions
+					</p>
+				</div>
+			{:else if recentActivity.length === 0}
 				<div class="empty-state">
 					<Activity class="empty-icon" />
 					<h3 class="empty-title">No activity yet</h3>
@@ -60,9 +79,9 @@
 								</div>
 							</div>
 							<Badge 
-								variant={activity.status === 'completed' ? 'default' : 'secondary'}
+								variant={activity.status === 'completed' ? 'default' : activity.status === 'error' ? 'destructive' : 'secondary'}
 							>
-								{activity.status === 'completed' ? 'Complete' : 'Processing'}
+								{activity.status === 'completed' ? 'Complete' : activity.status === 'error' ? 'Error' : 'Processing'}
 							</Badge>
 						</div>
 					{/each}

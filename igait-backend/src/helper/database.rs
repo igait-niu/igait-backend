@@ -6,7 +6,7 @@ use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
 
 
-use super::lib::{Job, JobStatus};
+use super::lib::{Job, JobStatus, Ethnicity, Sex};
 
 /// A wrapper class on the Firebase database to make it easier to interact with.
 #[derive( Debug )]
@@ -70,13 +70,10 @@ impl Database {
                     Job {
                         age: 1,
                         email: String::from("placeholder@placeholder.com"),
-                        ethnicity: String::from("placeholder"),
-                        height: String::from("placeholder"),
-                        sex: 'p',
-                        status: JobStatus {
-                            code: JobStatusCode::Submitting,
-                            value: String::from("placeholder")
-                        },
+                        ethnicity: Ethnicity::Caucasian,
+                        height: String::from("0'0"),
+                        sex: Sex::O,
+                        status: JobStatusCode::Submitted.to_status(),
                         timestamp: SystemTime::now(),
                         weight: 1
                     }
@@ -232,9 +229,9 @@ impl Database {
             .context("Failed to update the user object in the database!")?;
 
         // Return as successful
-        let code = status.code;
-        let value = status.value;
-        println!("Updated status successfully to {code:#?} with message '{value}'!");
+        let code = status.code();
+        let value = status.description();
+        println!("Updated status successfully to {code} with message '{value}'!");
         Ok(())
     }
 

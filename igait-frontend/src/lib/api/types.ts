@@ -2,35 +2,34 @@
  * API response types
  */
 
-import type { Option } from '$lib/result';
+// Re-export generated types from ts-rs
+export type { Job } from '../../types/Job';
+export type { JobStatus } from '../../types/JobStatus';
+export type { Sex } from '../../types/Sex';
+export type { Ethnicity } from '../../types/Ethnicity';
+export type { UserRole } from '../../types/UserRole';
+export type { User } from '../../types/User';
+
+// Import types for use in this file
+import type { Sex } from '../../types/Sex';
+import type { Ethnicity } from '../../types/Ethnicity';
+import type { UserRole } from '../../types/UserRole';
+import type { Job } from '../../types/Job';
 
 /**
- * Job status from the backend
- */
-export interface JobStatus {
-	readonly code: string;
-	readonly value: string;
-}
-
-/**
- * Historical job data
- */
-export interface Job {
-	readonly timestamp: { secs_since_epoch: number };
-	readonly status: JobStatus;
-	readonly age: number;
-	readonly height: number;
-	readonly weight: number;
-	readonly sex: string;
-}
-
-/**
- * Contribution/submission request
+ * Contribution/submission request - includes all demographic fields
+ * required by the backend for gait analysis.
  */
 export interface ContributionRequest {
 	readonly uid: string;
 	readonly email: string;
-	readonly name: string;
+	readonly age: number;
+	readonly sex: Sex;
+	readonly ethnicity: Ethnicity;
+	readonly heightFeet: number;
+	readonly heightInches: number;
+	readonly weight: number;
+	readonly role: UserRole;
 	readonly frontVideo: File;
 	readonly sideVideo: File;
 }

@@ -50,11 +50,17 @@ async fn main() -> Result<()> {
         .route("/contribute", post(crate::routes::contribute::contribute_entrypoint))
         .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
         .route("/assistant_proxied", any(crate::routes::assistant::assistant_proxied_entrypoint))
+        .with_state(app_state_ptr.clone());
+    
+    // Build the internal API router (for microservice communication)
+    let api_internal = Router::new()
+        .route("/update-status", post(crate::routes::internal::update_status))
         .with_state(app_state_ptr);
 
     // Nest the API into the general app router
     let app = Router::new()
         .nest("/api/v1", api_v1)
+        .nest("/api/internal", api_internal)
         .layer(DefaultBodyLimit::max(500000000));
 
     // Setup graceful shutdown signal handling

@@ -67,7 +67,7 @@
 		{ href: '/dashboard', label: 'Dashboard', icon: Home },
 		{ href: '/submit', label: 'New Submission', icon: Upload },
 		{ href: '/assistant', label: 'AI Assistant', icon: MessageSquare },
-		{ href: '/history', label: 'History', icon: History },
+		{ href: '/submissions', label: 'Submissions', icon: History },
 	];
 </script>
 

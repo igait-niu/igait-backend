@@ -5,6 +5,7 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getDatabase, type Database } from 'firebase/database';
 import { type Option, Some, None } from '$lib/result';
 
 /**
@@ -17,7 +18,8 @@ const firebaseConfig = {
 	projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 	storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
 	messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-	appId: import.meta.env.VITE_FIREBASE_APP_ID
+	appId: import.meta.env.VITE_FIREBASE_APP_ID,
+	databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
 };
 
 let firebaseApp: Option<FirebaseApp> = None();
@@ -50,4 +52,12 @@ export function initializeFirebase(): FirebaseApp {
 export function getFirebaseAuth() {
 	initializeFirebase();
 	return getAuth();
+}
+
+/**
+ * Get Firebase Realtime Database instance
+ */
+export function getFirebaseDatabase(): Database {
+	initializeFirebase();
+	return getDatabase();
 }
