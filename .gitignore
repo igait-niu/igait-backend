@@ -5,7 +5,6 @@ output/*
 # Ignore environment/testing things
 .env
 .envrc
-*.sh
 batch_process.pbs
 !Cargo.toml
 firebase-debug.log
