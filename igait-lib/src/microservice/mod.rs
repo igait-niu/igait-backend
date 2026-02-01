@@ -8,9 +8,6 @@ mod storage;
 mod queue;
 
 #[cfg(feature = "microservice")]
-mod server;
-
-#[cfg(feature = "microservice")]
 mod worker;
 
 #[cfg(feature = "email")]
@@ -19,9 +16,6 @@ mod email;
 pub use types::*;
 pub use storage::*;
 pub use queue::*;
-
-#[cfg(feature = "microservice")]
-pub use server::*;
 
 #[cfg(feature = "microservice")]
 pub use worker::*;
