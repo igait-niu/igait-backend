@@ -19,7 +19,8 @@
 		LogOut, 
 		Menu,
 		Settings,
-		X
+		X,
+		Shield
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 
@@ -61,6 +62,7 @@
 		href: string;
 		label: string;
 		icon: Component<{ class?: string }>;
+		adminOnly?: boolean;
 	}
 
 	const navItems: NavItem[] = [
@@ -68,6 +70,7 @@
 		{ href: '/submit', label: 'New Submission', icon: Upload },
 		{ href: '/assistant', label: 'AI Assistant', icon: MessageSquare },
 		{ href: '/submissions', label: 'Submissions', icon: History },
+		{ href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
 	];
 </script>
 
@@ -98,10 +101,11 @@
 
 				<!-- Desktop Navigation -->
 				<nav class="hidden items-center gap-6 md:flex">
-					{#each navItems as item}
+					{#each navItems.filter(item => !item.adminOnly || user.administrator) as item}
 						<a
 							href={item.href}
 							class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+							class:admin-link={item.adminOnly}
 						>
 							<item.icon class="h-4 w-4" />
 							{item.label}
@@ -166,10 +170,11 @@
 			{#if mobileMenuOpen}
 				<nav class="border-t bg-background px-4 py-4 md:hidden">
 					<div class="flex flex-col gap-2">
-						{#each navItems as item}
+						{#each navItems.filter(item => !item.adminOnly || user.administrator) as item}
 							<a
 								href={item.href}
 								class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+								class:admin-link-mobile={item.adminOnly}
 								onclick={closeMobileMenu}
 							>
 								<item.icon class="h-4 w-4" />
@@ -201,3 +206,22 @@
 	<!-- Redirect happening, show loading -->
 	<LoadingPage message="Redirecting to login..." />
 {/if}
+
+<style>
+	.admin-link {
+		color: hsl(38 92% 50%) !important;
+	}
+
+	.admin-link:hover {
+		color: hsl(38 92% 40%) !important;
+	}
+
+	.admin-link-mobile {
+		color: hsl(38 92% 50%) !important;
+		background-color: hsl(38 92% 50% / 0.1);
+	}
+
+	.admin-link-mobile:hover {
+		background-color: hsl(38 92% 50% / 0.15) !important;
+	}
+</style>

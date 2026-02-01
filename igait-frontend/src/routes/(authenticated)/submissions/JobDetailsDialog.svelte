@@ -119,12 +119,7 @@
 				<!-- Processing Progress Bar -->
 				{#if isProcessing && job.status.code === 'Processing'}
 					<div class="space-y-2">
-						<Progress.Root value={processingProgress} class="w-full">
-							<Progress.Indicator 
-								class="h-full w-full flex-1 bg-primary transition-all"
-								style="transform: translateX(-{100 - processingProgress}%)"
-							/>
-						</Progress.Root>
+						<Progress.Root value={processingProgress} class="w-full" />
 						<p class="text-xs text-muted-foreground">
 							Stage {job.status.stage} of {job.status.num_stages}
 						</p>

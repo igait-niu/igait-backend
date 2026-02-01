@@ -156,7 +156,13 @@
 			{#if error.isSome()}
 				<Alert variant="destructive" class="form-error">
 					<AlertDescription>
-						{error.value.displayMessage}
+						<p class="error-message">{error.value.displayMessage}</p>
+						{#if error.value.hasContext}
+							<details class="error-details">
+								<summary>Show full error</summary>
+								<p class="error-full">{error.value.fullMessage}</p>
+							</details>
+						{/if}
 					</AlertDescription>
 				</Alert>
 			{/if}
@@ -276,34 +282,27 @@
 					</div>
 				</fieldset>
 
-				<!-- Progress bar -->
-				{#if isSubmitting && progress > 0}
-					<div class="progress-container">
-						<div class="progress-bar">
-							<div 
-								class="progress-fill"
-								style="width: {progress}%"
-							></div>
-						</div>
-						<p class="progress-text">
-							Uploading... {progress}%
-						</p>
-					</div>
-				{/if}
-
-				<Button 
-					type="submit" 
-					class="submit-button" 
-					disabled={isSubmitting || !isFormValid}
-				>
+				<div class="submit-button-container">
 					{#if isSubmitting}
-						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-						Uploading...
-					{:else}
-						<Upload class="mr-2 h-4 w-4" />
-						Submit for Analysis
+						<div 
+							class="button-progress-fill"
+							style="width: {progress}%"
+						></div>
 					{/if}
-				</Button>
+					<Button 
+						type="submit" 
+						class="submit-button {isSubmitting ? 'is-uploading' : ''}" 
+						disabled={isSubmitting || !isFormValid}
+					>
+						{#if isSubmitting}
+							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+							Uploading... {progress}%
+						{:else}
+							<Upload class="mr-2 h-4 w-4" />
+							Submit for Analysis
+						{/if}
+					</Button>
+				</div>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -393,38 +392,64 @@
 		gap: 1rem;
 	}
 
-	.progress-container {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding: 1rem;
-		border-radius: var(--radius-lg);
-		background-color: hsl(var(--muted) / 0.3);
-	}
-
-	.progress-bar {
-		height: 0.5rem;
-		width: 100%;
-		overflow: hidden;
-		border-radius: 9999px;
-		background-color: hsl(var(--muted));
-	}
-
-	.progress-fill {
-		height: 100%;
-		background-color: hsl(var(--primary));
-		transition: width 0.3s;
-	}
-
-	.progress-text {
-		text-align: center;
-		font-size: 0.875rem;
+	/* Error details styling */
+	.error-message {
 		font-weight: 500;
-		color: hsl(var(--foreground));
+		margin: 0;
+	}
+
+	.error-details {
+		margin-top: 0.5rem;
+	}
+
+	.error-details summary {
+		cursor: pointer;
+		font-size: 0.8125rem;
+		color: hsl(var(--destructive-foreground) / 0.8);
+	}
+
+	.error-details summary:hover {
+		text-decoration: underline;
+	}
+
+	.error-full {
+		margin-top: 0.375rem;
+		font-size: 0.8125rem;
+		font-family: ui-monospace, monospace;
+		word-break: break-word;
+		white-space: pre-wrap;
+		background-color: hsl(var(--destructive-foreground) / 0.1);
+		padding: 0.5rem;
+		border-radius: var(--radius-sm);
+	}
+
+	/* Submit button with integrated progress */
+	.submit-button-container {
+		position: relative;
+		margin-top: 0.5rem;
+		border-radius: var(--radius-md);
+		overflow: hidden;
+	}
+
+	.button-progress-fill {
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 100%;
+		background-color: hsl(var(--primary) / 0.3);
+		transition: width 0.3s ease-out;
+		pointer-events: none;
+		z-index: 0;
 	}
 
 	:global(.submit-button) {
-		margin-top: 0.5rem;
+		width: 100%;
+		position: relative;
+		z-index: 1;
+	}
+
+	:global(.submit-button.is-uploading) {
+		background-color: hsl(var(--primary) / 0.8);
 	}
 
 	@media (max-width: 768px) {

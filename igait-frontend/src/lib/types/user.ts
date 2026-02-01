@@ -19,6 +19,7 @@ export interface User {
 	readonly displayName: string;
 	readonly photoURL: string;
 	readonly emailVerified: boolean;
+	readonly administrator: boolean;
 }
 
 /**

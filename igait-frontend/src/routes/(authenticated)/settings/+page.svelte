@@ -21,24 +21,12 @@
 
 	<!-- Coming Soon Placeholder -->
 	<Card.Root class="coming-soon-card">
-		<Card.Header>
-			<div class="coming-soon-icon">
-				<Construction class="h-8 w-8 text-primary" />
-			</div>
-			<Card.Title class="coming-soon-title">Settings Coming Soon!</Card.Title>
-			<Card.Description class="coming-soon-description">
-				Account settings are being implemented~ 🦊
-			</Card.Description>
-		</Card.Header>
 		<Card.Content>
-			<p class="coming-soon-text">
-				Soon you'll be able to update your profile, manage notification preferences, 
-				and configure your account settings here.
-			</p>
-			
 			<div class="account-info">
 				<h3 class="account-title">Your Current Account</h3>
 				<p class="account-detail">{user.email}</p>
+
+				<h3 class="account-title" style="margin-top: 1rem;">Display Name</h3>
 				<p class="account-detail">{user.displayName}</p>
 			</div>
 
@@ -72,18 +60,6 @@
 		text-align: center;
 	}
 
-	.coming-soon-icon {
-		margin: 0 auto 1rem;
-		display: flex;
-		height: 4rem;
-		width: 4rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 9999px;
-		background-color: hsl(var(--primary) / 0.1);
-		animation: pulse 2s ease-in-out infinite;
-	}
-
 	@keyframes pulse {
 		0%, 100% {
 			opacity: 1;
@@ -91,21 +67,6 @@
 		50% {
 			opacity: 0.7;
 		}
-	}
-
-	:global(.coming-soon-title) {
-		font-size: 1.5rem;
-	}
-
-	:global(.coming-soon-description) {
-		font-size: 1rem;
-	}
-
-	.coming-soon-text {
-		margin: 0 auto;
-		max-width: 28rem;
-		font-size: 0.875rem;
-		color: hsl(var(--muted-foreground));
 	}
 
 	.account-info {

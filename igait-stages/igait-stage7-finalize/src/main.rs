@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use igait_lib::microservice::{
     EmailClient, EmailTemplates, FinalizeQueueItem, ProcessingResult, StorageClient,
+    JobStatus, QueueOps, FirebaseRtdb,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -30,6 +31,7 @@ const ASD_THRESHOLD: f64 = 0.5;
 pub struct FinalizeStageWorker {
     email_client: EmailClient,
     storage: StorageClient,
+    queue_ops: QueueOps,
 }
 
 impl FinalizeStageWorker {
@@ -41,10 +43,14 @@ impl FinalizeStageWorker {
         let storage = StorageClient::new()
             .await
             .context("Failed to create storage client")?;
+        let db = FirebaseRtdb::from_env()
+            .context("Failed to create Firebase RTDB client")?;
+        let queue_ops = QueueOps::new(db, "stage7-finalize".to_string());
 
         Ok(Self {
             email_client,
             storage,
+            queue_ops,
         })
     }
 
@@ -140,6 +146,20 @@ impl FinalizeStageWorker {
         
         Ok(())
     }
+
+    /// Update job status in RTDB
+    async fn update_job_status(&self, job_id: &str, status: JobStatus) {
+        match QueueOps::parse_job_id(job_id) {
+            Ok((user_id, job_index)) => {
+                if let Err(e) = self.queue_ops.update_job_status(&user_id, job_index, &status).await {
+                    eprintln!("Failed to update job status in RTDB: {:?}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to parse job_id: {:?}", e);
+            }
+        }
+    }
 }
 
 /// Trait for finalize workers (separate from regular StageWorker).
@@ -166,6 +186,9 @@ impl FinalizeWorker for FinalizeStageWorker {
         logs.push_str(&format!("Starting finalization for job {}\n", job.job_id));
         logs.push_str(&format!("Queue item success flag: {}\n", job.success));
 
+        // Update status to stage 7 on entry
+        self.update_job_status(&job.job_id, JobStatus::processing(7)).await;
+
         // Check for prediction.json in S3 - this is the source of truth
         let prediction_score = self.get_prediction_score(&job.job_id).await;
 
@@ -184,7 +207,9 @@ impl FinalizeWorker for FinalizeStageWorker {
                 }
             }
             
-            // TODO: Update job status in database to "completed"
+            // Update job status to Complete
+            let is_asd = score >= ASD_THRESHOLD;
+            self.update_job_status(&job.job_id, JobStatus::complete(score as f32, is_asd)).await;
             
             ProcessingResult::Success {
                 output_keys: HashMap::from([
@@ -217,7 +242,8 @@ impl FinalizeWorker for FinalizeStageWorker {
                 }
             }
             
-            // TODO: Update job status in database to "failed"
+            // Update job status to Error
+            self.update_job_status(&job.job_id, JobStatus::error(error_msg.clone())).await;
             
             // Return success because finalization completed (even though the job itself failed)
             ProcessingResult::Success {

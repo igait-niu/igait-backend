@@ -13,19 +13,38 @@ import {
 	signOut as firebaseSignOut,
 	type User as FirebaseUser 
 } from 'firebase/auth';
+import { ref, get } from 'firebase/database';
+import { getFirebaseDatabase } from '$lib/firebase';
 import type { AuthState, User } from '$lib/types';
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 
 /**
+ * Fetch administrator status from RTDB
+ */
+async function fetchAdminStatus(uid: string): Promise<boolean> {
+	try {
+		const db = getFirebaseDatabase();
+		const adminRef = ref(db, `users/${uid}/administrator`);
+		const snapshot = await get(adminRef);
+		return snapshot.val() === true;
+	} catch (e) {
+		console.error('Failed to fetch admin status:', e);
+		return false;
+	}
+}
+
+/**
  * Convert Firebase user to our User type
  */
-function toUser(firebaseUser: FirebaseUser): User {
+async function toUser(firebaseUser: FirebaseUser): Promise<User> {
+	const administrator = await fetchAdminStatus(firebaseUser.uid);
 	return {
 		uid: firebaseUser.uid,
 		email: firebaseUser.email ?? '',
 		displayName: firebaseUser.displayName ?? firebaseUser.email ?? 'User',
 		photoURL: firebaseUser.photoURL ?? '',
-		emailVerified: firebaseUser.emailVerified
+		emailVerified: firebaseUser.emailVerified,
+		administrator
 	};
 }
 
@@ -50,11 +69,12 @@ class AuthStore {
 		if (this.#unsubscribe) return; // Already initialized
 
 		const auth = getAuth();
-		this.#unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+		this.#unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
 			if (firebaseUser) {
+				const user = await toUser(firebaseUser);
 				this.#state = {
 					status: 'authenticated',
-					user: toUser(firebaseUser)
+					user
 				};
 			} else {
 				this.#state = { status: 'unauthenticated' };
@@ -79,7 +99,7 @@ class AuthStore {
 		const result = await tryAsync(
 			async () => {
 				const credential = await signInWithEmailAndPassword(auth, email, password);
-				return toUser(credential.user);
+				return await toUser(credential.user);
 			},
 			'Failed to sign in'
 		);
@@ -96,7 +116,7 @@ class AuthStore {
 		const result = await tryAsync(
 			async () => {
 				const credential = await createUserWithEmailAndPassword(auth, email, password);
-				return toUser(credential.user);
+				return await toUser(credential.user);
 			},
 			'Failed to create account'
 		);
@@ -114,7 +134,7 @@ class AuthStore {
 		const result = await tryAsync(
 			async () => {
 				const credential = await signInWithPopup(auth, provider);
-				return toUser(credential.user);
+				return await toUser(credential.user);
 			},
 			'Failed to sign in with Google'
 		);

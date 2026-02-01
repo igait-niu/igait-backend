@@ -5,22 +5,20 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { FileVideo, Loader2, AlertCircle } from '@lucide/svelte';
+	import { JobsDataTable } from '$lib/components/jobs';
+	import type { Job } from '../../../types/Job';
 
 	import EmptyState from './EmptyState.svelte';
 	import SupportCard from './SupportCard.svelte';
-	import DataTable from './data-table.svelte';
+	import JobDetailsDialog from './JobDetailsDialog.svelte';
 
 	const user = getUser();
 
 	let jobsState: JobsState = $state({ status: 'loading' });
+	let selectedJob: (Job & { id: string }) | null = $state(null);
 
 	const unsubscribe = subscribeToJobs(user.uid, (state) => {
 		jobsState = state;
-		// Debug: Log the jobs state
-		if (state.status === 'loaded') {
-			console.log('[Submissions] Jobs loaded:', state.jobs.length, 'jobs');
-			console.log('[Submissions] Jobs data:', state.jobs);
-		}
 	});
 
 	onDestroy(() => {
@@ -29,6 +27,14 @@
 
 	// Get status filter from URL query param (?filter=completed, ?filter=processing, ?filter=error)
 	const statusFilter = $derived($page.url.searchParams.get('filter') || undefined);
+
+	function handleViewDetails(job: Job & { id: string }) {
+		selectedJob = job;
+	}
+
+	function handleCloseDetails() {
+		selectedJob = null;
+	}
 </script>
 
 <svelte:head>
@@ -74,13 +80,22 @@
 					<Button href="/submit">Make Your First Submission</Button>
 				</EmptyState>
 			{:else if isJobsLoaded(jobsState)}
-				<DataTable data={jobsState.jobs} initialStatusFilter={statusFilter} />
+				<JobsDataTable 
+					data={jobsState.jobs} 
+					uid={user.uid} 
+					initialStatusFilter={statusFilter}
+					onViewDetails={handleViewDetails}
+				/>
 			{/if}
 		</Card.Content>
 	</Card.Root>
 
 	<SupportCard userEmail={user.email} userId={user.uid} />
 </div>
+
+{#if selectedJob}
+	<JobDetailsDialog job={selectedJob} onClose={handleCloseDetails} />
+{/if}
 
 <style>
 	.submissions-page {
