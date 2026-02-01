@@ -14,7 +14,7 @@ ETHNICITY="Test"
 SEX="M"
 HEIGHT="180cm"
 WEIGHT=75
-EMAIL="igait@hiibolt.com"
+EMAIL="test@example.com"
 FRONT_VIDEO="front.mp4"
 SIDE_VIDEO="side.mp4"
 
