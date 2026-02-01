@@ -3,6 +3,10 @@ name = "igait-backend"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "igait-backend"
+path = "src/main.rs"
+
 [dependencies]
 # Workspace dependencies
 anyhow = { version = "1", features = ["backtrace"] }

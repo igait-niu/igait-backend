@@ -1,4 +1,31 @@
 # iGait
+iGAIT is an innovative, objective, equitable, widely accessible, easy-to-use, free web-based tool for early autism screening.
+
+*If you are a developer looking for onboarding, skip to [Development](#development)*
+
+## Architecture
+iGait uses a microservice-based architecture due to its multi-stage pipeline:
+- **1.** The process begins on the frontend, where the users submits their input. 
+- **2.** The central backend then receives it, handling user/job creation and initial submission emails
+- **3-9.** The pipeline then steps in, executing each stage. The final stage accumulates the final result or failure, and decides how to convey this information to the user.
+
+All microservices and the backend share a common library (`igait-lib`) to facilitate the common grounds each stage and the backend have in common.
+
+The process of I/O is done atomically through Google Firebase RTDB and AWS S3. 
+
+### Google Firebase RTDB and the Queue System
+RTDB holds a queue for each stage, which is how each stage knows what to work on. 
+
+Each stage deployment works on one queue entry at a time - so to scale a specific deployment that slows the rest, simply increase the number of deployments. They can work independently! 
+
+The backend is the first point of entry - it adds the entry to the first queue for the first stage to pick up.
+
+### AWS S3, Persistant Storage, and Stage I/O
+Files are first uploaded by the backend to S3, and the backend never sees them again. In general, both the pipeline and the backend never hold onto their inputs! 
+
+Each stage then pulls the files from S3, performs some modification or check, and then uploads the modified files for the next stage to work on. After doing so, it adds the job to the next stage's queue.
+
+It's a shockingly simple approach to an otherwise incredibly complex process, and allows a ton of visibility into data as it flows from step to step.
 
 ## Development
 ### Dependencies
@@ -64,4 +91,8 @@ export PORT=<port> && cargo run --release
 ```
 
 **Frontend**:
-Working on the frontend is a bit more complicated, since it may rely on the 
+Working on the frontend is a roughly the same, navigate to its folder:
+```bash
+bun install
+bun run dev
+```

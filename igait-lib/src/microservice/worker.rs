@@ -17,6 +17,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use tokio_util::sync::CancellationToken;
 
 // ============================================================================
 // FIREBASE RTDB CLIENT
@@ -233,6 +234,23 @@ impl QueueOps {
         self.db.update(&path, &HeartbeatUpdate { claimed_at: now_ms() }).await
     }
 
+    /// Releases a job back to the queue by clearing the claim.
+    /// Used when a job needs to be aborted (e.g., during shutdown).
+    pub async fn release_job(&self, stage: StageNumber, job_id: &str) -> Result<()> {
+        let path = queue_item_path(stage, job_id);
+        
+        #[derive(Serialize)]
+        struct ReleaseUpdate {
+            claimed_by: Option<String>,
+            claimed_at: Option<u64>,
+        }
+        
+        self.db.update(&path, &ReleaseUpdate { 
+            claimed_by: None, 
+            claimed_at: None 
+        }).await
+    }
+
     /// Moves a job to the next stage queue after successful processing.
     pub async fn move_to_next_stage(
         &self,
@@ -431,6 +449,7 @@ pub struct WorkerRunner<W: StageWorker> {
     queue_ops: QueueOps,
     config: WorkerConfig,
     worker_id: String,
+    shutdown_token: CancellationToken,
 }
 
 impl<W: StageWorker> WorkerRunner<W> {
@@ -444,6 +463,7 @@ impl<W: StageWorker> WorkerRunner<W> {
             queue_ops,
             config: WorkerConfig::default(),
             worker_id,
+            shutdown_token: CancellationToken::new(),
         }
     }
 
@@ -453,6 +473,11 @@ impl<W: StageWorker> WorkerRunner<W> {
         self
     }
 
+    /// Returns a clone of the shutdown token for external cancellation.
+    pub fn shutdown_token(&self) -> CancellationToken {
+        self.shutdown_token.clone()
+    }
+
     /// Runs the worker loop.
     /// 
     /// This will continuously:
@@ -460,6 +485,8 @@ impl<W: StageWorker> WorkerRunner<W> {
     /// 2. Claim and process any available job
     /// 3. Move the job to the next queue (or finalize queue on failure)
     /// 4. Sleep if no jobs are available
+    /// 
+    /// The loop will gracefully stop when shutdown is signaled.
     pub async fn run(&self) -> Result<()> {
         let stage = self.worker.stage();
         println!(
@@ -471,26 +498,47 @@ impl<W: StageWorker> WorkerRunner<W> {
         );
 
         loop {
+            // Check for shutdown signal
+            if self.shutdown_token.is_cancelled() {
+                println!("[{}] Shutdown signal received, stopping worker loop", self.worker_id);
+                break;
+            }
+
             match self.process_one_job().await {
                 Ok(true) => {
                     // Processed a job, immediately check for more
                     continue;
                 }
                 Ok(false) => {
-                    // No jobs available, wait before polling again
-                    tokio::time::sleep(self.config.poll_interval).await;
+                    // No jobs available, wait before polling again (or until shutdown)
+                    tokio::select! {
+                        _ = tokio::time::sleep(self.config.poll_interval) => {},
+                        _ = self.shutdown_token.cancelled() => {
+                            println!("[{}] Shutdown signal received during sleep", self.worker_id);
+                            break;
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("[{}] Error in worker loop: {:?}", self.worker_id, e);
                     
                     if self.config.resilient {
-                        tokio::time::sleep(self.config.error_backoff).await;
+                        tokio::select! {
+                            _ = tokio::time::sleep(self.config.error_backoff) => {},
+                            _ = self.shutdown_token.cancelled() => {
+                                println!("[{}] Shutdown signal received during error backoff", self.worker_id);
+                                break;
+                            }
+                        }
                     } else {
                         return Err(e);
                     }
                 }
             }
         }
+
+        println!("[{}] Worker stopped gracefully", self.worker_id);
+        Ok(())
     }
 
     /// Attempts to process one job from the queue.
@@ -498,6 +546,11 @@ impl<W: StageWorker> WorkerRunner<W> {
     /// Returns `Ok(true)` if a job was processed, `Ok(false)` if no jobs were available.
     async fn process_one_job(&self) -> Result<bool> {
         let stage = self.worker.stage();
+
+        // Check for shutdown before claiming
+        if self.shutdown_token.is_cancelled() {
+            return Ok(false);
+        }
 
         // Try to claim a job
         let job = match self.queue_ops.claim_job(stage).await {
@@ -520,26 +573,48 @@ impl<W: StageWorker> WorkerRunner<W> {
         let heartbeat_worker_id = self.worker_id.clone();
         let heartbeat_job_id = job.job_id.clone();
         let heartbeat_stage = stage;
+        let heartbeat_shutdown = self.shutdown_token.child_token();
         
         let heartbeat_handle = tokio::spawn(async move {
             let ops = QueueOps::new(heartbeat_db, heartbeat_worker_id);
             loop {
-                tokio::time::sleep(Duration::from_secs(HEARTBEAT_INTERVAL_SECS)).await;
-                if let Err(e) = ops.heartbeat(heartbeat_stage, &heartbeat_job_id).await {
-                    eprintln!("Heartbeat failed: {:?}", e);
-                    break;
+                tokio::select! {
+                    _ = tokio::time::sleep(Duration::from_secs(HEARTBEAT_INTERVAL_SECS)) => {
+                        if let Err(e) = ops.heartbeat(heartbeat_stage, &heartbeat_job_id).await {
+                            eprintln!("Heartbeat failed: {:?}", e);
+                            break;
+                        }
+                    }
+                    _ = heartbeat_shutdown.cancelled() => {
+                        break;
+                    }
                 }
             }
         });
 
-        // Process the job
-        let result = self.worker.process(&job).await;
+        // Process the job with cancellation support
+        let process_result = tokio::select! {
+            result = self.worker.process(&job) => result,
+            _ = self.shutdown_token.cancelled() => {
+                println!(
+                    "[{}] Job {} processing cancelled due to shutdown",
+                    self.worker_id, job.job_id
+                );
+                // Cancel heartbeat
+                heartbeat_handle.abort();
+                
+                // Release the job back to the queue by removing claim
+                let _ = self.queue_ops.release_job(stage, &job.job_id).await;
+                
+                return Ok(false);
+            }
+        };
 
         // Cancel heartbeat
         heartbeat_handle.abort();
 
         // Handle result
-        match result {
+        match process_result {
             ProcessingResult::Success { output_keys, logs: _, duration_ms } => {
                 println!(
                     "[{}] Job {} completed successfully in {}ms",
@@ -584,6 +659,7 @@ impl<W: StageWorker> WorkerRunner<W> {
 /// Runs a stage worker with default configuration.
 /// 
 /// This is the main entry point for stage microservices.
+/// Sets up signal handlers for graceful shutdown.
 /// 
 /// # Example
 /// 
@@ -615,6 +691,39 @@ impl<W: StageWorker> WorkerRunner<W> {
 pub async fn run_stage_worker<W: StageWorker>(worker: W) -> Result<()> {
     let db = FirebaseRtdb::from_env()?;
     let runner = WorkerRunner::new(worker, db);
+    let shutdown_token = runner.shutdown_token();
+    
+    // Spawn signal handler
+    tokio::spawn(async move {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("Failed to install SIGTERM handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {
+                println!("\nReceived Ctrl+C, shutting down gracefully...");
+            },
+            _ = terminate => {
+                println!("\nReceived SIGTERM, shutting down gracefully...");
+            },
+        }
+        
+        shutdown_token.cancel();
+    });
+    
     runner.run().await
 }
 

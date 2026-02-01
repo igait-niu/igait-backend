@@ -4,11 +4,16 @@ version = "0.1.0"
 edition = "2021"
 description = "Stage 7: Finalize microservice for iGait pipeline - sends emails and archives results"
 
+[[bin]]
+name = "igait-stage7-finalize"
+path = "src/main.rs"
+
 [dependencies]
 igait-lib = { path = "../../igait-lib", features = ["microservice", "email"] }
 anyhow = "1"
 async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
 chrono = "0.4"
 chrono-tz = "0.10"
 serde = { version = "1", features = ["derive"] }

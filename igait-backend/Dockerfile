@@ -9,11 +9,24 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy lib and backend
+# Copy Cargo manifests for dependency caching
+COPY igait-lib/Cargo.toml ./igait-lib/Cargo.toml
+COPY igait-backend/Cargo.toml ./igait-backend/Cargo.toml
+
+# Create dummy source files to cache dependencies
+RUN mkdir -p igait-lib/src && echo "pub fn dummy() {}" > igait-lib/src/lib.rs
+RUN mkdir -p igait-backend/src && echo "fn main() {}" > igait-backend/src/main.rs
+
+# Build dependencies only (this layer will be cached)
+WORKDIR /app/igait-backend
+RUN cargo build --release 2>/dev/null || true
+
+# Now copy actual source files
+WORKDIR /app
 COPY igait-lib ./igait-lib
 COPY igait-backend ./igait-backend
 
-# Build the backend
+# Build the backend with actual source
 WORKDIR /app/igait-backend
 RUN cargo build --release -p igait-backend
 

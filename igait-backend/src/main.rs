@@ -31,6 +31,7 @@ pub const DISABLE_RESULT_EMAIL: bool = true;
 /// * The API is served at the root of the server
 /// * The API is served with a body limit of 500MB
 /// * The API is served with the V1 API nested under `/api/v1`
+/// * Gracefully shuts down on SIGTERM or Ctrl+C
 #[tokio::main]
 async fn main() -> Result<()> {
     
@@ -56,13 +57,46 @@ async fn main() -> Result<()> {
         .nest("/api/v1", api_v1)
         .layer(DefaultBodyLimit::max(500000000));
 
-    // Serve the API
+    // Setup graceful shutdown signal handling
+    let shutdown_signal = async {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("Failed to install SIGTERM handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {
+                println!("\nReceived Ctrl+C, shutting down gracefully...");
+            },
+            _ = terminate => {
+                println!("\nReceived SIGTERM, shutting down gracefully...");
+            },
+        }
+    };
+
+    // Serve the API with graceful shutdown
     let port = std::env::var("PORT").unwrap_or("3000".to_string());
     println!("Starting iGait backend on port {port}...");
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await
         .context("Couldn't start up listener!")?;
-    axum::serve(listener, app).await
+    
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal)
+        .await
         .context("Could't serve the API!")?;
 
+    println!("Server shut down gracefully");
     Ok(())
 }

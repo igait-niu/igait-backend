@@ -241,23 +241,74 @@ pub async fn run_finalize_worker(worker: FinalizeStageWorker) -> Result<()> {
         generate_worker_id,
     };
     use std::time::Duration;
+    use tokio_util::sync::CancellationToken;
 
     let db = FirebaseRtdb::from_env()?;
     let worker_id = generate_worker_id(worker.service_name());
     let queue_ops = QueueOps::new(db, worker_id.clone());
+    let shutdown_token = CancellationToken::new();
+    
+    // Setup signal handler
+    let shutdown_signal = shutdown_token.clone();
+    tokio::spawn(async move {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("Failed to install SIGTERM handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {
+                println!("\nReceived Ctrl+C, shutting down gracefully...");
+            },
+            _ = terminate => {
+                println!("\nReceived SIGTERM, shutting down gracefully...");
+            },
+        }
+        
+        shutdown_signal.cancel();
+    });
     
     println!("[{}] Starting Finalize worker...", worker_id);
 
     loop {
+        // Check for shutdown signal
+        if shutdown_token.is_cancelled() {
+            println!("[{}] Shutdown signal received, stopping worker loop", worker_id);
+            break;
+        }
+
         // Try to claim a job from the finalize queue
         match queue_ops.claim_finalize_job().await {
             ClaimResult::Claimed(job) => {
                 println!("[{}] Claimed finalize job {}", worker_id, job.job_id);
                 
-                // Process the job
-                let result = worker.process(&job).await;
+                // Process the job with cancellation support
+                let process_result = tokio::select! {
+                    result = worker.process(&job) => result,
+                    _ = shutdown_token.cancelled() => {
+                        println!(
+                            "[{}] Finalize job {} processing cancelled due to shutdown",
+                            worker_id, job.job_id
+                        );
+                        // Job will remain claimed and be picked up by another worker
+                        // or timeout and be re-claimed later
+                        break;
+                    }
+                };
                 
-                match result {
+                match process_result {
                     ProcessingResult::Success { duration_ms, .. } => {
                         println!(
                             "[{}] Finalize job {} completed in {}ms",
@@ -279,15 +330,30 @@ pub async fn run_finalize_worker(worker: FinalizeStageWorker) -> Result<()> {
                 }
             }
             ClaimResult::QueueEmpty | ClaimResult::AllClaimed => {
-                // No jobs available, wait before polling again
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                // No jobs available, wait before polling again (or until shutdown)
+                tokio::select! {
+                    _ = tokio::time::sleep(Duration::from_secs(5)) => {},
+                    _ = shutdown_token.cancelled() => {
+                        println!("[{}] Shutdown signal received during sleep", worker_id);
+                        break;
+                    }
+                }
             }
             ClaimResult::Error(e) => {
                 eprintln!("[{}] Error claiming job: {}", worker_id, e);
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::select! {
+                    _ = tokio::time::sleep(Duration::from_secs(10)) => {},
+                    _ = shutdown_token.cancelled() => {
+                        println!("[{}] Shutdown signal received during error backoff", worker_id);
+                        break;
+                    }
+                }
             }
         }
     }
+    
+    println!("[{}] Finalize worker stopped gracefully", worker_id);
+    Ok(())
 }
 
 #[tokio::main]

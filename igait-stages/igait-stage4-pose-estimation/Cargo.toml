@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Stage 4: Pose estimation microservice for iGait pipeline"
 
+[[bin]]
+name = "igait-stage4-pose-estimation"
+path = "src/main.rs"
+
 [dependencies]
 igait-lib = { path = "../../igait-lib", features = ["microservice"] }
 anyhow = "1"
