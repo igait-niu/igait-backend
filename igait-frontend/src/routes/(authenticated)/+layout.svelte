@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { authStore, errorStore } from '$lib/stores';
 	import { isAuthenticated, isLoading, USER_CONTEXT_KEY } from '$lib/types';
-	import { ErrorBanner, ErrorPage, LoadingPage } from '$lib/components';
+	import { ErrorBanner, ErrorPage, Footer, LoadingPage } from '$lib/components';
 	import { Button } from '$lib/components/ui/button';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -30,17 +30,17 @@
 	const authState = $derived(authStore.state);
 	const hasError = $derived(errorStore.hasError);
 
+	// Helper function that sets context and returns user
+	// Called via {@const} in template to ensure context is set when user exists
+	function setUserContext(user: import('$lib/types').User) {
+		setContext(USER_CONTEXT_KEY, user);
+		return user;
+	}
+
 	// Redirect unauthenticated users to login
 	$effect(() => {
 		if (!isLoading(authState) && !isAuthenticated(authState)) {
 			goto('/login');
-		}
-	});
-
-	// Set user in context when authenticated
-	$effect(() => {
-		if (isAuthenticated(authState)) {
-			setContext(USER_CONTEXT_KEY, authState.user);
 		}
 	});
 
@@ -82,7 +82,7 @@
 {#if isLoading(authState)}
 	<LoadingPage message="Checking authentication..." />
 {:else if isAuthenticated(authState)}
-	{@const user = authState.user}
+	{@const user = setUserContext(authState.user)}
 	
 	<!-- Error Banner - always visible at top when there's an error -->
 	<ErrorBanner />
@@ -195,13 +195,7 @@
 		</main>
 
 		<!-- Footer -->
-		<footer class="border-t py-6">
-			<div class="mx-auto max-w-7xl px-4">
-				<p class="text-center text-sm text-muted-foreground">
-					© {new Date().getFullYear()} iGait. All rights reserved.
-				</p>
-			</div>
-		</footer>
+		<Footer />
 	</div>
 {:else}
 	<!-- Redirect happening, show loading -->

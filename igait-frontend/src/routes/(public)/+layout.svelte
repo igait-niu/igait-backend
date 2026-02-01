@@ -3,7 +3,7 @@
 	import { isAuthenticated, isLoading } from '$lib/types';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { LoadingPage } from '$lib/components';
+	import { Footer, LoadingPage } from '$lib/components';
 
 	let { children } = $props();
 
@@ -75,25 +75,6 @@
 		</main>
 
 		<!-- Footer -->
-		<footer class="border-t py-8">
-			<div class="mx-auto max-w-7xl px-4">
-				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-					<p class="text-sm text-muted-foreground">
-						© {new Date().getFullYear()} iGait. All rights reserved.
-					</p>
-					<nav class="flex gap-4">
-						<a href="/terms" class="text-sm text-muted-foreground hover:text-foreground">
-							Terms
-						</a>
-						<a href="/policy" class="text-sm text-muted-foreground hover:text-foreground">
-							Privacy
-						</a>
-						<a href="/hipaa" class="text-sm text-muted-foreground hover:text-foreground">
-							HIPAA
-						</a>
-					</nav>
-				</div>
-			</div>
-		</footer>
+		<Footer />
 	</div>
 {/if}
