@@ -1,5 +1,5 @@
 [package]
-name = "igait-stage4-pose-estimationx"
+name = "igait-stage4-pose-estimation"
 version = "0.1.0"
 edition = "2021"
 description = "Stage 4: Pose estimation microservice for iGait pipeline"

@@ -17,5 +17,3 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /app/igait-stages/igait-stage4-pose-estimation/target/release/igait-stage4-pose-estimation /usr/local/bin/worker
 ENV RUST_LOG=info
 CMD ["worker"]
-
-CMD ["stage-service"]
