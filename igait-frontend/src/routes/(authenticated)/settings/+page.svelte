@@ -11,40 +11,120 @@
 	<title>Settings - iGait</title>
 </svelte:head>
 
-<div class="space-y-8">
+<div class="settings-page stack-lg">
 	<section>
-		<h1 class="text-3xl font-bold tracking-tight">Settings</h1>
-		<p class="mt-2 text-muted-foreground">
+		<h1 class="page-title">Settings</h1>
+		<p class="page-description">
 			Manage your account preferences
 		</p>
 	</section>
 
 	<!-- Coming Soon Placeholder -->
-	<Card.Root class="text-center">
+	<Card.Root class="coming-soon-card">
 		<Card.Header>
-			<div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+			<div class="coming-soon-icon">
 				<Construction class="h-8 w-8 text-primary" />
 			</div>
-			<Card.Title class="text-2xl">Settings Coming Soon!</Card.Title>
-			<Card.Description class="text-base">
+			<Card.Title class="coming-soon-title">Settings Coming Soon!</Card.Title>
+			<Card.Description class="coming-soon-description">
 				Account settings are being implemented~ 🦊
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<p class="mx-auto max-w-md text-sm text-muted-foreground">
+			<p class="coming-soon-text">
 				Soon you'll be able to update your profile, manage notification preferences, 
 				and configure your account settings here.
 			</p>
 			
-			<div class="mt-6 rounded-lg bg-muted p-4">
-				<h3 class="font-semibold">Your Current Account</h3>
-				<p class="text-sm text-muted-foreground">{user.email}</p>
-				<p class="text-sm text-muted-foreground">{user.displayName}</p>
+			<div class="account-info">
+				<h3 class="account-title">Your Current Account</h3>
+				<p class="account-detail">{user.email}</p>
+				<p class="account-detail">{user.displayName}</p>
 			</div>
 
-			<Button variant="outline" href="/dashboard" class="mt-6">
+			<Button variant="outline" href="/dashboard" class="back-button">
 				Back to Dashboard
 			</Button>
 		</Card.Content>
 	</Card.Root>
 </div>
+
+<style>
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.025em;
+	}
+
+	@media (min-width: 640px) {
+		.page-title {
+			font-size: 1.875rem;
+		}
+	}
+
+	.page-description {
+		margin-top: 0.5rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.coming-soon-card) {
+		text-align: center;
+	}
+
+	.coming-soon-icon {
+		margin: 0 auto 1rem;
+		display: flex;
+		height: 4rem;
+		width: 4rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		background-color: hsl(var(--primary) / 0.1);
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
+	}
+
+	:global(.coming-soon-title) {
+		font-size: 1.5rem;
+	}
+
+	:global(.coming-soon-description) {
+		font-size: 1rem;
+	}
+
+	.coming-soon-text {
+		margin: 0 auto;
+		max-width: 28rem;
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.account-info {
+		margin-top: 1.5rem;
+		border-radius: var(--radius-lg);
+		background-color: hsl(var(--muted));
+		padding: 1rem;
+	}
+
+	.account-title {
+		font-weight: 600;
+	}
+
+	.account-detail {
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.back-button) {
+		margin-top: 1.5rem;
+	}
+</style>

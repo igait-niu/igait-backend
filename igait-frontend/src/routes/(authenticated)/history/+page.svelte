@@ -46,10 +46,10 @@
 	<title>History - iGait</title>
 </svelte:head>
 
-<div class="space-y-8">
+<div class="stack-lg">
 	<section>
-		<h1 class="text-3xl font-bold tracking-tight">Submission History</h1>
-		<p class="mt-2 text-muted-foreground">
+		<h1 class="page-title">Submission History</h1>
+		<p class="page-description">
 			View your past gait analysis submissions and results
 		</p>
 	</section>
@@ -64,7 +64,7 @@
 		</Card.Header>
 		<Card.Content class="p-0">
 			{#if submissions.length === 0}
-				<div class="flex flex-col items-center justify-center py-12 text-center">
+				<div class="empty-state">
 					<FileVideo class="mb-4 h-12 w-12 text-muted-foreground" />
 					<h3 class="font-semibold">No submissions yet</h3>
 					<p class="text-sm text-muted-foreground">
@@ -75,16 +75,16 @@
 					</Button>
 				</div>
 			{:else}
-				<div class="divide-y">
+				<div class="history-list">
 					{#each submissions as submission}
-						<div class="flex items-center justify-between p-4">
-							<div class="flex items-center gap-4">
-								<div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+						<div class="history-item">
+							<div class="history-content">
+								<div class="history-icon">
 									<FileVideo class="h-5 w-5 text-muted-foreground" />
 								</div>
 								<div>
-									<p class="font-medium">{submission.result}</p>
-									<p class="text-sm text-muted-foreground">{submission.date}</p>
+									<p class="history-result">{submission.result}</p>
+									<p class="history-date">{submission.date}</p>
 								</div>
 							</div>
 							<Badge variant={submission.status === 'completed' ? 'default' : 'secondary'}>
@@ -100,8 +100,8 @@
 	<!-- Request Full History -->
 	<Card.Root>
 		<Card.Header>
-			<div class="flex items-center gap-4">
-				<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+			<div class="request-header">
+				<div class="request-icon">
 					<Mail class="h-6 w-6 text-primary" />
 				</div>
 				<div>
@@ -113,7 +113,7 @@
 			</div>
 		</Card.Header>
 		<Card.Content>
-			<p class="mb-4 text-sm text-muted-foreground">
+			<p class="request-description">
 				For a complete history of your submissions including original videos and 
 				detailed analysis reports, please contact our support team.
 			</p>
@@ -124,3 +124,111 @@
 		</Card.Content>
 	</Card.Root>
 </div>
+
+<style>
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.025em;
+	}
+
+	@media (min-width: 640px) {
+		.page-title {
+			font-size: 1.875rem;
+		}
+	}
+
+	.page-description {
+		margin-top: 0.5rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-xl) 0;
+		text-align: center;
+	}
+
+	:global(.empty-icon) {
+		margin-bottom: 1rem;
+		height: 3rem;
+		width: 3rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.empty-title) {
+		font-weight: 600;
+	}
+
+	:global(.empty-description) {
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+		margin-bottom: 1rem;
+	}
+
+	.history-list {
+		border-top: 1px solid hsl(var(--border));
+	}
+
+	.history-list > :not(:last-child) {
+		border-bottom: 1px solid hsl(var(--border));
+	}
+
+	.history-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem;
+	}
+
+	.history-content {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.history-icon {
+		display: flex;
+		height: 2.5rem;
+		width: 2.5rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: 9999px;
+		background-color: hsl(var(--muted));
+	}
+
+	.history-result {
+		font-weight: 500;
+	}
+
+	.history-date {
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.request-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.request-icon {
+		display: flex;
+		height: 3rem;
+		width: 3rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-lg);
+		background-color: hsl(var(--primary) / 0.1);
+	}
+
+	.request-description {
+		margin-bottom: 1rem;
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+</style>

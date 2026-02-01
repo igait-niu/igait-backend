@@ -7,10 +7,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
-	import { Upload, Video, CheckCircle, Loader2 } from '@lucide/svelte';
+	import { Loader2, Upload } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { type Option, None, Some, AppError } from '$lib/result';
+	import VideoUploadArea from './VideoUploadArea.svelte';
 
 	const user = getUser();
 
@@ -74,15 +75,15 @@
 	<title>New Submission - iGait</title>
 </svelte:head>
 
-<div class="space-y-8">
+<div class="submit-page stack-lg">
 	<section>
-		<h1 class="text-3xl font-bold tracking-tight">New Submission</h1>
-		<p class="mt-2 text-muted-foreground">
+		<h1 class="page-title">New Submission</h1>
+		<p class="page-description">
 			Upload your walking videos for gait analysis
 		</p>
 	</section>
 
-	<Card.Root class="max-w-2xl">
+	<Card.Root class="submit-card">
 		<Card.Header>
 			<Card.Title>Upload Videos</Card.Title>
 			<Card.Description>
@@ -92,15 +93,15 @@
 		</Card.Header>
 		<Card.Content>
 			{#if error.isSome()}
-				<Alert variant="destructive" class="mb-6">
+				<Alert variant="destructive" class="form-error">
 					<AlertDescription>
 						{error.value.displayMessage}
 					</AlertDescription>
 				</Alert>
 			{/if}
 
-			<form onsubmit={handleSubmit} class="space-y-6">
-				<div class="space-y-2">
+			<form onsubmit={handleSubmit} class="submit-form">
+				<div class="form-group">
 					<Label for="name">Subject Name (optional)</Label>
 					<Input
 						id="name"
@@ -110,74 +111,33 @@
 					/>
 				</div>
 
-				<!-- Front Video Upload -->
-				<div class="space-y-2">
-					<Label for="frontVideo">Front View Video</Label>
-					<div class="flex items-center gap-4">
-						<label 
-							class="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 transition-colors hover:border-primary/50 hover:bg-muted"
-						>
-							<input
-								id="frontVideo"
-								type="file"
-								accept="video/*"
-								class="hidden"
-								onchange={(e) => handleFileChange(e, 'front')}
-								disabled={isSubmitting}
-							/>
-							{#if frontVideo}
-								<CheckCircle class="mb-2 h-8 w-8 text-green-500" />
-								<span class="text-sm font-medium">{frontVideo.name}</span>
-								<span class="text-xs text-muted-foreground">
-									{(frontVideo.size / 1024 / 1024).toFixed(1)} MB
-								</span>
-							{:else}
-								<Video class="mb-2 h-8 w-8 text-muted-foreground" />
-								<span class="text-sm text-muted-foreground">Click to upload front video</span>
-							{/if}
-						</label>
-					</div>
-				</div>
+				<!-- Video Uploads -->
+				<VideoUploadArea
+					label="Front View Video"
+					id="frontVideo"
+					bind:file={frontVideo}
+					disabled={isSubmitting}
+					onchange={(e) => handleFileChange(e, 'front')}
+				/>
 
-				<!-- Side Video Upload -->
-				<div class="space-y-2">
-					<Label for="sideVideo">Side View Video</Label>
-					<div class="flex items-center gap-4">
-						<label 
-							class="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 transition-colors hover:border-primary/50 hover:bg-muted"
-						>
-							<input
-								id="sideVideo"
-								type="file"
-								accept="video/*"
-								class="hidden"
-								onchange={(e) => handleFileChange(e, 'side')}
-								disabled={isSubmitting}
-							/>
-							{#if sideVideo}
-								<CheckCircle class="mb-2 h-8 w-8 text-green-500" />
-								<span class="text-sm font-medium">{sideVideo.name}</span>
-								<span class="text-xs text-muted-foreground">
-									{(sideVideo.size / 1024 / 1024).toFixed(1)} MB
-								</span>
-							{:else}
-								<Video class="mb-2 h-8 w-8 text-muted-foreground" />
-								<span class="text-sm text-muted-foreground">Click to upload side video</span>
-							{/if}
-						</label>
-					</div>
-				</div>
+				<VideoUploadArea
+					label="Side View Video"
+					id="sideVideo"
+					bind:file={sideVideo}
+					disabled={isSubmitting}
+					onchange={(e) => handleFileChange(e, 'side')}
+				/>
 
 				<!-- Progress bar -->
 				{#if isSubmitting && progress > 0}
-					<div class="space-y-2">
-						<div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+					<div class="progress-container">
+						<div class="progress-bar">
 							<div 
-								class="h-full bg-primary transition-all duration-300"
+								class="progress-fill"
 								style="width: {progress}%"
 							></div>
 						</div>
-						<p class="text-center text-sm text-muted-foreground">
+						<p class="progress-text">
 							Uploading... {progress}%
 						</p>
 					</div>
@@ -185,7 +145,7 @@
 
 				<Button 
 					type="submit" 
-					class="w-full" 
+					class="submit-button" 
 					disabled={isSubmitting || !frontVideo || !sideVideo}
 				>
 					{#if isSubmitting}
@@ -200,3 +160,62 @@
 		</Card.Content>
 	</Card.Root>
 </div>
+
+<style>
+	.page-title {
+		font-size: 1.875rem;
+		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.025em;
+	}
+
+	.page-description {
+		margin-top: 0.5rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.submit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.progress-container {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.progress-bar {
+		height: 0.5rem;
+		width: 100%;
+		overflow: hidden;
+		border-radius: 9999px;
+		background-color: hsl(var(--muted));
+	}
+
+	.progress-fill {
+		height: 100%;
+		background-color: hsl(var(--primary));
+		transition: width 0.3s;
+	}
+
+	.progress-text {
+		text-align: center;
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	@media (max-width: 640px) {
+		.page-title {
+			font-size: 1.5rem;
+		}
+	}
+</style>
+

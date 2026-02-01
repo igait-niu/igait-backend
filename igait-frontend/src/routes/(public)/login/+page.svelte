@@ -180,24 +180,24 @@
 		padding-bottom: var(--spacing-lg);
 	}
 
-	.auth-card {
+	:global(.auth-card) {
 		width: 100%;
 		max-width: 28rem;
 	}
 
-	.auth-header {
+	:global(.auth-header) {
 		text-align: center;
 	}
 
-	.auth-title {
+	:global(.auth-title) {
 		font-size: 1.5rem;
 	}
 
-	.error-alert {
+	:global(.error-alert) {
 		margin-bottom: 1.5rem;
 	}
 
-	.social-button {
+	:global(.social-button) {
 		width: 100%;
 	}
 
@@ -234,11 +234,17 @@
 		gap: 0.5rem;
 	}
 
-	.submit-button {
+	:global(.submit-button) {
 		width: 100%;
 	}
 
-	.auth-footer {
+	:global(.submit-button:focus-visible),
+	:global(.social-button:focus-visible) {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 2px;
+	}
+
+	:global(.auth-footer) {
 		display: flex;
 		flex-direction: column;
 		gap: var(--stack-sm);
