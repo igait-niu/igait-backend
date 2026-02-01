@@ -28,7 +28,7 @@ RUN cargo clean --release
 RUN cargo build --release
 
 FROM alpine:latest
-RUN apk add --no-cache ffmpeg ca-certificates libgcc
+RUN apk add --no-cache ca-certificates libgcc
 COPY --from=builder /app/igait-stages/igait-stage3-reframing/target/release/igait-stage3-reframing /usr/local/bin/worker
 ENV RUST_LOG=info
 CMD ["worker"]

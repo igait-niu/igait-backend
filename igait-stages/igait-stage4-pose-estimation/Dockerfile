@@ -1,6 +1,6 @@
-FROM rust:1.93-slim AS builder
+FROM rust:1.93-alpine AS builder
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
-    ca-certificates libssl3 python3 python3-pip python3-opencv \
+    ca-certificates python3 python3-pip python3-opencv \
     && pip3 install --no-cache-dir --break-system-packages mediapipe numpy \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/igait-stages/igait-stage4-pose-estimation/target/release/igait-stage4-pose-estimation /usr/local/bin/worker
