@@ -1423,11 +1423,12 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-util",
  "tower-http 0.5.2",
 ]
 
 [[package]]
-name = "igait-stage4-pose-estimationx"
+name = "igait-stage4-pose-estimation"
 version = "0.1.0"
 dependencies = [
  "anyhow",

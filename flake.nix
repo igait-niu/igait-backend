@@ -12,9 +12,14 @@
           inherit system;
           overlays = [ rust-overlay.overlays.default ];
         };
+        
+        python-package-list = pkgs: with pkgs; [
+          pip
+        ];
+        python = pkgs.python312.withPackages python-package-list;
       in
       {
-        devShell = pkgs.mkShell {
+        devShell = pkgs.mkShell rec {
           buildInputs = with pkgs; [ 
             # Rust toolchain
             (rust-bin.stable.latest.default.override {
@@ -25,6 +30,11 @@
             pkg-config
             openssl
             openssl.dev
+            libz
+            libxcb
+            libgcc
+            libglvnd
+            glib
             
             # Runtime tools
             bun 
@@ -32,8 +42,15 @@
             
             # Useful for microservices development
             ffmpeg  # Stage 1: media conversion
-            python312  # Stage 2, 5, 6: Python processing
+            python  # Stage 2, 5, 6: Python processing
           ];
+          shellHook = 
+            ''
+            python -m venv .venv
+            source .venv/bin/activate
+            pip install -r ./igait-stages/igait-stage4-pose-estimation/igait-mediapipe/requirements.txt
+            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath (buildInputs ++ [ pkgs.stdenv.cc.cc ])}
+            '';
           
           # Set up environment for OpenSSL
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";

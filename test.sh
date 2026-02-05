@@ -10,13 +10,13 @@ echo ""
 # Test data
 USER_ID="test_user_$(date +%s)"
 AGE=25
-ETHNICITY="Test"
+ETHNICITY="caucasian"
 SEX="M"
 HEIGHT="180cm"
 WEIGHT=75
 EMAIL="test@example.com"
-FRONT_VIDEO="front.mp4"
-SIDE_VIDEO="side.mp4"
+FRONT_VIDEO="front.MOV"
+SIDE_VIDEO="side.MOV"
 
 echo "📋 Test Parameters:"
 echo "  User ID: $USER_ID"
