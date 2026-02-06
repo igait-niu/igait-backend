@@ -3,7 +3,7 @@
 //! Extracts body keypoints from videos using MediaPipe's Holistic model.
 //! Processes both front and side videos, generating:
 //! - Pose overlay videos
-//! - JSON landmark data for ML training
+//! - JSON landmark data for ML training 
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
