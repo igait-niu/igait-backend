@@ -1,3 +1,7 @@
 [submodule "igait-stages/igait-stage4-pose-estimation/igait-mediapipe"]
 	path = igait-stages/igait-stage4-pose-estimation/igait-mediapipe
 	url = https://github.com/igait-niu/igait-mediapipe
+
+[submodule "igait-kubernetes-configs"]
+	path = igait-kubernetes-configs
+	url = https://github.com/igait-niu/igait-kubernetes-configs

@@ -36,9 +36,9 @@ You'll want to have the following installed on your machine:
 - [Nix](https://nixos.org/download/). Enable [Nix Flakes](https://nixos.wiki/wiki/flakes)
 - [`direnv`](https://direnv.net/), for fast dev environment loading. Be sure to hook your shell!
 
-First, download this repository:
+First, download this repository (note the submodules!):
 ```bash
-git clone https://github.com/igait-niu/igait.git
+git clone --recurse-submodules https://github.com/igait-niu/igait.git
 cd igait
 ```
 
