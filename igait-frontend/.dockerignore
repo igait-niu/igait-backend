@@ -1,0 +1,27 @@
+# Build files
+Dockerfile
+node_modules
+.svelte-kit
+
+# Nix files
+flake.lock
+flake.nix
+.envrc
+/.direnv
+
+# Lock files (not needed, bun.lock is copied explicitly)
+package-lock.json
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# OS files
+.DS_Store

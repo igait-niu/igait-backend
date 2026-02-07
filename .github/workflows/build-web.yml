@@ -4,13 +4,13 @@ on:
   push:
     branches: ['master']
     paths:
-      - 'igait-web/**'
+      - 'igait-frontend/**'
       - '.github/workflows/build-web.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/igait-web
+  IMAGE_NAME: ${{ github.repository }}/igait-frontend
 
 jobs:
   build-and-push:
@@ -47,8 +47,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./igait-web
-          file: ./igait-web/Dockerfile
+          context: ./igait-frontend
+          file: ./igait-frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

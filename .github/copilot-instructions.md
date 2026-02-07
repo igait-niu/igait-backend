@@ -24,7 +24,7 @@ This is the **iGait Backend** repository - a multi-service gait analysis pipelin
   - Stage 5: Cycle detection
   - Stage 6: ML prediction (TensorFlow/Python)
   - Stage 7: Finalize & email
-- **`igait-web/`** - Frontend (Bun/React/TypeScript) - submodule
+- **`igait-frontend/`** - Frontend (Bun/SvelteKit/TypeScript)
 
 ### Technology Stack
 - **Backend**: Rust (Actix-web), Firebase Admin SDK
