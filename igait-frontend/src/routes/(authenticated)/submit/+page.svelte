@@ -8,6 +8,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { Loader2, Upload } from '@lucide/svelte';
+	import { Switch } from '$lib/components/ui/switch';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { type Option, None, Some, AppError } from '$lib/result';
@@ -29,6 +30,9 @@
 	// Video fields
 	let frontVideo: File | undefined = $state(undefined);
 	let sideVideo: File | undefined = $state(undefined);
+
+	// Approval
+	let requiresApproval = $state(false);
 	
 	// Form state
 	let isSubmitting = $state(false);
@@ -113,7 +117,8 @@
 			weight: parseInt(weight, 10),
 			role: role as UserRole,
 			frontVideo,
-			sideVideo
+			sideVideo,
+			requiresApproval
 		};
 
 		const onProgress: ProgressCallback = (p) => {
@@ -282,6 +287,23 @@
 					</div>
 				</fieldset>
 
+				<!-- Options Section -->
+				<fieldset class="form-section">
+					<legend class="form-section__title">Options</legend>
+					
+					<label class="approval-option">
+						<div class="approval-text">
+							<span class="approval-label">Request Manual Approval</span>
+							<span class="approval-description">When enabled, an administrator must manually review your submission before it is processed.</span>
+						</div>
+						<Switch
+							checked={requiresApproval}
+							onCheckedChange={(v) => requiresApproval = v}
+							disabled={isSubmitting}
+						/>
+					</label>
+				</fieldset>
+
 				<div class="submit-button-container">
 					{#if isSubmitting}
 						<div 
@@ -390,6 +412,37 @@
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 1rem;
+	}
+
+	/* Approval toggle */
+	.approval-option {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.875rem 1rem;
+		background: hsl(var(--muted) / 0.4);
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius-md);
+		cursor: pointer;
+	}
+
+	.approval-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+	}
+
+	.approval-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: hsl(var(--foreground));
+	}
+
+	.approval-description {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		line-height: 1.4;
 	}
 
 	/* Error details styling */

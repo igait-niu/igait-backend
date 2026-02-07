@@ -75,6 +75,9 @@ export async function submitContribution(
 	formData.append('height', `${request.heightFeet}'${request.heightInches}`);
 	formData.append('weight', request.weight.toString());
 	formData.append('email', request.email);
+	if (request.requiresApproval) {
+		formData.append('requires_approval', 'true');
+	}
 	formData.append('fileuploadfront', request.frontVideo);
 	formData.append('fileuploadside', request.sideVideo);
 

@@ -32,6 +32,7 @@ export interface ContributionRequest {
 	readonly role: UserRole;
 	readonly frontVideo: File;
 	readonly sideVideo: File;
+	readonly requiresApproval?: boolean;
 }
 
 /**

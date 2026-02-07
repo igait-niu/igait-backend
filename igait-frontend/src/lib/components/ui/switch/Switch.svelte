@@ -36,16 +36,17 @@
 		width: 2.75rem;
 		height: 1.5rem;
 		border-radius: 9999px;
-		border: none;
+		border: 1px solid var(--border);
 		padding: 0.125rem;
 		cursor: pointer;
-		transition: background-color 0.2s ease;
-		background-color: hsl(var(--muted));
+		transition: background-color 0.2s ease, border-color 0.2s ease;
+		background-color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.switch.checked {
-		background-color: hsl(var(--primary));
+		background-color: var(--primary);
+		border-color: var(--primary);
 	}
 
 	.switch.disabled {
@@ -58,13 +59,14 @@
 		width: 1.25rem;
 		height: 1.25rem;
 		border-radius: 9999px;
-		background-color: hsl(var(--background));
-		transition: transform 0.2s ease;
+		background-color: var(--background);
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
 		transform: translateX(0);
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 	}
 
 	.thumb.checked {
 		transform: translateX(1.25rem);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 </style>

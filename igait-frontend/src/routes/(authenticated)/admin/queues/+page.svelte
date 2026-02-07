@@ -19,6 +19,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Switch } from '$lib/components/ui/switch';
 	import { JobsDataTable } from '$lib/components/jobs';
+	import { Inbox } from '@lucide/svelte';
 	import AdminLoadingState from '../AdminLoadingState.svelte';
 	import AdminErrorState from '../AdminErrorState.svelte';
 	import QueueJobDetailPanel from './QueueJobDetailPanel.svelte';
@@ -55,7 +56,7 @@
 		{ key: 'stage_4', name: 'Stage 4', description: 'Pose Estimation' },
 		{ key: 'stage_5', name: 'Stage 5', description: 'Cycle Detection' },
 		{ key: 'stage_6', name: 'Stage 6', description: 'ML Prediction' },
-		{ key: 'stage_7', name: 'Stage 7', description: 'Finalize' },
+		{ key: 'finalize', name: 'Stage 7', description: 'Finalize' },
 	] as const;
 
 	// ── Derived data ───────────────────────────────────────
@@ -104,9 +105,6 @@
 	const activeStageInfo = $derived(
 		stageInfo.find(s => s.key === activeStage) ?? stageInfo[0]
 	);
-
-	/** Whether this is the finalize stage (no approval toggle) */
-	const isFinalize = $derived(activeStage === 'finalize');
 
 	// ── Handlers ───────────────────────────────────────────
 
@@ -166,17 +164,15 @@
 
 		<!-- Active Stage Controls -->
 		<div class="stage-controls">
-			<span class="stage-description">{activeStageInfo.description}</span>
+			<span class="stage-description"><b>{activeStageInfo.description}</b></span>
 
-			{#if !isFinalize}
-				<label class="approval-toggle">
-					<Switch
-						checked={activeRequiresApproval}
-						onCheckedChange={handleToggleApproval}
-					/>
-					<span class="toggle-label">Require Manual Approval</span>
-				</label>
-			{/if}
+			<label class="approval-toggle">
+				<Switch
+					checked={activeRequiresApproval}
+					onCheckedChange={handleToggleApproval}
+				/>
+				<span class="toggle-label">Require Manual Approval</span>
+			</label>
 		</div>
 
 		<!-- Main Content -->
@@ -185,7 +181,9 @@
 			<div class="table-column">
 				{#if jobsForTable.length === 0}
 					<div class="empty-state">
-						<p>No jobs in this queue</p>
+						<Inbox class="empty-icon" />
+						<p class="empty-title">No jobs in queue</p>
+						<p class="empty-description">{activeStageInfo.description} has no pending items right now.</p>
 					</div>
 				{:else}
 					<JobsDataTable 
@@ -218,7 +216,7 @@
 	.queue-overview {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 1.25rem;
 	}
 
 	.overview-header {
@@ -243,9 +241,10 @@
 
 	.stage-tabs {
 		display: flex;
-		gap: 0.25rem;
+		gap: 0.125rem;
 		overflow-x: auto;
-		border-bottom: 1px solid hsl(var(--border));
+		overflow-y: clip;
+		border-bottom: 2px solid hsl(var(--border));
 		padding-bottom: 0;
 	}
 
@@ -253,7 +252,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.375rem;
-		padding: 0.5rem 0.75rem;
+		padding: 0.625rem 0.875rem;
 		border: none;
 		background: none;
 		cursor: pointer;
@@ -261,17 +260,20 @@
 		font-weight: 500;
 		color: hsl(var(--muted-foreground));
 		border-bottom: 2px solid transparent;
-		transition: color 0.15s ease, border-color 0.15s ease;
+		transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 		white-space: nowrap;
-		margin-bottom: -1px;
+		margin-bottom: -2px;
+		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 	}
 
 	.stage-tab:hover {
 		color: hsl(var(--foreground));
+		background-color: hsl(var(--muted) / 0.5);
 	}
 
 	.stage-tab.active {
 		color: hsl(var(--foreground));
+		font-weight: 600;
 		border-bottom-color: hsl(var(--primary));
 	}
 
@@ -283,6 +285,8 @@
 		font-size: 0.625rem;
 		padding: 0.0625rem 0.375rem;
 		height: auto;
+		min-width: 1.25rem;
+		text-align: center;
 	}
 
 	/* ── Stage Controls ─────────────────────────────────── */
@@ -292,11 +296,16 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+		padding: 0.625rem 0.875rem;
+		background: hsl(var(--muted) / 0.35);
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius-md);
 	}
 
 	.stage-description {
 		font-size: 0.8125rem;
 		color: hsl(var(--muted-foreground));
+		font-weight: 500;
 	}
 
 	.approval-toggle {
@@ -335,13 +344,37 @@
 	}
 
 	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
 		text-align: center;
-		padding: 3rem 2rem;
+		padding: 3.5rem 2rem;
 		color: hsl(var(--muted-foreground));
-		font-size: 0.875rem;
 		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.5rem;
+		border: 1px dashed hsl(var(--border));
+		border-radius: var(--radius-md);
+	}
+
+	:global(.empty-icon) {
+		width: 2.5rem;
+		height: 2.5rem;
+		color: hsl(var(--muted-foreground) / 0.5);
+		margin-bottom: 0.75rem;
+	}
+
+	.empty-title {
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		margin: 0 0 0.25rem;
+	}
+
+	.empty-description {
+		font-size: 0.8125rem;
+		margin: 0;
+		max-width: 20rem;
+		line-height: 1.4;
 	}
 
 	/* ── Responsive ─────────────────────────────────────── */
