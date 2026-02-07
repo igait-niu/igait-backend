@@ -29,7 +29,7 @@ This is the **iGait Backend** repository - a multi-service gait analysis pipelin
 ### Technology Stack
 - **Backend**: Rust (Actix-web), Firebase Admin SDK
 - **Microservices**: Rust workers with SQS queues
-- **Frontend**: Bun, React, TypeScript, Vite
+- **Frontend**: *Bun*, React, TypeScript, Vite
 - **Infrastructure**: Docker, GitHub Actions CI/CD
 - **Cloud**: AWS (S3, SQS), Google Cloud (Firebase, Firestore)
 - **ML/CV**: Python (MediaPipe, TensorFlow, OpenCV)
