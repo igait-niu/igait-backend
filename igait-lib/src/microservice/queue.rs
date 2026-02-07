@@ -8,13 +8,19 @@ use std::collections::HashMap;
 
 use crate::microservice::{JobMetadata, StageNumber};
 
-/// Default timeout for claimed jobs (50 minutes in milliseconds).
-/// If a worker claims a job but doesn't complete it within this time,
+/// Default timeout for claimed jobs (5 minutes in milliseconds).
+/// If a worker claims a job but doesn't update the heartbeat within this time,
 /// the job becomes available for other workers to claim.
-pub const CLAIM_TIMEOUT_MS: u64 = 50 * 60 * 1000;
+///
+/// The heartbeat interval (30s) refreshes `claimed_at` regularly, so a live
+/// worker will never hit this timeout. If a worker is OOMKilled or otherwise
+/// ungracefully terminated, the heartbeat stops and the job becomes
+/// re-claimable after this duration.
+pub const CLAIM_TIMEOUT_MS: u64 = 5 * 60 * 1000;
 
-/// Interval for heartbeat updates during long-running jobs (1 minute).
-pub const HEARTBEAT_INTERVAL_SECS: u64 = 60;
+/// Interval for heartbeat updates during long-running jobs (30 seconds).
+/// Must be well below `CLAIM_TIMEOUT_MS` to prevent false expirations.
+pub const HEARTBEAT_INTERVAL_SECS: u64 = 30;
 
 // ============================================================================
 // QUEUE ITEM TYPES
