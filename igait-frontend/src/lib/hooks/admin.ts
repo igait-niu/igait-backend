@@ -3,7 +3,7 @@
  */
 
 import { getFirebaseDatabase } from '$lib/firebase';
-import { ref, onValue, type Unsubscribe } from 'firebase/database';
+import { ref, onValue, set, type Unsubscribe } from 'firebase/database';
 import type { Job } from '../../types/Job';
 import type { JobStatus } from '../../types/JobStatus';
 
@@ -25,6 +25,8 @@ export interface QueueItem {
 		height?: string;
 		weight?: number;
 	};
+	requires_approval?: boolean;
+	approved?: boolean;
 }
 
 /**
@@ -144,7 +146,6 @@ export function subscribeToAllJobs(
 				
 				jobs.forEach((job, index) => {
 					if (!job || !job.email) return;
-					if (job.email === 'placeholder@placeholder.com') return;
 					
 					allJobs.push({
 						...job,
@@ -177,5 +178,113 @@ export function isQueuesError(state: QueuesState): state is { status: 'error'; e
 }
 
 export function isQueuesLoaded(state: QueuesState): state is { status: 'loaded'; queues: QueuesData } {
+	return state.status === 'loaded';
+}
+
+// ============================================================================
+// QUEUE CONFIG
+// ============================================================================
+
+/**
+ * Configuration for a single queue stage
+ */
+export interface QueueConfigItem {
+	requires_approval: boolean;
+}
+
+/**
+ * All queue configs keyed by stage
+ */
+export interface QueueConfigData {
+	[key: string]: QueueConfigItem | undefined;
+}
+
+/**
+ * State of queue config loading
+ */
+export type QueueConfigState =
+	| { readonly status: 'loading' }
+	| { readonly status: 'error'; readonly error: string }
+	| { readonly status: 'loaded'; readonly configs: QueueConfigData };
+
+/**
+ * Subscribe to queue configuration in Firebase RTDB
+ */
+export function subscribeToQueueConfigs(
+	onUpdate: (state: QueueConfigState) => void
+): Unsubscribe {
+	const db = getFirebaseDatabase();
+	const configRef = ref(db, 'queue_config');
+
+	onUpdate({ status: 'loading' });
+
+	const unsubscribe = onValue(
+		configRef,
+		(snapshot) => {
+			const data = snapshot.val();
+			onUpdate({ status: 'loaded', configs: data ?? {} });
+		},
+		(error) => {
+			console.error('Error fetching queue configs:', error);
+			onUpdate({ status: 'error', error: error.message });
+		}
+	);
+
+	return unsubscribe;
+}
+
+/**
+ * Set the requires_approval flag for a queue stage
+ */
+export async function setQueueRequiresApproval(stageKey: string, value: boolean): Promise<void> {
+	const db = getFirebaseDatabase();
+	const configRef = ref(db, `queue_config/${stageKey}/requires_approval`);
+	await set(configRef, value);
+}
+
+/**
+ * Approve a queue item directly in RTDB.
+ * Updates both the queue item and the user's job record.
+ */
+export async function approveQueueItem(
+	stageKey: string,
+	itemKey: string,
+	item: QueueItem | FinalizeQueueItem
+): Promise<void> {
+	const db = getFirebaseDatabase();
+
+	// Update queue item
+	const queueRef = ref(db, `queues/${stageKey}/${itemKey}/approved`);
+	await set(queueRef, true);
+
+	// Also update user's job record
+	const jobIndex = parseInt(item.job_id.split('_').pop() ?? '0', 10);
+	const userJobRef = ref(db, `users/${item.user_id}/jobs/${jobIndex}/approved`);
+	await set(userJobRef, true);
+}
+
+/**
+ * Convert a QueueItem to a Job-compatible shape for the data table
+ */
+export function queueItemToJob(item: QueueItem | FinalizeQueueItem): Job & { id: string } {
+	return {
+		id: item.job_id,
+		age: item.metadata?.age ?? 0,
+		email: item.metadata?.email ?? '',
+		ethnicity: (item.metadata?.ethnicity ?? 'Unknown') as any,
+		sex: (item.metadata?.sex ?? 'O') as any,
+		height: item.metadata?.height ?? '',
+		weight: item.metadata?.weight ?? 0,
+		timestamp: Math.floor(item.enqueued_at / 1000),
+		status: item.claimed_by
+			? { code: 'Submitted' as const, value: 'Claimed' }
+			: { code: 'Submitted' as const, value: 'Waiting in queue' },
+		requires_approval: item.requires_approval ?? false,
+		approved: item.approved ?? false,
+	};
+}
+
+// Helper type guards for queue config
+export function isQueueConfigLoaded(state: QueueConfigState): state is { status: 'loaded'; configs: QueueConfigData } {
 	return state.status === 'loaded';
 }

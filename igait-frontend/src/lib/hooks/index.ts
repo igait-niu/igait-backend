@@ -13,13 +13,21 @@ export {
 export {
 	subscribeToQueues,
 	subscribeToAllJobs,
+	subscribeToQueueConfigs,
 	isQueuesLoading,
 	isQueuesError,
 	isQueuesLoaded,
+	isQueueConfigLoaded,
+	setQueueRequiresApproval,
+	approveQueueItem,
+	queueItemToJob,
 	type QueueItem,
 	type FinalizeQueueItem,
 	type QueuesData,
 	type QueuesState,
 	type AdminJob,
-	type AllJobsState
+	type AllJobsState,
+	type QueueConfigItem,
+	type QueueConfigData,
+	type QueueConfigState
 } from './admin';

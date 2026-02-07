@@ -16,6 +16,8 @@
 		showEmail?: boolean;
 		initialStatusFilter?: string;
 		onViewDetails?: (job: JobWithId) => void;
+		selectedId?: string | null;
+		onRowClick?: (job: JobWithId) => void;
 	}
 
 	let { 
@@ -23,7 +25,9 @@
 		uid = '', 
 		showEmail = false, 
 		initialStatusFilter = 'all',
-		onViewDetails 
+		onViewDetails,
+		selectedId = null,
+		onRowClick
 	}: Props = $props();
 
 	// Create jobs with IDs - use existing id if present, otherwise generate from uid_index
@@ -215,7 +219,10 @@
 				{#if filteredData.length > 0}
 					{#each filteredData as job (job.id)}
 						{@const statusInfo = getStatusInfo(job.status)}
-						<Table.Row class="data-row">
+						<Table.Row 
+							class="data-row {selectedId === job.id ? 'row-selected' : ''} {onRowClick ? 'row-clickable' : ''}"
+							onclick={() => onRowClick?.(job)}
+						>
 							<Table.Cell>
 								<span class="job-id" title={job.id}>{formatJobId(job.id)}</span>
 							</Table.Cell>
@@ -338,6 +345,15 @@
 
 	:global(.data-row:hover) {
 		background-color: hsl(var(--muted) / 0.4);
+	}
+
+	:global(.row-clickable) {
+		cursor: pointer;
+	}
+
+	:global(.row-selected) {
+		background-color: hsl(var(--primary) / 0.08) !important;
+		border-left: 2px solid hsl(var(--primary));
 	}
 
 	.job-id {
