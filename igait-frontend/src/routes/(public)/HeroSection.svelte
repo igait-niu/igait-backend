@@ -7,16 +7,16 @@
 	<div class="page-container">
 		<div class="hero-content">
 			<h1 class="hero-title">
-				AI-Powered
-				<span class="text-primary"> Gait Analysis</span>
+				2 Years
+				<span class="text-primary"> Too Late</span>
 			</h1>
 			<p class="hero-description">
-				Upload your walking videos and receive detailed analysis powered by machine learning. 
-				Early detection of gait abnormalities can help identify potential health concerns.
+				Children wait 27+ months for autism diagnosis after parents first notice signs. 
+				iGAIT screens in minutes, giving families answers when they need them most.
 			</p>
 			<div class="hero-actions">
 				<Button size="lg" href="/signup">
-					Get Started
+					Screen Your Child Today
 					<ArrowRight class="ml-2 h-4 w-4" />
 				</Button>
 				<Button size="lg" variant="outline" href="/about">

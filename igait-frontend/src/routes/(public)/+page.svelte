@@ -5,8 +5,8 @@
 </script>
 
 <svelte:head>
-	<title>iGait - AI-Powered Gait Analysis</title>
-	<meta name="description" content="Advanced gait analysis using artificial intelligence for early detection of mobility issues." />
+	<title>iGait - Early Autism Screening Through Gait Analysis</title>
+	<meta name="description" content="Screen for autism in minutes with iGAIT's AI-powered gait analysis. Fast, accessible, and research-backed early detection for families everywhere." />
 </svelte:head>
 
 <HeroSection />
