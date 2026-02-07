@@ -20,6 +20,19 @@ pub const HEARTBEAT_INTERVAL_SECS: u64 = 60;
 // QUEUE ITEM TYPES
 // ============================================================================
 
+/// Configuration for a processing queue.
+///
+/// Stored at `queue_config/stage_{n}` in Firebase RTDB.
+/// If `requires_approval` is true, all jobs in this queue
+/// must be explicitly approved before workers can claim them.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct QueueConfig {
+    /// Whether this queue globally requires manual approval
+    /// before workers can pick up jobs.
+    #[serde(default)]
+    pub requires_approval: bool,
+}
+
 /// An item in a stage processing queue.
 /// 
 /// This represents a job waiting to be processed by a specific stage.
@@ -48,6 +61,17 @@ pub struct QueueItem {
     
     /// Job metadata (age, sex, etc. - needed for later stages)
     pub metadata: JobMetadata,
+
+    /// Whether this specific job requires manual approval before processing.
+    /// Set by the user at submission time.
+    #[serde(default)]
+    pub requires_approval: bool,
+
+    /// Whether this job has been approved for processing.
+    /// If neither the job's nor the queue's `requires_approval` flag is set,
+    /// this field is ignored and the job can be picked up freely.
+    #[serde(default)]
+    pub approved: bool,
 }
 
 impl QueueItem {
@@ -57,6 +81,7 @@ impl QueueItem {
         user_id: String,
         input_keys: HashMap<String, String>,
         metadata: JobMetadata,
+        requires_approval: bool,
     ) -> Self {
         Self {
             job_id,
@@ -66,6 +91,10 @@ impl QueueItem {
             claimed_at: None,
             input_keys,
             metadata,
+            requires_approval,
+            // Start unapproved — the worker's `is_approved_for_processing`
+            // method will allow pick-up if no approval is required.
+            approved: false,
         }
     }
 
@@ -74,6 +103,9 @@ impl QueueItem {
     /// An item is available if:
     /// - It has never been claimed, OR
     /// - It was claimed but the claim has timed out
+    ///
+    /// Note: This does NOT check approval status — that is checked
+    /// separately by the worker via `is_approved_for_processing`.
     pub fn is_available(&self) -> bool {
         match self.claimed_at {
             None => true, // Never claimed
@@ -82,6 +114,20 @@ impl QueueItem {
                 now_ms().saturating_sub(claimed_time) > CLAIM_TIMEOUT_MS
             }
         }
+    }
+
+    /// Checks whether this item is approved for processing.
+    ///
+    /// A job is approved if:
+    /// - `approved` is true (explicitly approved by an admin), OR
+    /// - The job's own `requires_approval` flag is false AND the
+    ///   queue-level `queue_requires_approval` flag is also false.
+    pub fn is_approved_for_processing(&self, queue_requires_approval: bool) -> bool {
+        if self.approved {
+            return true;
+        }
+        // Not explicitly approved — only allow if neither flag is set
+        !self.requires_approval && !queue_requires_approval
     }
 
     /// Claims this item for a worker.
@@ -267,6 +313,13 @@ pub fn queue_path(stage: StageNumber) -> String {
     }
 }
 
+/// Returns the Firebase RTDB path for a queue's configuration.
+///
+/// Config paths are: `queue_config/stage_{n}` for stages 1-6.
+pub fn queue_config_path(stage: StageNumber) -> String {
+    format!("queue_config/stage_{}", stage.as_u8())
+}
+
 /// Returns the Firebase RTDB path for a specific job in a queue.
 pub fn queue_item_path(stage: StageNumber, job_id: &str) -> String {
     // Replace characters that Firebase doesn't allow in keys
@@ -383,11 +436,46 @@ mod tests {
             "test_user".to_string(),
             HashMap::new(),
             JobMetadata::default(),
+            false,
         );
         
         assert!(item.is_available());
         
         let claimed = item.claim("worker_1");
         assert!(!claimed.is_available()); // Just claimed, not timed out yet
+    }
+
+    #[test]
+    fn test_approval_logic() {
+        // Job that doesn't require approval
+        let item = QueueItem::new(
+            "job_1".to_string(),
+            "user_1".to_string(),
+            HashMap::new(),
+            JobMetadata::default(),
+            false,
+        );
+        // No approval required anywhere → approved for processing
+        assert!(item.is_approved_for_processing(false));
+        // Queue requires approval but job doesn't request it and isn't approved → blocked
+        assert!(!item.is_approved_for_processing(true));
+
+        // Job that requires approval
+        let item2 = QueueItem::new(
+            "job_2".to_string(),
+            "user_2".to_string(),
+            HashMap::new(),
+            JobMetadata::default(),
+            true,
+        );
+        // Not approved → blocked regardless of queue config
+        assert!(!item2.is_approved_for_processing(false));
+        assert!(!item2.is_approved_for_processing(true));
+
+        // Explicitly approved item always passes
+        let mut item3 = item2.clone();
+        item3.approved = true;
+        assert!(item3.is_approved_for_processing(false));
+        assert!(item3.is_approved_for_processing(true));
     }
 }

@@ -15,5 +15,15 @@ import type { Sex } from "./Sex";
  * * `timestamp` - The timestamp of the job (Unix timestamp in seconds)
  * * `weight` - The weight of the patient
  * * `email` - The email of the person who submitted the job
+ * * `requires_approval` - Whether the user requested manual approval for this job
+ * * `approved` - Whether this job has been approved for processing
  */
-export type Job = { age: number, ethnicity: Ethnicity, sex: Sex, height: string, status: JobStatus, timestamp: number, weight: number, email: string, };
+export type Job = { age: number, ethnicity: Ethnicity, sex: Sex, height: string, status: JobStatus, timestamp: number, weight: number, email: string, 
+/**
+ * Whether this job requires manual approval before processing
+ */
+requires_approval: boolean, 
+/**
+ * Whether this job has been approved for processing
+ */
+approved: boolean, };

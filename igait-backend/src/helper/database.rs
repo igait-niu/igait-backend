@@ -1,12 +1,9 @@
-use std::time::SystemTime;
-
-use crate::helper::lib::{JobStatusCode, User};
+use crate::helper::lib::User;
 
 use firebase_rs::*;
 use anyhow::{ Context, Result, anyhow };
 
-
-use super::lib::{Job, JobStatus, Ethnicity, Sex};
+use super::lib::{Job, JobStatus};
 
 /// A wrapper class on the Firebase database to make it easier to interact with.
 #[derive( Debug )]
@@ -36,6 +33,15 @@ impl Database {
         })
     }
 
+    /// Fetches the jobs array for a user, returning an empty vec if the
+    /// path doesn't exist (Firebase RTDB deletes keys with empty arrays).
+    async fn get_jobs(&self, uid: &str) -> Result<Vec<Job>> {
+        match self._state.at(uid).at("jobs").get::<Vec<Job>>().await {
+            Ok(jobs) => Ok(jobs),
+            Err(_) => Ok(vec![]),
+        }
+    }
+
     /// Ensures that a user exists in the database.
     /// 
     /// # Arguments
@@ -63,21 +69,10 @@ impl Database {
         if user_handle.get::<User>().await.is_err() {
             println!("User doesn't exist, creating new user with UID '{uid}'...");
 
-            // Create a new user
+            // Create a new user with no jobs
             user_handle.update(&User {
                 uid: String::from(uid),
-                jobs: vec!(
-                    Job {
-                        age: 1,
-                        email: String::from("placeholder@placeholder.com"),
-                        ethnicity: Ethnicity::Caucasian,
-                        height: String::from("0'0"),
-                        sex: Sex::O,
-                        status: JobStatusCode::Submitted.to_status(),
-                        timestamp: SystemTime::now(),
-                        weight: 1
-                    }
-                ),
+                jobs: vec![],
                 administrator: false,
             }).await
                 .map_err(|e| anyhow!("{e:?}"))
@@ -113,13 +108,10 @@ impl Database {
         // First double check that the user actually exists
         self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
-        // Then, get the jobs and count them
-        if let Ok(jobs) = self._state.at(uid).at("jobs").get::<Vec<Job>>().await {
-            return Ok(jobs.len());
-        }
-
-        // If there was an error, this means there are no jobs
-        Ok(0)
+        // Get the jobs (returns empty vec if none exist)
+        let jobs = self.get_jobs(uid).await
+            .context("Failed to get jobs!")?;
+        Ok(jobs.len())
     }
 
     /// Adds a new job to the user's job list.
@@ -147,12 +139,8 @@ impl Database {
         // First double check that the user actually exists
         self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
-        // Get a handle to the location of the jobs in the database
-        let job_handle = self._state.at(uid).at("jobs");
-
-        // Get the jobs and add the new job
-        let mut jobs = job_handle.get::<Vec<Job>>().await
-            .map_err(|e| anyhow!("{e:?}"))
+        // Get the existing jobs (returns empty vec if none exist yet)
+        let mut jobs = self.get_jobs(uid).await
             .context("Failed to get jobs!")?;
         jobs.push(job);
             
@@ -202,13 +190,11 @@ impl Database {
         // First double check that the user actually exists
         self.ensure_user(uid).await.context("Failed to ensure user!")?;
         
-        // Get the user and job handles
+        // Get the user handle
         let user_handle = self._state.at(&uid);
-        let job_handle = user_handle.at("jobs");
 
         // Get the jobs as a mutable vector
-        let mut jobs = job_handle.get::<Vec<Job>>().await
-            .map_err(|e| anyhow!("{e:?}"))
+        let mut jobs = self.get_jobs(uid).await
             .context("Failed to get jobs!")?;
 
         // Edit the status
@@ -261,12 +247,8 @@ impl Database {
         // First double check that the user actually exists
         self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
-        // Build a path to the job in the database
-        let job_handle = self._state.at(uid).at("jobs");
-        
         // Get the jobs as a mutable vector
-        let mut jobs = job_handle.get::<Vec<Job>>().await
-            .map_err(|e| anyhow!("{e:?}"))
+        let mut jobs = self.get_jobs(uid).await
             .context("Failed to get jobs!")?;
 
         Ok(jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?.status.clone())
@@ -334,12 +316,58 @@ impl Database {
         // First double check that the user actually exists
         self.ensure_user(uid).await.context("Failed to ensure user!")?;
 
-        // Build a path to the job in the database
-        let job_handle = self._state.at(uid).at("jobs");
+        // Get the jobs (returns empty vec if none exist)
+        self.get_jobs(uid).await
+            .context("Failed to get jobs!")
+    }
+
+    /// Approves a job for processing.
+    ///
+    /// Sets the `approved` field to `true` on both the job record in RTDB
+    /// and on the queue item sitting in stage 1 (if it exists).
+    ///
+    /// # Arguments
+    /// * `uid` - The user ID that owns the job.
+    /// * `job_id` - The 0-based index of the job.
+    ///
+    /// # Returns
+    /// * A successful result if the job was approved.
+    pub async fn approve_job(
+        &self,
+        uid:    &str,
+        job_id: usize,
+    ) -> Result<()> {
+        println!("Approving job {job_id} for user {uid}...");
+
+        // First double check that the user actually exists
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+
+        // Get the user handle
+        let user_handle = self._state.at(uid);
 
         // Get the jobs as a mutable vector
-        job_handle.get::<Vec<Job>>().await
-            .map_err(|e| anyhow!("Failed to parse jobs! Error: {e:#?}"))
-            .context("Failed to get jobs!")
+        let mut jobs = self.get_jobs(uid).await
+            .context("Failed to get jobs!")?;
+
+        // Set the approved flag
+        let job = jobs.get_mut(job_id).ok_or(anyhow!("Job ID does not exist!"))?;
+        job.approved = true;
+
+        // Get existing user to preserve administrator status
+        let existing_user = user_handle.get::<User>().await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get existing user!")?;
+
+        // Update the user with the modified job array
+        user_handle.update(&User {
+            uid: String::from(uid),
+            jobs,
+            administrator: existing_user.administrator,
+        }).await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to update the user object in the database!")?;
+
+        println!("Job {job_id} approved successfully for user {uid}!");
+        Ok(())
     }
 }

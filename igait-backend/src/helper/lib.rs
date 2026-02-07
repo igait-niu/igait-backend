@@ -48,6 +48,7 @@ mod systemtime_as_secs {
 #[ts(export)]
 pub struct User {
     pub uid: String,
+    #[serde(default)]
     pub jobs: Vec<Job>,
     #[serde(default)]
     pub administrator: bool,
@@ -64,6 +65,8 @@ pub struct User {
 /// * `timestamp` - The timestamp of the job (Unix timestamp in seconds)
 /// * `weight` - The weight of the patient
 /// * `email` - The email of the person who submitted the job
+/// * `requires_approval` - Whether the user requested manual approval for this job
+/// * `approved` - Whether this job has been approved for processing
 #[derive( Serialize, Deserialize, Clone, Debug, TS )]
 #[ts(export)]
 pub struct Job {
@@ -76,7 +79,13 @@ pub struct Job {
     #[ts(type = "number")]
     pub timestamp: SystemTime,
     pub weight: i16,
-    pub email: String
+    pub email: String,
+    /// Whether this job requires manual approval before processing
+    #[serde(default)]
+    pub requires_approval: bool,
+    /// Whether this job has been approved for processing
+    #[serde(default)]
+    pub approved: bool,
 }
 
 /// The total number of processing stages in the pipeline

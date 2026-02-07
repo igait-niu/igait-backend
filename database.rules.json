@@ -45,6 +45,13 @@
           ".validate": "newData.hasChildren(['job_id', 'user_id', 'enqueued_at', 'success', 'metadata'])"
         }
       }
+    },
+    "queue_config": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('administrator').val() == true",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('administrator').val() == true",
+      "$stage": {
+        ".validate": "newData.hasChild('requires_approval') && newData.child('requires_approval').isBoolean()"
+      }
     }
   }
 }

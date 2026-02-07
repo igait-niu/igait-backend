@@ -5,9 +5,9 @@
 
 use crate::microservice::{
     queue::{
-        ClaimResult, FinalizeQueueItem, ProcessingResult, QueueItem,
+        ClaimResult, FinalizeQueueItem, ProcessingResult, QueueConfig, QueueItem,
         CLAIM_TIMEOUT_MS, HEARTBEAT_INTERVAL_SECS,
-        generate_worker_id, next_stage, now_ms, queue_item_path, queue_path,
+        generate_worker_id, next_stage, now_ms, queue_config_path, queue_item_path, queue_path,
     },
     backend_status::JobStatus,
     StageNumber,
@@ -175,9 +175,24 @@ impl QueueOps {
     /// If another worker claims the job between read and write, the write will
     /// effectively be a no-op (job will be re-processed due to timeout if the
     /// other worker fails).
+    ///
+    /// Jobs that require approval (either via the job flag or the queue config)
+    /// but have not yet been approved will be skipped.
     pub async fn claim_job(&self, stage: StageNumber) -> ClaimResult<QueueItem> {
         let path = queue_path(stage);
         
+        // Read the queue-level config to check if this queue requires approval
+        let config_path = queue_config_path(stage);
+        let queue_config: QueueConfig = match self.db.get(&config_path).await {
+            Ok(Some(cfg)) => cfg,
+            Ok(None) => QueueConfig::default(),
+            Err(e) => {
+                // Non-fatal: default to not requiring approval
+                eprintln!("Warning: failed to read queue config at {}: {}", config_path, e);
+                QueueConfig::default()
+            }
+        };
+
         // Read all items in the queue
         let items: Option<HashMap<String, QueueItem>> = match self.db.get(&path).await {
             Ok(items) => items,
@@ -192,7 +207,7 @@ impl QueueOps {
             return ClaimResult::QueueEmpty;
         }
 
-        // Find an available item (unclaimed or stale)
+        // Find an available item (unclaimed or stale) that is approved for processing
         let now = now_ms();
         let mut available_item: Option<(String, QueueItem)> = None;
 
@@ -202,7 +217,7 @@ impl QueueOps {
                 .map(|t| now.saturating_sub(t) > CLAIM_TIMEOUT_MS)
                 .unwrap_or(false);
 
-            if is_unclaimed || is_stale {
+            if (is_unclaimed || is_stale) && item.is_approved_for_processing(queue_config.requires_approval) {
                 available_item = Some((key, item));
                 break;
             }
@@ -261,13 +276,16 @@ impl QueueOps {
     ) -> Result<()> {
         let next = next_stage(current_stage);
         
-        // Create the item for the next queue
-        let next_item = QueueItem::new(
+        // Create the item for the next queue, carrying through approval fields
+        let mut next_item = QueueItem::new(
             job.job_id.clone(),
             job.user_id.clone(),
             output_keys,
             job.metadata.clone(),
+            job.requires_approval,
         );
+        // Preserve the approval decision from the original job
+        next_item.approved = job.approved;
 
         // Build multi-path update: delete from current, add to next
         let current_path = queue_item_path(current_stage, &job.job_id);

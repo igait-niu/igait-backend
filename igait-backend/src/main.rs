@@ -55,6 +55,7 @@ async fn main() -> Result<()> {
     // Build the internal API router (for microservice communication)
     let api_internal = Router::new()
         .route("/update-status", post(crate::routes::internal::update_status))
+        .route("/approve-job", post(crate::routes::internal::approve_job))
         .with_state(app_state_ptr);
 
     // Nest the API into the general app router

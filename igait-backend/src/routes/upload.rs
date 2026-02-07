@@ -26,6 +26,7 @@ struct UploadRequestArguments {
     email:      String,
     front_file: UploadRequestFile,
     side_file:  UploadRequestFile,
+    requires_approval: bool,
 }
 
 /// A representation of a file in a `Multipart` request.
@@ -51,6 +52,7 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
     let mut height_option:    Option<String> = None;
     let mut weight_option:    Option<i16>    = None;
     let mut email_option:     Option<String> = None;
+    let mut requires_approval: bool = false;
 
     // Initialize the file fields as options
     let mut front_file_name_option:  Option<String> = None;
@@ -151,6 +153,13 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
                         .context("Field 'weight' wasn't parseable as a number!")?,
                 );
             }
+            Some("requires_approval") => {
+                let text = field
+                    .text()
+                    .await
+                    .context("Field 'requires_approval' wasn't readable as text!")?;
+                requires_approval = text == "true" || text == "1";
+            }
             _ => {
                 println!("Skipping unknown field: {name:?}");
             }
@@ -180,6 +189,7 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
         height,
         weight,
         email,
+        requires_approval,
         front_file: UploadRequestFile {
             name: front_file_name,
             bytes: front_file_bytes,
@@ -242,6 +252,10 @@ pub async fn upload_entrypoint(
         status:    status.clone(),
         email:     arguments.email.clone(),
         timestamp: SystemTime::now(),
+        requires_approval: arguments.requires_approval,
+        // Start unapproved — the worker logic will allow pick-up
+        // if neither the job nor the queue requires approval.
+        approved: false,
     };
 
     // Add the job to the database
@@ -365,6 +379,7 @@ async fn upload_and_dispatch(
         user_id.to_string(),
         input_keys,
         metadata,
+        job.requires_approval,
     );
 
     // Push to Stage 1 queue in Firebase RTDB
