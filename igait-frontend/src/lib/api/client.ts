@@ -6,7 +6,7 @@
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 import { authStore } from '$lib/stores';
 import { API_ENDPOINTS, DEFAULT_TIMEOUT_MS } from './config';
-import type { ContributionRequest, ProgressCallback } from './types';
+import type { ContributionRequest, ProgressCallback, ResearchContributionRequest } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
 /**
@@ -124,6 +124,101 @@ export async function submitContribution(
 			return Err(new AppError(
 				'Network error. Please check your internet connection.'
 			).withContext('Submission failed'));
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Validate research contribution fields
+ */
+function validateResearchContribution(request: ResearchContributionRequest): Result<void, AppError> {
+	const nameResult = validateRequired(request.name, 'Name');
+	if (nameResult.isErr()) {
+		return Err(nameResult.error.withContext('Invalid contribution'));
+	}
+
+	const emailResult = validateEmail(request.email);
+	if (emailResult.isErr()) {
+		return Err(emailResult.error.withContext('Invalid contribution'));
+	}
+
+	const frontVideoResult = validateVideoFile(request.frontVideo, 'front video');
+	if (frontVideoResult.isErr()) {
+		return Err(frontVideoResult.error.withContext('Invalid contribution'));
+	}
+
+	const sideVideoResult = validateVideoFile(request.sideVideo, 'side video');
+	if (sideVideoResult.isErr()) {
+		return Err(sideVideoResult.error.withContext('Invalid contribution'));
+	}
+
+	return Ok(undefined);
+}
+
+/**
+ * Submit a research contribution (videos only, no demographic data)
+ */
+export async function submitResearchContribution(
+	request: ResearchContributionRequest,
+	onProgress?: ProgressCallback
+): Promise<Result<string, AppError>> {
+	const validationResult = validateResearchContribution(request);
+	if (validationResult.isErr()) {
+		return validationResult as unknown as Result<string, AppError>;
+	}
+
+	onProgress?.(5);
+
+	const formData = new FormData();
+	formData.append('uid', request.uid);
+	formData.append('name', request.name);
+	formData.append('email', request.email);
+	formData.append('fileuploadfront', request.frontVideo);
+	formData.append('fileuploadside', request.sideVideo);
+
+	onProgress?.(15);
+
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+	const result = await tryAsync(
+		async () => {
+			const response = await fetch(API_ENDPOINTS.contribute, {
+				method: 'POST',
+				body: formData,
+				signal: controller.signal
+			});
+
+			onProgress?.(80);
+
+			if (!response.ok) {
+				const errorText = await response.text().catch(() => 'Unknown error');
+				throw new Error(`Server error (${response.status}): ${errorText}`);
+			}
+
+			onProgress?.(100);
+			return 'Thank you for your contribution! Your videos have been submitted for research.';
+		},
+		'Failed to submit research contribution'
+	);
+
+	clearTimeout(timeoutId);
+
+	if (result.isErr()) {
+		const error = result.error;
+
+		if (error.rootCause.includes('aborted') || error.rootCause.includes('abort')) {
+			return Err(new AppError(
+				'Request timed out. Your files might be too large or your connection is slow.'
+			).withContext('Contribution failed'));
+		}
+
+		if (error.rootCause.includes('NetworkError') || error.rootCause.includes('fetch')) {
+			return Err(new AppError(
+				'Network error. Please check your internet connection.'
+			).withContext('Contribution failed'));
 		}
 	}
 

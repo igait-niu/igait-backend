@@ -174,10 +174,10 @@ pub async fn contribute_entrypoint(
     Ok(())
 }
 
-/// Saves the contributed video files to Firebase Storage for research purposes.
+/// Saves the contributed video files to AWS S3 for research purposes.
 /// 
 /// # Fails
-/// * If the files fail to upload to Firebase Storage
+/// * If the files fail to upload to AWS S3
 /// 
 /// # Arguments
 /// * `app` - The application state
@@ -213,18 +213,18 @@ async fn save_upload_files<'a> (
     let front_key = format!("research/{}/{}/front.{}", email_user_id, unix_timestamp, front_extension);
     let side_key = format!("research/{}/{}/side.{}", email_user_id, unix_timestamp, side_extension);
 
-    // Upload files to Firebase Storage
+    // Upload files to AWS S3
     app.storage
         .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
         .await
-        .context("Failed to upload front file to Firebase Storage!")?;
-    println!("Successfully uploaded front file to Firebase Storage!");
+        .context("Failed to upload front file to AWS S3!")?;
+    println!("Successfully uploaded front file to AWS S3!");
     
     app.storage
         .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
-        .context("Failed to upload side file to Firebase Storage!")?;
-    println!("Successfully uploaded side file to Firebase Storage!");
+        .context("Failed to upload side file to AWS S3!")?;
+    println!("Successfully uploaded side file to AWS S3!");
     
     // Return as successful
     Ok(())

@@ -494,7 +494,7 @@ impl std::str::FromStr for UserRole {
 /// 
 /// # Fields
 /// * `db` - The database handle (Firebase RTDB)
-/// * `storage` - Firebase Storage client (GCS-backed)
+/// * `storage` - AWS S3 client (GCS-backed)
 /// * `email_client` - Email client for sending notifications
 /// * `openai_client` - OpenAI client for AI assistant
 /// * `openai_assistant` - The loaded OpenAI assistant
@@ -622,10 +622,10 @@ impl AppState {
             }
         };
 
-        // Initialize Firebase Storage client
+        // Initialize AWS S3 client
         let storage = StorageClient::new()
             .await
-            .context("Failed to initialize Firebase Storage client")?;
+            .context("Failed to initialize AWS S3 client")?;
 
         // Initialize email client
         let email_client = EmailClient::from_env()

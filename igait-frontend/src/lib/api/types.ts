@@ -46,6 +46,18 @@ export interface AssistantMessage {
 }
 
 /**
+ * Research contribution request - simplified form for contributing
+ * walking videos to help improve iGait's models.
+ */
+export interface ResearchContributionRequest {
+	readonly uid: string;
+	readonly name: string;
+	readonly email: string;
+	readonly frontVideo: File;
+	readonly sideVideo: File;
+}
+
+/**
  * Progress callback type
  */
 export type ProgressCallback = (progress: number) => void;

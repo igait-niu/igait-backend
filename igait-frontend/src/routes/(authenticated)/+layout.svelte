@@ -20,7 +20,8 @@
 		Menu,
 		Settings,
 		X,
-		Shield
+		Shield,
+		HeartHandshake
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 
@@ -67,9 +68,10 @@
 
 	const navItems: NavItem[] = [
 		{ href: '/dashboard', label: 'Dashboard', icon: Home },
-		{ href: '/submit', label: 'New Submission', icon: Upload },
-		{ href: '/assistant', label: 'AI Assistant', icon: MessageSquare },
+		{ href: '/submit', label: 'Submit', icon: Upload },
+		{ href: '/assistant', label: 'Assistant', icon: MessageSquare },
 		{ href: '/submissions', label: 'Submissions', icon: History },
+		{ href: '/contribute', label: 'Contribute', icon: HeartHandshake },
 		{ href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
 	];
 </script>

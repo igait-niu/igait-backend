@@ -227,7 +227,7 @@
 </script>
 
 <svelte:head>
-	<title>AI Assistant - iGait</title>
+	<title>Assistant - iGait</title>
 </svelte:head>
 
 <div class="assistant-page">
@@ -235,7 +235,7 @@
 	<section class="page-header">
 		<div class="header-row">
 			<div>
-				<h1 class="page-title">AI Assistant</h1>
+				<h1 class="page-title">Assistant</h1>
 				<p class="page-description">
 					Ask questions about your submissions, next steps, or how iGait works
 				</p>

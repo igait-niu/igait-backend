@@ -1,7 +1,7 @@
 //! Upload endpoint for submitting new gait analysis jobs.
 //!
 //! This module handles video uploads and initiates the processing pipeline
-//! by uploading to Firebase Storage and pushing to the Stage 1 queue.
+//! by uploading to AWS S3 and pushing to the Stage 1 queue.
 
 use std::{collections::HashMap, sync::Arc, time::SystemTime};
 
@@ -206,13 +206,13 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
 /// # Workflow
 /// 1. Parse and validate the multipart form data
 /// 2. Create a new job in the database
-/// 3. Upload videos to Firebase Storage
+/// 3. Upload videos to AWS S3
 /// 4. Dispatch to Stage 1 microservice
 /// 5. Send welcome email
 ///
 /// # Fails
 /// * If the arguments are missing or invalid
-/// * If the files fail to upload to Firebase Storage
+/// * If the files fail to upload to AWS S3
 /// * If the job fails to save to the database
 /// * If the welcome email fails to send
 pub async fn upload_entrypoint(
@@ -266,7 +266,7 @@ pub async fn upload_entrypoint(
         .await
         .context("Failed to add the new job to the database!")?;
 
-    // Upload files to Firebase Storage and dispatch to Stage 1
+    // Upload files to AWS S3 and dispatch to Stage 1
     if let Err(err) = upload_and_dispatch(
         app.clone(),
         &job_id,
@@ -311,7 +311,7 @@ pub async fn upload_entrypoint(
     Ok(())
 }
 
-/// Uploads files to Firebase Storage and pushes the job to the Stage 1 queue.
+/// Uploads files to AWS S3 and pushes the job to the Stage 1 queue.
 ///
 /// # Arguments
 /// * `app` - The application state
@@ -348,13 +348,13 @@ async fn upload_and_dispatch(
     let _: () = app.storage
         .upload(&front_key, front_file.bytes.to_vec(), Some("video/mp4"))
         .await
-        .context("Failed to upload front video to Firebase Storage!")?;
+        .context("Failed to upload front video to AWS S3!")?;
 
     println!("Uploading side video to: {}", side_key);
     let _: () = app.storage
         .upload(&side_key, side_file.bytes.to_vec(), Some("video/mp4"))
         .await
-        .context("Failed to upload side video to Firebase Storage!")?;
+        .context("Failed to upload side video to AWS S3!")?;
 
     println!("Files uploaded successfully, pushing to Stage 1 queue...");
 

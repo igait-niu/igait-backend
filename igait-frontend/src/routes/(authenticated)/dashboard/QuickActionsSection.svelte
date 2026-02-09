@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { ArrowRight, Upload, MessageSquare, History } from '@lucide/svelte';
+	import { ArrowRight, Upload, MessageSquare, History, HeartHandshake } from '@lucide/svelte';
 
 	const actions = [
 		{
@@ -12,7 +12,7 @@
 			variant: 'default' as const
 		},
 		{
-			title: 'AI Assistant',
+			title: 'Assistant',
 			description: 'Chat with our AI about your results',
 			href: '/assistant',
 			icon: MessageSquare,
@@ -23,6 +23,13 @@
 			description: 'See your past submissions and results',
 			href: '/submissions',
 			icon: History,
+			variant: 'outline' as const
+		},
+		{
+			title: 'Contribute',
+			description: 'Donate walking videos for research',
+			href: '/contribute',
+			icon: HeartHandshake,
 			variant: 'outline' as const
 		}
 	];
