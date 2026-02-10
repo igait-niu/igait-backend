@@ -2,6 +2,10 @@
 	path = igait-stages/igait-stage4-pose-estimation/igait-mediapipe
 	url = https://github.com/igait-niu/igait-mediapipe
 
+[submodule "igait-stages/igait-stage4-pose-estimation/igait-gait-cycle-detection"]
+	path = igait-stages/igait-stage4-pose-estimation/igait-gait-cycle-detection
+	url = https://github.com/igait-niu/igait-gait-cycle-detection
+
 [submodule "igait-kubernetes-configs"]
 	path = igait-kubernetes-configs
 	url = https://github.com/igait-niu/igait-kubernetes-configs

@@ -27,8 +27,21 @@ WORKDIR /app/igait-stages/igait-stage5-cycle-detection
 RUN cargo clean --release
 RUN cargo build --release
 
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates libgcc
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    && pip3 install --no-cache-dir --break-system-packages \
+        numpy \
+        pandas \
+        scipy \
+        matplotlib \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the Python gait cycle detection script
+COPY igait-stages/igait-stage5-cycle-detection/igait-gait-cycle-detection/gait_analysis_mediapipe.py /app/gait_analysis_mediapipe.py
+
 COPY --from=builder /app/igait-stages/igait-stage5-cycle-detection/target/release/igait-stage5-cycle-detection /usr/local/bin/worker
 ENV RUST_LOG=info
 CMD ["worker"]
