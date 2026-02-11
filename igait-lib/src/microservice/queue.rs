@@ -63,6 +63,7 @@ pub struct QueueItem {
     pub claimed_at: Option<u64>,
     
     /// Storage keys for input files from previous stage
+    #[serde(default)]
     pub input_keys: HashMap<String, String>,
     
     /// Job metadata (age, sex, etc. - needed for later stages)
@@ -232,6 +233,7 @@ pub struct FinalizeQueueItem {
     pub error_logs: Option<String>,
     
     /// Final output keys (if successful - includes prediction results)
+    #[serde(default)]
     pub output_keys: HashMap<String, String>,
     
     /// Job metadata for email content
