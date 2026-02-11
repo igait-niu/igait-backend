@@ -30,9 +30,15 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates python3 python3-pip \
-    && pip3 install --no-cache-dir --break-system-packages tensorflow numpy scikit-learn \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy the Python prediction scripts
+COPY igait-stages/igait-stage6-prediction/iGAIT_MODEL_IO /app/iGAIT_MODEL_IO
+
+# Install Python dependencies (if any)
+RUN pip3 install --no-cache-dir --break-system-packages \
+    -r /app/iGAIT_MODEL_IO/requirements.txt || true
+
 COPY --from=builder /app/igait-stages/igait-stage6-prediction/target/release/igait-stage6-prediction /usr/local/bin/worker
-# COPY models/ /app/models/  # Add trained ML model when ready
 ENV RUST_LOG=info
 CMD ["worker"]

@@ -19,9 +19,18 @@ use std::time::{Instant, SystemTime};
 use chrono::{DateTime, Utc};
 
 /// The expected format of prediction.json from Stage 6.
+///
+/// This matches the raw output of the Python ensemble in `iGAIT_MODEL_IO`.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PredictionResult {
-    score: f64,
+    status: String,
+    class: Option<i32>,
+    probabilities: Option<Vec<f64>>,
+    message: Option<String>,
+    // Error fields (present when status == "error")
+    error_type: Option<String>,
+    error_message: Option<String>,
 }
 
 /// ASD threshold - scores >= this value indicate ASD markers.
@@ -56,7 +65,9 @@ impl FinalizeStageWorker {
 
     /// Attempts to read prediction.json from S3 for a given job.
     ///
-    /// Returns `Some(score)` if found and valid, `None` otherwise.
+    /// Parses the full ensemble result and computes the score by averaging
+    /// the individual model probabilities. Returns `Some(score)` if found
+    /// and valid, `None` otherwise.
     async fn get_prediction_score(&self, job_id: &str) -> Option<f64> {
         let prediction_path = format!("jobs/{}/stage_6/prediction.json", job_id);
         
@@ -64,8 +75,42 @@ impl FinalizeStageWorker {
             Ok(data) => {
                 match serde_json::from_slice::<PredictionResult>(&data) {
                     Ok(result) => {
-                        println!("Found prediction.json for {}: score = {}", job_id, result.score);
-                        Some(result.score)
+                        println!("Found prediction.json for {}: {:?}", job_id, result);
+
+                        // Check if the ensemble itself reported an error
+                        if result.status != "success" {
+                            eprintln!(
+                                "Prediction failed for {}: {} - {}",
+                                job_id,
+                                result.error_type.as_deref().unwrap_or("unknown"),
+                                result.error_message.as_deref().unwrap_or("no details"),
+                            );
+                            return None;
+                        }
+
+                        // Average the probabilities from all ensemble models
+                        if let Some(ref probs) = result.probabilities {
+                            if probs.is_empty() {
+                                eprintln!("Empty probabilities array for {}", job_id);
+                                return None;
+                            }
+                            let score = probs.iter().sum::<f64>() / probs.len() as f64;
+                            println!(
+                                "Computed score for {} by averaging {} probabilities: {:.4}",
+                                job_id,
+                                probs.len(),
+                                score
+                            );
+                            Some(score)
+                        } else {
+                            // Fallback: use class value (0 or 1) as score
+                            let score = result.class.unwrap_or(0) as f64;
+                            println!(
+                                "No probabilities for {}, using class as score: {}",
+                                job_id, score
+                            );
+                            Some(score)
+                        }
                     }
                     Err(e) => {
                         eprintln!("Failed to parse prediction.json for {}: {}", job_id, e);

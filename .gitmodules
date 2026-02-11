@@ -6,6 +6,10 @@
 	path = igait-stages/igait-stage5-cycle-detection/igait-gait-cycle-detection
 	url = https://github.com/igait-niu/igait-gait-cycle-detection
 
+[submodule "igait-stages/igait-stage6-prediction/iGAIT_MODEL_IO"]
+	path = igait-stages/igait-stage6-prediction/iGAIT_MODEL_IO
+	url = https://github.com/igait-niu/iGAIT_MODEL_IO
+
 [submodule "igait-kubernetes-configs"]
 	path = igait-kubernetes-configs
 	url = https://github.com/igait-niu/igait-kubernetes-configs
