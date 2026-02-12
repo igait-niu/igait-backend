@@ -273,12 +273,16 @@ export async function authenticatedFetch<T>(
  * Calls the backend /rerun endpoint which cleans S3 outputs and re-queues.
  */
 export async function rerunJob(
-	jobIndex: number,
+	userIdJobIndex: string,
 	stage: number
 ): Promise<Result<RerunResponse, AppError>> {
+	const lastUnderscore = userIdJobIndex.lastIndexOf('_');
+	const userId = lastUnderscore !== -1 ? userIdJobIndex.slice(0, lastUnderscore) : userIdJobIndex;
+	const jobIndex = lastUnderscore !== -1 ? parseInt(userIdJobIndex.slice(lastUnderscore + 1), 10) : 0;
+
 	return authenticatedFetch<RerunResponse>(API_ENDPOINTS.rerun, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ job_index: jobIndex, stage }),
+		body: JSON.stringify({ user_id: userId, job_index: jobIndex, stage }),
 	});
 }

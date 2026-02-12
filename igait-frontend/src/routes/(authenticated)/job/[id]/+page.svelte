@@ -154,7 +154,7 @@
 		rerunError = null;
 
 		try {
-			const result = await rerunJob(jobIndex, activeStageNumber);
+			const result = await rerunJob(jobId, activeStageNumber);
 
 			if (result.isOk()) {
 				rerunSuccess = result.value.message;
