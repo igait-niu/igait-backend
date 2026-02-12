@@ -86,6 +86,10 @@ pub struct Job {
     /// Whether this job has been approved for processing
     #[serde(default)]
     pub approved: bool,
+    /// Per-stage logs collected during processing.
+    /// Keys are "stage_1" through "stage_7", values are the log text.
+    #[serde(default)]
+    pub stage_logs: std::collections::HashMap<String, String>,
 }
 
 /// The total number of processing stages in the pipeline
@@ -213,154 +217,6 @@ impl JobStatus {
             Self::Processing { .. } => "Processing",
             Self::Complete { .. } => "Complete",
             Self::Error { .. } => "Error",
-        }
-    }
-}
-
-/// Legacy job status code enum - kept for backward compatibility
-/// 
-/// @deprecated Use JobStatus enum directly instead
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub enum JobStatusCode {
-    Submitted,
-    SubmissionError,
-    Stage1Processing,
-    Stage1Complete,
-    Stage1Failed,
-    Stage2Processing,
-    Stage2Complete,
-    Stage2Failed,
-    Stage3Processing,
-    Stage3Complete,
-    Stage3Failed,
-    Stage4Processing,
-    Stage4Complete,
-    Stage4Failed,
-    Stage5Processing,
-    Stage5Complete,
-    Stage5Failed,
-    Stage6Processing,
-    Stage6Complete,
-    Stage6Failed,
-    Stage7Processing,
-    Stage7Complete,
-    Stage7Failed,
-    Complete,
-}
-
-impl JobStatusCode {
-    /// Get a human-readable description of the status code
-    pub fn description(&self) -> String {
-        match self {
-            JobStatusCode::Submitted => "Job submitted successfully".to_string(),
-            JobStatusCode::SubmissionError => "Failed to submit job".to_string(),
-            
-            JobStatusCode::Stage1Processing => "Converting video format...".to_string(),
-            JobStatusCode::Stage1Complete => "Video format converted".to_string(),
-            JobStatusCode::Stage1Failed => "Video conversion failed".to_string(),
-            
-            JobStatusCode::Stage2Processing => "Checking video validity...".to_string(),
-            JobStatusCode::Stage2Complete => "Video validity confirmed".to_string(),
-            JobStatusCode::Stage2Failed => "Video validity check failed".to_string(),
-            
-            JobStatusCode::Stage3Processing => "Reframing video...".to_string(),
-            JobStatusCode::Stage3Complete => "Video reframed".to_string(),
-            JobStatusCode::Stage3Failed => "Video reframing failed".to_string(),
-            
-            JobStatusCode::Stage4Processing => "Estimating pose landmarks...".to_string(),
-            JobStatusCode::Stage4Complete => "Pose landmarks extracted".to_string(),
-            JobStatusCode::Stage4Failed => "Pose estimation failed".to_string(),
-            
-            JobStatusCode::Stage5Processing => "Detecting gait cycles...".to_string(),
-            JobStatusCode::Stage5Complete => "Gait cycles detected".to_string(),
-            JobStatusCode::Stage5Failed => "Cycle detection failed".to_string(),
-            
-            JobStatusCode::Stage6Processing => "Running ML prediction...".to_string(),
-            JobStatusCode::Stage6Complete => "ML prediction complete".to_string(),
-            JobStatusCode::Stage6Failed => "ML prediction failed".to_string(),
-            
-            JobStatusCode::Stage7Processing => "Finalizing results...".to_string(),
-            JobStatusCode::Stage7Complete => "Results finalized".to_string(),
-            JobStatusCode::Stage7Failed => "Finalization failed".to_string(),
-            
-            JobStatusCode::Complete => "Analysis complete".to_string(),
-        }
-    }
-    
-    /// Convert legacy code to new JobStatus
-    pub fn to_status(&self) -> JobStatus {
-        match self {
-            JobStatusCode::Submitted => JobStatus::submitted(),
-            JobStatusCode::SubmissionError => JobStatus::error("Submission failed".to_string()),
-            JobStatusCode::Complete => JobStatus::complete(0.0, false), // Placeholder
-            
-            // Processing stages
-            JobStatusCode::Stage1Processing => JobStatus::processing(1),
-            JobStatusCode::Stage2Processing => JobStatus::processing(2),
-            JobStatusCode::Stage3Processing => JobStatus::processing(3),
-            JobStatusCode::Stage4Processing => JobStatus::processing(4),
-            JobStatusCode::Stage5Processing => JobStatus::processing(5),
-            JobStatusCode::Stage6Processing => JobStatus::processing(6),
-            JobStatusCode::Stage7Processing => JobStatus::processing(7),
-            
-            // Stage completes (treat as processing next stage)
-            JobStatusCode::Stage1Complete => JobStatus::processing(2),
-            JobStatusCode::Stage2Complete => JobStatus::processing(3),
-            JobStatusCode::Stage3Complete => JobStatus::processing(4),
-            JobStatusCode::Stage4Complete => JobStatus::processing(5),
-            JobStatusCode::Stage5Complete => JobStatus::processing(6),
-            JobStatusCode::Stage6Complete => JobStatus::processing(7),
-            JobStatusCode::Stage7Complete => JobStatus::complete(0.0, false),
-            
-            // Failures
-            JobStatusCode::Stage1Failed => JobStatus::error("Stage 1 failed".to_string()),
-            JobStatusCode::Stage2Failed => JobStatus::error("Stage 2 failed".to_string()),
-            JobStatusCode::Stage3Failed => JobStatus::error("Stage 3 failed".to_string()),
-            JobStatusCode::Stage4Failed => JobStatus::error("Stage 4 failed".to_string()),
-            JobStatusCode::Stage5Failed => JobStatus::error("Stage 5 failed".to_string()),
-            JobStatusCode::Stage6Failed => JobStatus::error("Stage 6 failed".to_string()),
-            JobStatusCode::Stage7Failed => JobStatus::error("Stage 7 failed".to_string()),
-        }
-    }
-    
-    /// Check if this status represents a failure state
-    pub fn is_failure(&self) -> bool {
-        matches!(self,
-            JobStatusCode::SubmissionError |
-            JobStatusCode::Stage1Failed |
-            JobStatusCode::Stage2Failed |
-            JobStatusCode::Stage3Failed |
-            JobStatusCode::Stage4Failed |
-            JobStatusCode::Stage5Failed |
-            JobStatusCode::Stage6Failed |
-            JobStatusCode::Stage7Failed
-        )
-    }
-    
-    /// Check if this status represents a processing state
-    pub fn is_processing(&self) -> bool {
-        matches!(self,
-            JobStatusCode::Stage1Processing |
-            JobStatusCode::Stage2Processing |
-            JobStatusCode::Stage3Processing |
-            JobStatusCode::Stage4Processing |
-            JobStatusCode::Stage5Processing |
-            JobStatusCode::Stage6Processing |
-            JobStatusCode::Stage7Processing
-        )
-    }
-    
-    /// Get the stage number (1-7) if this is a stage-related status
-    pub fn stage_number(&self) -> Option<u8> {
-        match self {
-            JobStatusCode::Stage1Processing | JobStatusCode::Stage1Complete | JobStatusCode::Stage1Failed => Some(1),
-            JobStatusCode::Stage2Processing | JobStatusCode::Stage2Complete | JobStatusCode::Stage2Failed => Some(2),
-            JobStatusCode::Stage3Processing | JobStatusCode::Stage3Complete | JobStatusCode::Stage3Failed => Some(3),
-            JobStatusCode::Stage4Processing | JobStatusCode::Stage4Complete | JobStatusCode::Stage4Failed => Some(4),
-            JobStatusCode::Stage5Processing | JobStatusCode::Stage5Complete | JobStatusCode::Stage5Failed => Some(5),
-            JobStatusCode::Stage6Processing | JobStatusCode::Stage6Complete | JobStatusCode::Stage6Failed => Some(6),
-            JobStatusCode::Stage7Processing | JobStatusCode::Stage7Complete | JobStatusCode::Stage7Failed => Some(7),
-            _ => None,
         }
     }
 }

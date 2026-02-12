@@ -205,6 +205,20 @@ impl FinalizeStageWorker {
             }
         }
     }
+
+    /// Upload stage logs to Firebase RTDB
+    async fn upload_stage_logs(&self, job_id: &str, logs: &str) {
+        match QueueOps::parse_job_id(job_id) {
+            Ok((user_id, job_index)) => {
+                if let Err(e) = self.queue_ops.update_stage_logs(&user_id, job_index, 7, logs).await {
+                    eprintln!("Failed to upload stage 7 logs to RTDB: {:?}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to parse job_id for log upload: {:?}", e);
+            }
+        }
+    }
 }
 
 /// Trait for finalize workers (separate from regular StageWorker).
@@ -255,6 +269,9 @@ impl FinalizeWorker for FinalizeStageWorker {
             // Update job status to Complete
             let is_asd = score >= ASD_THRESHOLD;
             self.update_job_status(&job.job_id, JobStatus::complete(score as f32, is_asd)).await;
+
+            // Upload stage 7 logs to Firebase RTDB
+            self.upload_stage_logs(&job.job_id, &logs).await;
             
             ProcessingResult::Success {
                 output_keys: HashMap::from([
@@ -289,6 +306,9 @@ impl FinalizeWorker for FinalizeStageWorker {
             
             // Update job status to Error
             self.update_job_status(&job.job_id, JobStatus::error(error_msg.clone())).await;
+
+            // Upload stage 7 logs to Firebase RTDB
+            self.upload_stage_logs(&job.job_id, &logs).await;
             
             // Return success because finalization completed (even though the job itself failed)
             ProcessingResult::Success {

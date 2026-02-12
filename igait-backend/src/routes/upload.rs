@@ -256,6 +256,7 @@ pub async fn upload_entrypoint(
         // Start unapproved — the worker logic will allow pick-up
         // if neither the job nor the queue requires approval.
         approved: false,
+        stage_logs: HashMap::new(),
     };
 
     // Add the job to the database

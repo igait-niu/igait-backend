@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Accordion from '$lib/components/ui/accordion';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Button } from '$lib/components/ui/button';
@@ -12,7 +13,8 @@
 		User as UserIcon,
 		Calendar,
 		Download,
-		AlertTriangle
+		AlertTriangle,
+		ScrollText
 	} from '@lucide/svelte';
 	import type { Job } from '../../../types/Job';
 	import type { JobStatus } from '../../../types/JobStatus';
@@ -86,6 +88,30 @@
 		}
 		return null;
 	});
+
+	// Stage logs - sorted entries from stage_logs HashMap
+	const STAGE_NAMES: Record<string, string> = {
+		stage_1: 'Media Conversion',
+		stage_2: 'Validity Check',
+		stage_3: 'Reframing',
+		stage_4: 'Pose Estimation',
+		stage_5: 'Cycle Detection',
+		stage_6: 'ML Prediction',
+		stage_7: 'Finalize',
+	};
+
+	const stageLogs = $derived.by(() => {
+		if (!job.stage_logs) return [];
+		return Object.entries(job.stage_logs)
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([key, value]) => ({
+				key,
+				label: STAGE_NAMES[key] ?? key,
+				stageNum: key.replace('stage_', ''),
+				logs: value,
+			}));
+	});
+	const hasStageLogs = $derived(stageLogs.length > 0);
 </script>
 
 <Dialog.Root open={true} onOpenChange={onClose}>
@@ -223,6 +249,35 @@
 					<div class="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
 						<pre class="text-xs text-destructive whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{errorLogs}</pre>
 					</div>
+				</div>
+			{/if}
+
+			{#if hasStageLogs}
+				<Separator />
+
+				<!-- Stage Logs Section -->
+				<div class="space-y-3">
+					<h3 class="text-sm font-medium flex items-center gap-2">
+						<ScrollText class="h-4 w-4" />
+						Stage Logs
+					</h3>
+					<Accordion.Root type="multiple">
+						{#each stageLogs as { key, label, stageNum, logs } (key)}
+							<Accordion.Item value={key}>
+								<Accordion.Trigger class="text-sm">
+									<span class="flex items-center gap-2">
+										<Badge variant="outline" class="text-xs font-mono px-1.5">{stageNum}</Badge>
+										{label}
+									</span>
+								</Accordion.Trigger>
+								<Accordion.Content>
+									<div class="p-3 bg-muted rounded-lg">
+										<pre class="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto font-mono">{logs}</pre>
+									</div>
+								</Accordion.Content>
+							</Accordion.Item>
+						{/each}
+					</Accordion.Root>
 				</div>
 			{/if}
 		</div>

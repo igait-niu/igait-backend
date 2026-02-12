@@ -26,4 +26,9 @@ requires_approval: boolean,
 /**
  * Whether this job has been approved for processing
  */
-approved: boolean, };
+approved: boolean, 
+/**
+ * Per-stage logs collected during processing.
+ * Keys are "stage_1" through "stage_7", values are the log text.
+ */
+stage_logs: Record<string, string>, };

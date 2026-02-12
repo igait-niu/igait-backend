@@ -420,6 +420,14 @@ impl QueueOps {
         self.db.set(&path, status).await
     }
 
+    /// Uploads stage logs to Firebase RTDB.
+    ///
+    /// This writes to `users/{user_id}/jobs/{job_index}/stage_logs/stage_{n}`
+    pub async fn update_stage_logs(&self, user_id: &str, job_index: usize, stage: u8, logs: &str) -> Result<()> {
+        let path = format!("users/{}/jobs/{}/stage_logs/stage_{}", user_id, job_index, stage);
+        self.db.set(&path, &logs).await
+    }
+
     /// Parses a job_id string into (user_id, job_index).
     /// 
     /// Job IDs are formatted as "{user_id}_{job_index}"
@@ -662,11 +670,14 @@ impl<W: StageWorker> WorkerRunner<W> {
 
         // Handle result
         match process_result {
-            ProcessingResult::Success { output_keys, logs: _, duration_ms } => {
+            ProcessingResult::Success { output_keys, logs, duration_ms } => {
                 println!(
                     "[{}] Job {} completed successfully in {}ms",
                     self.worker_id, job.job_id, duration_ms
                 );
+
+                // Upload stage logs to Firebase RTDB
+                self.upload_stage_logs(&job.job_id, stage_num, &logs).await;
                 
                 // Note: We don't update status here for intermediate stages.
                 // The next stage will update to its "Processing" status.
@@ -691,6 +702,9 @@ impl<W: StageWorker> WorkerRunner<W> {
                     "[{}] Job {} failed after {}ms: {}",
                     self.worker_id, job.job_id, duration_ms, error
                 );
+
+                // Upload stage logs to Firebase RTDB
+                self.upload_stage_logs(&job.job_id, stage_num, &logs).await;
                 
                 // Update job status to "Error" in RTDB
                 self.update_job_status(&job.job_id, JobStatus::error(logs.clone())).await;
@@ -705,6 +719,20 @@ impl<W: StageWorker> WorkerRunner<W> {
         Ok(true)
     }
     
+    /// Upload stage logs to Firebase RTDB
+    async fn upload_stage_logs(&self, job_id: &str, stage: u8, logs: &str) {
+        match QueueOps::parse_job_id(job_id) {
+            Ok((user_id, job_index)) => {
+                if let Err(e) = self.queue_ops.update_stage_logs(&user_id, job_index, stage, logs).await {
+                    eprintln!("Failed to upload stage {} logs to RTDB: {:?}", stage, e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to parse job_id for log upload: {:?}", e);
+            }
+        }
+    }
+
     /// Update job status directly in RTDB
     async fn update_job_status(&self, job_id: &str, status: JobStatus) {
         match QueueOps::parse_job_id(job_id) {
