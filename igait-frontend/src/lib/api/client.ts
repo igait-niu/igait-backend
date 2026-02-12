@@ -307,7 +307,11 @@ export async function rerunJob(
 	const lastUnderscore = userIdJobIndex.lastIndexOf('_');
 
 	if (lastUnderscore === -1) {
-		return Err(new AppError('Invalid job identifier format').withContext('Failed to rerun job'));
+		return Err(
+			new AppError('Invalid job identifier format. Expected format: userId_jobIndex').withContext(
+				'Failed to rerun job'
+			)
+		);
 	}
 
 	const userId = userIdJobIndex.slice(0, lastUnderscore);

@@ -90,7 +90,7 @@ pub async fn rerun_entrypoint(
     // We don't support rerunning from stage 7 since it would require a different payload.
     if stage < 1 || stage > 6 {
         return Err(AppError(anyhow!(
-            "Invalid stage number {}. Must be between 1 and 6 (stage 7 finalization is not supported for reruns).",
+            "Invalid stage number {}. Must be between 1 and 6. (Note: stage 7 uses a different queue type and cannot be rerun via this endpoint)",
             stage
         )));
     }
@@ -147,7 +147,7 @@ pub async fn rerun_entrypoint(
         job.requires_approval,
     );
 
-    // Admin action: mark as approved immediately (no need for re-approval)
+    // Admin-initiated rerun: mark as approved immediately (admin check performed above at line 74-86)
     queue_item.approved = true;
 
     // ── 5. Push into the target stage's queue ───────────────────────
