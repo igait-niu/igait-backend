@@ -2,6 +2,7 @@
 	import { Loader2, FileText, FileQuestion, Download } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import JsonTree from './JsonTree.svelte';
 	import type { FileEntry } from '$lib/api';
 
 	interface Props {
@@ -18,7 +19,7 @@
 	let { files, loading, error, label }: Props = $props();
 
 	/** File content cache for text-based viewers (JSON, etc.) */
-	let textCache: Record<string, { status: 'loading' | 'loaded' | 'error'; content: string }> =
+	let textCache: Record<string, { status: 'loading' | 'loaded' | 'error'; content: string; parsed?: unknown }> =
 		$state({});
 
 	/** Get the file extension from a filename */
@@ -38,18 +39,16 @@
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const text = await response.text();
 
-			textCache[file.name] = { status: 'loaded', content: text };
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(text);
+			} catch {
+				// Not valid JSON — will fall back to raw text
+			}
+
+			textCache[file.name] = { status: 'loaded', content: text, parsed };
 		} catch {
 			textCache[file.name] = { status: 'error', content: 'Failed to load file contents.' };
-		}
-	}
-
-	/** Pretty-print JSON content, or return as-is if invalid */
-	function formatJson(raw: string): string {
-		try {
-			return JSON.stringify(JSON.parse(raw), null, 2);
-		} catch {
-			return raw;
 		}
 	}
 
@@ -108,8 +107,10 @@
 							</div>
 						{:else if cached.status === 'error'}
 							<pre class="code-block code-block--error">{cached.content}</pre>
+						{:else if cached.parsed !== undefined}
+							<JsonTree data={cached.parsed} />
 						{:else}
-							<pre class="code-block">{formatJson(cached.content)}</pre>
+							<pre class="code-block">{cached.content}</pre>
 						{/if}
 					{:else}
 						<div class="placeholder-content">
