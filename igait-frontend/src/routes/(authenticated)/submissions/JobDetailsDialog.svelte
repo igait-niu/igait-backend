@@ -5,7 +5,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Button } from '$lib/components/ui/button';
 	import * as Progress from '$lib/components/ui/progress';
-	import { 
+	import {
 		FileVideo,
 		CheckCircle2,
 		Clock,
@@ -28,33 +28,42 @@
 
 	function formatDate(timestamp: number): string {
 		const date = new Date(timestamp * 1000);
-		return date.toLocaleDateString('en-US', { 
-			year: 'numeric', 
-			month: 'short', 
+		return date.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'short',
 			day: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
 		});
 	}
 
-	function getStatusVariant(status: JobStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+	function getStatusVariant(
+		status: JobStatus
+	): 'default' | 'secondary' | 'destructive' | 'outline' {
 		switch (status.code) {
 			case 'Complete':
 				return status.asd ? 'destructive' : 'default';
-			case 'Error': return 'destructive';
-			case 'Processing': return 'secondary';
+			case 'Error':
+				return 'destructive';
+			case 'Processing':
+				return 'secondary';
 			case 'Submitted':
-			default: return 'outline';
+			default:
+				return 'outline';
 		}
 	}
 
 	function getStatusIcon(status: JobStatus) {
 		switch (status.code) {
-			case 'Complete': return CheckCircle2;
-			case 'Error': return XCircle;
-			case 'Processing': return Clock;
+			case 'Complete':
+				return CheckCircle2;
+			case 'Error':
+				return XCircle;
+			case 'Processing':
+				return Clock;
 			case 'Submitted':
-			default: return Clock;
+			default:
+				return Clock;
 		}
 	}
 
@@ -64,7 +73,7 @@
 	const isComplete = $derived(job.status.code === 'Complete');
 	const isProcessing = $derived(job.status.code === 'Processing');
 	const isError = $derived(job.status.code === 'Error');
-	
+
 	// Processing progress
 	const processingProgress = $derived.by(() => {
 		if (job.status.code === 'Processing') {
@@ -72,7 +81,7 @@
 		}
 		return 0;
 	});
-	
+
 	// Complete results
 	const completeResult = $derived.by(() => {
 		if (job.status.code === 'Complete') {
@@ -80,7 +89,7 @@
 		}
 		return null;
 	});
-	
+
 	// Error logs
 	const errorLogs = $derived.by(() => {
 		if (job.status.code === 'Error') {
@@ -97,7 +106,7 @@
 		stage_4: 'Pose Estimation',
 		stage_5: 'Cycle Detection',
 		stage_6: 'ML Prediction',
-		stage_7: 'Finalize',
+		stage_7: 'Finalize'
 	};
 
 	const stageLogs = $derived.by(() => {
@@ -108,14 +117,14 @@
 				key,
 				label: STAGE_NAMES[key] ?? key,
 				stageNum: key.replace('stage_', ''),
-				logs: value,
+				logs: value
 			}));
 	});
 	const hasStageLogs = $derived(stageLogs.length > 0);
 </script>
 
 <Dialog.Root open={true} onOpenChange={onClose}>
-	<Dialog.Content class="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+	<Dialog.Content class="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<FileVideo class="h-5 w-5" />
@@ -131,7 +140,7 @@
 			<div class="space-y-3">
 				{#if StatusIcon}
 					{@const Icon = StatusIcon}
-					<h3 class="text-sm font-medium flex items-center gap-2">
+					<h3 class="flex items-center gap-2 text-sm font-medium">
 						<Icon class="h-4 w-4" />
 						Status
 					</h3>
@@ -141,7 +150,7 @@
 						{job.status.value}
 					</Badge>
 				</div>
-				
+
 				<!-- Processing Progress Bar -->
 				{#if isProcessing && job.status.code === 'Processing'}
 					<div class="space-y-2">
@@ -157,7 +166,7 @@
 
 			<!-- Submission Info -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium flex items-center gap-2">
+				<h3 class="flex items-center gap-2 text-sm font-medium">
 					<Calendar class="h-4 w-4" />
 					Submission Information
 				</h3>
@@ -177,29 +186,29 @@
 
 			<!-- Patient Information -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium flex items-center gap-2">
+				<h3 class="flex items-center gap-2 text-sm font-medium">
 					<UserIcon class="h-4 w-4" />
 					Patient Information
 				</h3>
 				<div class="grid grid-cols-2 gap-3 text-sm">
 					<div>
-						<span class="text-muted-foreground block mb-1">Age</span>
+						<span class="mb-1 block text-muted-foreground">Age</span>
 						<span class="font-medium">{job.age} years</span>
 					</div>
 					<div>
-						<span class="text-muted-foreground block mb-1">Sex</span>
+						<span class="mb-1 block text-muted-foreground">Sex</span>
 						<span class="font-medium">{job.sex}</span>
 					</div>
 					<div>
-						<span class="text-muted-foreground block mb-1">Height</span>
+						<span class="mb-1 block text-muted-foreground">Height</span>
 						<span class="font-medium">{job.height}</span>
 					</div>
 					<div>
-						<span class="text-muted-foreground block mb-1">Weight</span>
+						<span class="mb-1 block text-muted-foreground">Weight</span>
 						<span class="font-medium">{job.weight} lbs</span>
 					</div>
 					<div class="col-span-2">
-						<span class="text-muted-foreground block mb-1">Ethnicity</span>
+						<span class="mb-1 block text-muted-foreground">Ethnicity</span>
 						<span class="font-medium">{job.ethnicity}</span>
 					</div>
 				</div>
@@ -207,25 +216,25 @@
 
 			{#if isComplete && completeResult}
 				<Separator />
-				
+
 				<!-- Results Section -->
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium flex items-center gap-2">
+					<h3 class="flex items-center gap-2 text-sm font-medium">
 						<CheckCircle2 class="h-4 w-4" />
 						Analysis Results
 					</h3>
 					<div class="grid gap-3 text-sm">
-						<div class="flex justify-between items-center p-3 bg-muted rounded-lg">
+						<div class="flex items-center justify-between rounded-lg bg-muted p-3">
 							<span class="text-muted-foreground">ASD Detection:</span>
 							<Badge variant={completeResult.asd ? 'destructive' : 'default'}>
 								{completeResult.asd ? 'ASD Indicators Detected' : 'No ASD Indicators'}
 							</Badge>
 						</div>
-						<div class="flex justify-between items-center p-3 bg-muted rounded-lg">
+						<div class="flex items-center justify-between rounded-lg bg-muted p-3">
 							<span class="text-muted-foreground">Confidence:</span>
 							<span class="font-medium">
-								{completeResult.asd 
-									? (completeResult.prediction * 100).toFixed(1) 
+								{completeResult.asd
+									? (completeResult.prediction * 100).toFixed(1)
 									: ((1 - completeResult.prediction) * 100).toFixed(1)}%
 							</span>
 						</div>
@@ -236,18 +245,19 @@
 					</Button>
 				</div>
 			{/if}
-			
+
 			{#if isError && errorLogs}
 				<Separator />
-				
+
 				<!-- Error Section -->
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium flex items-center gap-2 text-destructive">
+					<h3 class="flex items-center gap-2 text-sm font-medium text-destructive">
 						<AlertTriangle class="h-4 w-4" />
 						Error Details
 					</h3>
-					<div class="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-						<pre class="text-xs text-destructive whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{errorLogs}</pre>
+					<div class="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+						<pre
+							class="max-h-32 overflow-y-auto text-xs break-words whitespace-pre-wrap text-destructive">{errorLogs}</pre>
 					</div>
 				</div>
 			{/if}
@@ -257,7 +267,7 @@
 
 				<!-- Stage Logs Section -->
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium flex items-center gap-2">
+					<h3 class="flex items-center gap-2 text-sm font-medium">
 						<ScrollText class="h-4 w-4" />
 						Stage Logs
 					</h3>
@@ -266,13 +276,14 @@
 							<Accordion.Item value={key}>
 								<Accordion.Trigger class="text-sm">
 									<span class="flex items-center gap-2">
-										<Badge variant="outline" class="text-xs font-mono px-1.5">{stageNum}</Badge>
+										<Badge variant="outline" class="px-1.5 font-mono text-xs">{stageNum}</Badge>
 										{label}
 									</span>
 								</Accordion.Trigger>
 								<Accordion.Content>
-									<div class="p-3 bg-muted rounded-lg">
-										<pre class="text-xs whitespace-pre-wrap break-words max-h-48 overflow-y-auto font-mono">{logs}</pre>
+									<div class="rounded-lg bg-muted p-3">
+										<pre
+											class="max-h-48 overflow-y-auto font-mono text-xs break-words whitespace-pre-wrap">{logs}</pre>
 									</div>
 								</Accordion.Content>
 							</Accordion.Item>

@@ -11,7 +11,7 @@ import { MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB, VALID_VIDEO_EXTENSIONS } from 
  */
 export function validateEmail(email: string): Result<string, AppError> {
 	const trimmed = email.trim();
-	
+
 	if (trimmed.length === 0) {
 		return Err(new AppError('Email is required'));
 	}
@@ -30,7 +30,7 @@ export function validateEmail(email: string): Result<string, AppError> {
  */
 export function validateRequired(value: string, fieldName: string): Result<string, AppError> {
 	const trimmed = value.trim();
-	
+
 	if (trimmed.length === 0) {
 		return Err(new AppError(`${fieldName} is required`));
 	}
@@ -50,23 +50,27 @@ export function validateVideoFile(file: File, fieldName: string): Result<File, A
 	// Check file size
 	if (file.size > MAX_VIDEO_SIZE_BYTES) {
 		const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-		return Err(new AppError(
-			`The ${fieldName} file is too large (${sizeMB}MB). Maximum size is ${MAX_VIDEO_SIZE_MB}MB`
-		));
+		return Err(
+			new AppError(
+				`The ${fieldName} file is too large (${sizeMB}MB). Maximum size is ${MAX_VIDEO_SIZE_MB}MB`
+			)
+		);
 	}
 
 	// Check MIME type
 	const hasValidMimeType = file.type.startsWith('video/');
-	
+
 	// Check extension
 	const fileName = file.name.toLowerCase();
-	const hasValidExtension = VALID_VIDEO_EXTENSIONS.some(ext => fileName.endsWith(ext));
+	const hasValidExtension = VALID_VIDEO_EXTENSIONS.some((ext) => fileName.endsWith(ext));
 
 	if (!hasValidMimeType && !hasValidExtension) {
-		return Err(new AppError(
-			`The ${fieldName} file doesn't appear to be a valid video. ` +
-			`Supported formats: ${VALID_VIDEO_EXTENSIONS.join(', ')}`
-		));
+		return Err(
+			new AppError(
+				`The ${fieldName} file doesn't appear to be a valid video. ` +
+					`Supported formats: ${VALID_VIDEO_EXTENSIONS.join(', ')}`
+			)
+		);
 	}
 
 	return Ok(file);
@@ -86,7 +90,10 @@ export function validatePassword(password: string): Result<string, AppError> {
 /**
  * Validate password confirmation matches
  */
-export function validatePasswordMatch(password: string, confirmation: string): Result<string, AppError> {
+export function validatePasswordMatch(
+	password: string,
+	confirmation: string
+): Result<string, AppError> {
 	if (password !== confirmation) {
 		return Err(new AppError('Passwords do not match'));
 	}

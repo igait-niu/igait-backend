@@ -1,6 +1,21 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { Activity, Shield, Zap, Clock, Target, Home, Lock, Users, FlaskConical, Video, Brain, BarChart3, Stethoscope, AlertCircle } from '@lucide/svelte';
+	import {
+		Activity,
+		Shield,
+		Zap,
+		Clock,
+		Target,
+		Home,
+		Lock,
+		Users,
+		FlaskConical,
+		Video,
+		Brain,
+		BarChart3,
+		Stethoscope,
+		AlertCircle
+	} from '@lucide/svelte';
 
 	const statistics = [
 		{
@@ -16,7 +31,8 @@
 		{
 			number: '4-5',
 			label: 'Years old at diagnosis',
-			description: 'By the time most children receive a diagnosis, critical early intervention windows have narrowed.'
+			description:
+				'By the time most children receive a diagnosis, critical early intervention windows have narrowed.'
 		}
 	];
 
@@ -24,32 +40,38 @@
 		{
 			icon: Clock,
 			title: 'Fast Results',
-			description: 'Get preliminary screening results in minutes, not months. Upload videos from home and receive AI-powered analysis quickly.'
+			description:
+				'Get preliminary screening results in minutes, not months. Upload videos from home and receive AI-powered analysis quickly.'
 		},
 		{
 			icon: Target,
 			title: 'Accurate Detection',
-			description: 'Advanced AI trained on thousands of gait patterns identifies subtle markers that might indicate autism spectrum characteristics.'
+			description:
+				'Advanced AI trained on thousands of gait patterns identifies subtle markers that might indicate autism spectrum characteristics.'
 		},
 		{
 			icon: Home,
 			title: 'From Home',
-			description: 'No need to travel to specialists. Record simple walking videos at home using your smartphone or tablet.'
+			description:
+				'No need to travel to specialists. Record simple walking videos at home using your smartphone or tablet.'
 		},
 		{
 			icon: Lock,
 			title: 'Private & Secure',
-			description: "Your data is encrypted and HIPAA-compliant. We take your family's privacy seriously with enterprise-grade security."
+			description:
+				"Your data is encrypted and HIPAA-compliant. We take your family's privacy seriously with enterprise-grade security."
 		},
 		{
 			icon: Users,
 			title: 'For All Families',
-			description: 'Bridging the gap for rural areas, underserved communities, and families without easy access to diagnostic specialists.'
+			description:
+				'Bridging the gap for rural areas, underserved communities, and families without easy access to diagnostic specialists.'
 		},
 		{
 			icon: FlaskConical,
 			title: 'Research-Backed',
-			description: 'Developed by Northern Illinois University and Southern Illinois University Edwardsville with years of peer-reviewed research.'
+			description:
+				'Developed by Northern Illinois University and Southern Illinois University Edwardsville with years of peer-reviewed research.'
 		}
 	];
 
@@ -57,22 +79,26 @@
 		{
 			icon: Video,
 			title: 'Record Videos',
-			description: 'Use your smartphone to record two short videos: one of your child walking toward the camera, and one from the side.'
+			description:
+				'Use your smartphone to record two short videos: one of your child walking toward the camera, and one from the side.'
 		},
 		{
 			icon: Brain,
 			title: 'AI Analysis',
-			description: 'Our advanced AI analyzes gait patterns, identifying subtle biomechanical markers associated with autism spectrum characteristics.'
+			description:
+				'Our advanced AI analyzes gait patterns, identifying subtle biomechanical markers associated with autism spectrum characteristics.'
 		},
 		{
 			icon: BarChart3,
 			title: 'Get Results',
-			description: 'Receive a detailed screening report within minutes, helping you decide whether to pursue formal diagnostic evaluation.'
+			description:
+				'Receive a detailed screening report within minutes, helping you decide whether to pursue formal diagnostic evaluation.'
 		},
 		{
 			icon: Stethoscope,
 			title: 'Consult Professionals',
-			description: 'Share your results with healthcare providers to expedite the diagnostic process and access early intervention services.'
+			description:
+				'Share your results with healthcare providers to expedite the diagnostic process and access early intervention services.'
 		}
 	];
 </script>
@@ -102,21 +128,30 @@
 					<div class="timeline-marker"></div>
 					<div class="timeline-content">
 						<h4>The Wait Begins</h4>
-						<p>Parents notice early signs, but accessing diagnostic services proves challenging due to long waitlists and limited specialists.</p>
+						<p>
+							Parents notice early signs, but accessing diagnostic services proves challenging due
+							to long waitlists and limited specialists.
+						</p>
 					</div>
 				</div>
 				<div class="timeline-item">
 					<div class="timeline-marker"></div>
 					<div class="timeline-content">
 						<h4>Rural & Underserved Families</h4>
-						<p>Children from rural areas and under-resourced families wait even longer—often closer to 8 years for a diagnosis.</p>
+						<p>
+							Children from rural areas and under-resourced families wait even longer—often closer
+							to 8 years for a diagnosis.
+						</p>
 					</div>
 				</div>
 				<div class="timeline-item">
 					<div class="timeline-marker"></div>
 					<div class="timeline-content">
 						<h4>Missed Opportunities</h4>
-						<p>Every month of delay means missed opportunities for early intervention during the most critical developmental periods.</p>
+						<p>
+							Every month of delay means missed opportunities for early intervention during the most
+							critical developmental periods.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -169,9 +204,7 @@
 <section class="research-video-section">
 	<div class="page-container">
 		<h2 class="section-title">See How It Works</h2>
-		<p class="section-description">
-			Learn how to record your child's walking gait for analysis
-		</p>
+		<p class="section-description">Learn how to record your child's walking gait for analysis</p>
 		<div class="video-container">
 			<iframe
 				src="https://mediaspace.niu.edu/embed/secure/iframe/entryId/1_z7bejbcu/uiConfId/45549541/st/0"
@@ -187,9 +220,7 @@
 <section class="behind-scenes-section">
 	<div class="page-container">
 		<h2 class="section-title">Behind the Scenes</h2>
-		<p class="section-description">
-			Watch how our AI transforms raw video into insights
-		</p>
+		<p class="section-description">Watch how our AI transforms raw video into insights</p>
 		<div class="pipeline-grid">
 			<div class="pipeline-stage">
 				<div class="stage-number">01</div>
@@ -197,25 +228,39 @@
 					<img src="/Videos/110.gif" alt="Raw video of child walking" class="stage-image" />
 				</div>
 				<h3 class="stage-title">Raw Video</h3>
-				<p class="stage-description">Your smartphone captures natural walking patterns in everyday settings</p>
+				<p class="stage-description">
+					Your smartphone captures natural walking patterns in everyday settings
+				</p>
 			</div>
 			<div class="pipeline-arrow">→</div>
 			<div class="pipeline-stage">
 				<div class="stage-number">02</div>
 				<div class="stage-visual">
-					<img src="/Videos/9S.gif" alt="AI processing video with tracking points" class="stage-image" />
+					<img
+						src="/Videos/9S.gif"
+						alt="AI processing video with tracking points"
+						class="stage-image"
+					/>
 				</div>
 				<h3 class="stage-title">AI Processing</h3>
-				<p class="stage-description">Advanced computer vision tracks movement and identifies key biomechanical points</p>
+				<p class="stage-description">
+					Advanced computer vision tracks movement and identifies key biomechanical points
+				</p>
 			</div>
 			<div class="pipeline-arrow">→</div>
 			<div class="pipeline-stage">
 				<div class="stage-number">03</div>
 				<div class="stage-visual">
-					<img src="/Videos/114.gif" alt="Skeleton view showing gait analysis" class="stage-image" />
+					<img
+						src="/Videos/114.gif"
+						alt="Skeleton view showing gait analysis"
+						class="stage-image"
+					/>
 				</div>
 				<h3 class="stage-title">Gait Analysis</h3>
-				<p class="stage-description">Machine learning analyzes skeletal patterns to detect subtle autism indicators</p>
+				<p class="stage-description">
+					Machine learning analyzes skeletal patterns to detect subtle autism indicators
+				</p>
 			</div>
 		</div>
 		<div class="tech-highlights">
@@ -238,11 +283,14 @@
 		<h2 class="section-title">Why This Matters</h2>
 		<div class="significance-content">
 			<p class="significance-text">
-				The US is currently experiencing a <strong>public health crisis</strong> regarding access to timely autism diagnosis.
+				The US is currently experiencing a <strong>public health crisis</strong> regarding access to timely
+				autism diagnosis.
 			</p>
-			
+
 			<p class="significance-text">
-				Delayed diagnosis prevents children from receiving <strong>early intervention</strong> at the crucial time of their optimal developmental impact, leading to reduced quality of life and increased costs at individual, family, and societal levels.
+				Delayed diagnosis prevents children from receiving <strong>early intervention</strong> at the
+				crucial time of their optimal developmental impact, leading to reduced quality of life and increased
+				costs at individual, family, and societal levels.
 			</p>
 
 			<Card.Root class="barriers-card">
@@ -263,7 +311,8 @@
 			</Card.Root>
 
 			<p class="significance-text call-to-action-text">
-				There is an <strong>urgent need</strong> for technologically innovative, widely accessible, low-cost, objective approaches to autism detection.
+				There is an <strong>urgent need</strong> for technologically innovative, widely accessible, low-cost,
+				objective approaches to autism detection.
 			</p>
 		</div>
 	</div>
@@ -597,7 +646,11 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 0.75rem;
-		background: linear-gradient(135deg, hsl(var(--destructive) / 0.15), hsl(var(--destructive) / 0.05));
+		background: linear-gradient(
+			135deg,
+			hsl(var(--destructive) / 0.15),
+			hsl(var(--destructive) / 0.05)
+		);
 		color: hsl(var(--destructive));
 		margin-bottom: 1rem;
 		border: 1px solid hsl(var(--destructive) / 0.2);

@@ -68,7 +68,8 @@
 				{#if isLoggedIn}
 					Start screening your child today with our AI-powered gait analysis tool.
 				{:else}
-					Join thousands of families using iGAIT for early autism screening. Fast, free, and accessible from home.
+					Join thousands of families using iGAIT for early autism screening. Fast, free, and
+					accessible from home.
 				{/if}
 			</p>
 			<div class="cta-buttons">
@@ -77,17 +78,13 @@
 						Try iGAIT Now
 						<ArrowRight class="ml-2 h-4 w-4" />
 					</Button>
-					<Button size="lg" variant="outline" href="/about">
-						Learn More
-					</Button>
+					<Button size="lg" variant="outline" href="/about">Learn More</Button>
 				{:else}
 					<Button size="lg" href="/signup">
 						Sign Up Today
 						<ArrowRight class="ml-2 h-4 w-4" />
 					</Button>
-					<Button size="lg" variant="outline" href="/login">
-						Log In
-					</Button>
+					<Button size="lg" variant="outline" href="/login">Log In</Button>
 				{/if}
 			</div>
 		</div>
@@ -117,7 +114,9 @@
 
 	:global(.team-card) {
 		text-align: center;
-		transition: transform 0.2s, box-shadow 0.2s;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 	}
 
 	:global(.team-card:hover) {
@@ -182,7 +181,9 @@
 		flex-direction: column;
 		align-items: center;
 		gap: var(--spacing-md);
-		transition: transform 0.2s, box-shadow 0.2s;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 	}
 
 	.cta-card:hover {

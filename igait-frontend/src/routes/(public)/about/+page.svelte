@@ -7,7 +7,10 @@
 
 <svelte:head>
 	<title>About - iGait</title>
-	<meta name="description" content="Learn about the iGait research team advancing early autism detection through innovative gait analysis technology." />
+	<meta
+		name="description"
+		content="Learn about the iGait research team advancing early autism detection through innovative gait analysis technology."
+	/>
 </svelte:head>
 
 <div class="about-page">

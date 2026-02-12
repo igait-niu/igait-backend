@@ -17,14 +17,14 @@
 		placeholder?: string;
 	}
 
-	let { 
-		statusFilter, 
-		searchQuery, 
+	let {
+		statusFilter,
+		searchQuery,
 		totalCount,
 		filteredCount,
-		onStatusFilterChange, 
-		onSearchChange, 
-		onReset, 
+		onStatusFilterChange,
+		onSearchChange,
+		onReset,
 		hasActiveFilters,
 		placeholder = 'Filter jobs...'
 	}: Props = $props();
@@ -76,9 +76,7 @@
 				<DropdownMenu.Item onclick={() => onStatusFilterChange('processing')}>
 					Processing
 				</DropdownMenu.Item>
-				<DropdownMenu.Item onclick={() => onStatusFilterChange('error')}>
-					Error
-				</DropdownMenu.Item>
+				<DropdownMenu.Item onclick={() => onStatusFilterChange('error')}>Error</DropdownMenu.Item>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 		{#if hasActiveFilters}

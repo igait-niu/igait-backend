@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import type { JobStatus } from '../../../types/JobStatus';
-	import { 
-		CheckCircle2,
-		Clock,
-		XCircle,
-		Activity
-	} from '@lucide/svelte';
+	import { CheckCircle2, Clock, XCircle, Activity } from '@lucide/svelte';
 
 	type Props = {
 		status: JobStatus;
@@ -14,7 +9,9 @@
 
 	let { status }: Props = $props();
 
-	function getStatusVariant(code: JobStatus['code']): 'default' | 'secondary' | 'destructive' | 'outline' {
+	function getStatusVariant(
+		code: JobStatus['code']
+	): 'default' | 'secondary' | 'destructive' | 'outline' {
 		switch (code) {
 			case 'Complete':
 				return 'default';
@@ -46,7 +43,7 @@
 	const StatusIcon = $derived(getStatusIcon(status.code));
 </script>
 
-<Badge {variant} class="flex items-center gap-1.5 w-fit">
+<Badge {variant} class="flex w-fit items-center gap-1.5">
 	<StatusIcon class="h-3 w-3" />
 	{status.value}
 </Badge>

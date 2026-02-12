@@ -7,8 +7,22 @@
 	const universities = [
 		{
 			name: 'Northern Illinois University (NIU)',
-			graduates: ['Gabriela Ibarra', 'Mahesh Raju', 'Ricardo Torres', 'Alicia LaRouech', 'Viviana Cortes', 'Noelle Veome'],
-			undergrads: ['John White', 'Michael Sensenbrenner', 'Luke Ali', 'Angelica Sanyal', 'Zoey Proper', 'Rachel Conolly']
+			graduates: [
+				'Gabriela Ibarra',
+				'Mahesh Raju',
+				'Ricardo Torres',
+				'Alicia LaRouech',
+				'Viviana Cortes',
+				'Noelle Veome'
+			],
+			undergrads: [
+				'John White',
+				'Michael Sensenbrenner',
+				'Luke Ali',
+				'Angelica Sanyal',
+				'Zoey Proper',
+				'Rachel Conolly'
+			]
 		},
 		{
 			name: 'Southern Illinois University Edwardsville (SIUE)',

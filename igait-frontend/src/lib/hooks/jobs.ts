@@ -17,42 +17,44 @@ export type JobsState =
 /**
  * Subscribe to a user's jobs in Firebase RTDB
  * Returns an unsubscribe function to clean up the listener
- * 
+ *
  * @param uid - The user's Firebase UID
  * @param onUpdate - Callback that receives the new jobs state
  * @returns Unsubscribe function
  */
-export function subscribeToJobs(
-	uid: string,
-	onUpdate: (state: JobsState) => void
-): Unsubscribe {
+export function subscribeToJobs(uid: string, onUpdate: (state: JobsState) => void): Unsubscribe {
 	const db = getFirebaseDatabase();
 	const jobsRef = ref(db, `users/${uid}/jobs`);
-	
+
 	// Set initial loading state
 	onUpdate({ status: 'loading' });
-	
+
 	// Subscribe to real-time updates
 	const unsubscribe = onValue(
 		jobsRef,
 		(snapshot) => {
 			const data = snapshot.val();
-			
+
 			if (!data) {
 				// No jobs yet
 				onUpdate({ status: 'loaded', jobs: [] });
 				return;
 			}
-			
+
 			// Data is stored as an array in RTDB
 			// Filter out any placeholder/null entries and sort by timestamp (newest first)
-			const jobs: Job[] = Array.isArray(data) 
-				? data.filter((job): job is Job => job !== null && job.email !== 'placeholder@placeholder.com')
-				: Object.values(data).filter((job): job is Job => job !== null && (job as Job).email !== 'placeholder@placeholder.com');
-			
+			const jobs: Job[] = Array.isArray(data)
+				? data.filter(
+						(job): job is Job => job !== null && job.email !== 'placeholder@placeholder.com'
+					)
+				: Object.values(data).filter(
+						(job): job is Job =>
+							job !== null && (job as Job).email !== 'placeholder@placeholder.com'
+					);
+
 			// Sort by timestamp (newest first)
 			jobs.sort((a, b) => b.timestamp - a.timestamp);
-			
+
 			onUpdate({ status: 'loaded', jobs });
 		},
 		(error) => {
@@ -60,7 +62,7 @@ export function subscribeToJobs(
 			onUpdate({ status: 'error', error: error.message });
 		}
 	);
-	
+
 	return unsubscribe;
 }
 

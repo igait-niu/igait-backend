@@ -3,13 +3,40 @@
  */
 
 // Configuration
-export { API_BASE_URL, API_ENDPOINTS, DEFAULT_TIMEOUT_MS, MAX_VIDEO_SIZE_BYTES, MAX_VIDEO_SIZE_MB, VALID_VIDEO_EXTENSIONS } from './config';
+export {
+	API_BASE_URL,
+	API_ENDPOINTS,
+	DEFAULT_TIMEOUT_MS,
+	MAX_VIDEO_SIZE_BYTES,
+	MAX_VIDEO_SIZE_MB,
+	VALID_VIDEO_EXTENSIONS
+} from './config';
 
 // Types
-export type { Job, JobStatus, ContributionRequest, ResearchContributionRequest, AssistantMessage, AssistantMessageType, ProgressCallback, RerunResponse } from './types';
+export type {
+	Job,
+	JobStatus,
+	ContributionRequest,
+	ResearchContributionRequest,
+	AssistantMessage,
+	AssistantMessageType,
+	ProgressCallback,
+	RerunResponse
+} from './types';
 
 // Validation
-export { validateEmail, validateRequired, validateVideoFile, validatePassword, validatePasswordMatch } from './validation';
+export {
+	validateEmail,
+	validateRequired,
+	validateVideoFile,
+	validatePassword,
+	validatePasswordMatch
+} from './validation';
 
 // Client
-export { submitContribution, submitResearchContribution, authenticatedFetch, rerunJob } from './client';
+export {
+	submitContribution,
+	submitResearchContribution,
+	authenticatedFetch,
+	rerunJob
+} from './client';

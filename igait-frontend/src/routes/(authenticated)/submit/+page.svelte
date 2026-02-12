@@ -33,7 +33,7 @@
 
 	// Approval
 	let requiresApproval = $state(false);
-	
+
 	// Form state
 	let isSubmitting = $state(false);
 	let progress = $state(0);
@@ -79,15 +79,15 @@
 
 	// Validation helpers
 	const isFormValid = $derived(
-		age !== '' && 
-		sex !== '' && 
-		ethnicity !== '' && 
-		heightFeet !== '' && 
-		heightInches !== '' && 
-		weight !== '' && 
-		role !== '' && 
-		frontVideo !== undefined && 
-		sideVideo !== undefined
+		age !== '' &&
+			sex !== '' &&
+			ethnicity !== '' &&
+			heightFeet !== '' &&
+			heightInches !== '' &&
+			weight !== '' &&
+			role !== '' &&
+			frontVideo !== undefined &&
+			sideVideo !== undefined
 	);
 
 	async function handleSubmit(e: Event) {
@@ -157,9 +157,7 @@
 <div class="submit-page">
 	<section class="page-header">
 		<h1 class="page-title">New Submission</h1>
-		<p class="page-description">
-			Upload your walking videos for gait analysis
-		</p>
+		<p class="page-description">Upload your walking videos for gait analysis</p>
 	</section>
 
 	<Card.Root class="submit-card">
@@ -188,7 +186,7 @@
 				<!-- Patient Information Section -->
 				<fieldset class="form-section">
 					<legend class="form-section__title">Patient Information</legend>
-					
+
 					<div class="form-grid">
 						<div class="form-group">
 							<Label for="age">Age *</Label>
@@ -279,7 +277,7 @@
 				<!-- Video Uploads Section -->
 				<fieldset class="form-section">
 					<legend class="form-section__title">Video Uploads</legend>
-					
+
 					<div class="video-grid">
 						<VideoUploadArea
 							label="Front View"
@@ -302,15 +300,18 @@
 				<!-- Options Section -->
 				<fieldset class="form-section">
 					<legend class="form-section__title">Options</legend>
-					
+
 					<label class="approval-option">
 						<div class="approval-text">
 							<span class="approval-label">Request Manual Approval</span>
-							<span class="approval-description">When enabled, an administrator must manually review your submission before it is processed.</span>
+							<span class="approval-description"
+								>When enabled, an administrator must manually review your submission before it is
+								processed.</span
+							>
 						</div>
 						<Switch
 							checked={requiresApproval}
-							onCheckedChange={(v) => requiresApproval = v}
+							onCheckedChange={(v) => (requiresApproval = v)}
 							disabled={isSubmitting}
 						/>
 					</label>
@@ -318,14 +319,11 @@
 
 				<div class="submit-button-container">
 					{#if isSubmitting}
-						<div 
-							class="button-progress-fill"
-							style="width: {progress}%"
-						></div>
+						<div class="button-progress-fill" style="width: {progress}%"></div>
 					{/if}
-					<Button 
-						type="submit" 
-						class="submit-button {isSubmitting ? 'is-uploading' : ''}" 
+					<Button
+						type="submit"
+						class="submit-button {isSubmitting ? 'is-uploading' : ''}"
 						disabled={isSubmitting || !isFormValid}
 					>
 						{#if isSubmitting}
@@ -337,7 +335,9 @@
 						{/if}
 					</Button>
 					{#if isSubmitting}
-						<p class="upload-hint">Please don't close this page — large videos may take a moment to upload.</p>
+						<p class="upload-hint">
+							Please don't close this page — large videos may take a moment to upload.
+						</p>
 					{/if}
 				</div>
 			</form>

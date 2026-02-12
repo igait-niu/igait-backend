@@ -30,9 +30,7 @@
 		<h1 class="dashboard-title">
 			Welcome back, {user.displayName.split(' ')[0]}!
 		</h1>
-		<p class="dashboard-subtitle">
-			Here's an overview of your gait analysis activity.
-		</p>
+		<p class="dashboard-subtitle">Here's an overview of your gait analysis activity.</p>
 	</section>
 
 	<QuickActionsSection />
