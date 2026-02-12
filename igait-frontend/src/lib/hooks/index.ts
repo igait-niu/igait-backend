@@ -8,7 +8,8 @@ export {
 	isJobsLoading, 
 	isJobsError, 
 	isJobsLoaded,
-	type JobsState 
+	type JobsState,
+	type JobWithId
 } from './jobs';
 export {
 	subscribeToQueues,

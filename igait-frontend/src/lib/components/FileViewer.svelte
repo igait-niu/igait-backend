@@ -46,7 +46,6 @@
 {:else if !files || files.length === 0}
 	<div class="viewer-state">
 		<p class="viewer-label">{label}</p>
-		<p class="viewer-face">:3</p>
 	</div>
 {:else}
 	<div class="file-list">
@@ -92,11 +91,6 @@
 
 	.viewer-label {
 		font-size: 0.875rem;
-	}
-
-	.viewer-face {
-		font-size: 2rem;
-		opacity: 0.6;
 	}
 
 	.viewer-error {

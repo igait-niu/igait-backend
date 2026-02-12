@@ -92,9 +92,16 @@ export async function submitContribution(
 	// Use XMLHttpRequest for real upload progress tracking
 	const result = await new Promise<Result<string, AppError>>((resolve) => {
 		const xhr = new XMLHttpRequest();
-		const timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+
+		// Inactivity timeout — resets whenever progress is made
+		let timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+		const resetTimeout = () => {
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+		};
 
 		xhr.upload.addEventListener('progress', (e) => {
+			resetTimeout();
 			if (e.lengthComputable) {
 				// Map upload progress to 5–90% range
 				const uploadPercent = 5 + Math.round((e.loaded / e.total) * 85);
