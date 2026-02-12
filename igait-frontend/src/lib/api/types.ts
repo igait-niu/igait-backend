@@ -21,7 +21,6 @@ import type { Job } from '../../types/Job';
  * required by the backend for gait analysis.
  */
 export interface ContributionRequest {
-	readonly uid: string;
 	readonly email: string;
 	readonly age: number;
 	readonly sex: Sex;
@@ -50,7 +49,6 @@ export interface AssistantMessage {
  * walking videos to help improve iGait's models.
  */
 export interface ResearchContributionRequest {
-	readonly uid: string;
 	readonly name: string;
 	readonly email: string;
 	readonly frontVideo: File;

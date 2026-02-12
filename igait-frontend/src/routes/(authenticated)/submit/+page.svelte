@@ -109,7 +109,6 @@
 		statusMessage = 'Preparing upload...';
 
 		const request: ContributionRequest = {
-			uid: user.uid,
 			email: user.email,
 			age: parseInt(age, 10),
 			sex: sex as Sex,

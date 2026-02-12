@@ -51,7 +51,6 @@
 		progress = 0;
 
 		const request: ResearchContributionRequest = {
-			uid: user.uid,
 			name: user.displayName,
 			email: user.email,
 			frontVideo,

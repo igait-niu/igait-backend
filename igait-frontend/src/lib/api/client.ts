@@ -64,11 +64,16 @@ export async function submitContribution(
 		return validationResult as unknown as Result<string, AppError>;
 	}
 
+	// Get auth token for Bearer authentication
+	const tokenResult = await authStore.getIdToken();
+	if (tokenResult.isErr()) {
+		return Err(tokenResult.error.withContext('Authentication required for submission'));
+	}
+
 	onProgress?.(5);
 
 	// Build form data matching backend UploadRequestArguments
 	const formData = new FormData();
-	formData.append('uid', request.uid);
 	formData.append('age', request.age.toString());
 	formData.append('ethnicity', request.ethnicity);
 	formData.append('sex', request.sex);
@@ -118,6 +123,7 @@ export async function submitContribution(
 		});
 
 		xhr.open('POST', API_ENDPOINTS.upload);
+		xhr.setRequestHeader('Authorization', `Bearer ${tokenResult.value}`);
 		xhr.send(formData);
 	});
 
@@ -163,10 +169,15 @@ export async function submitResearchContribution(
 		return validationResult as unknown as Result<string, AppError>;
 	}
 
+	// Get auth token for Bearer authentication
+	const tokenResult = await authStore.getIdToken();
+	if (tokenResult.isErr()) {
+		return Err(tokenResult.error.withContext('Authentication required for contribution'));
+	}
+
 	onProgress?.(5);
 
 	const formData = new FormData();
-	formData.append('uid', request.uid);
 	formData.append('name', request.name);
 	formData.append('email', request.email);
 	formData.append('fileuploadfront', request.frontVideo);
@@ -182,7 +193,10 @@ export async function submitResearchContribution(
 			const response = await fetch(API_ENDPOINTS.contribute, {
 				method: 'POST',
 				body: formData,
-				signal: controller.signal
+				signal: controller.signal,
+				headers: {
+					'Authorization': `Bearer ${tokenResult.value}`
+				}
 			});
 
 			onProgress?.(80);
