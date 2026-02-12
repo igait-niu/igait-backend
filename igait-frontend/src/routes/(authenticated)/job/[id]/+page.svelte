@@ -408,17 +408,12 @@
 						files={outputFiles}
 						loading={filesLoading}
 						error={filesError}
-						label="No output files for {activeStageInfo.name}"
+						label=""
 					/>
 				{:else if activeSubTab === 'logs'}
 					<div class="logs-content">
 						{#if currentStageLogs}
 							<pre class="log-output">{currentStageLogs}</pre>
-						{:else}
-							<div class="empty-logs">
-								<ScrollText class="empty-icon" />
-								<p>No logs available for {activeStageInfo.name}.</p>
-							</div>
 						{/if}
 					</div>
 				{/if}
@@ -806,28 +801,6 @@
 		border-radius: var(--radius-sm);
 		max-height: 500px;
 		overflow-y: auto;
-		margin: 0;
-	}
-
-	.empty-logs {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 2rem;
-		text-align: center;
-		color: hsl(var(--muted-foreground));
-		gap: 0.5rem;
-	}
-
-	:global(.empty-icon) {
-		width: 2rem;
-		height: 2rem;
-		opacity: 0.4;
-	}
-
-	.empty-logs p {
-		font-size: 0.875rem;
 		margin: 0;
 	}
 
