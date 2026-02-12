@@ -11,7 +11,7 @@
 	let unsubscribe: (() => void) | undefined;
 
 	function handleViewDetails(job: Job & { id: string }) {
-		goto(`/admin/job/${encodeURIComponent(job.id)}`);
+		goto(`/job/${encodeURIComponent(job.id)}`);
 	}
 
 	onMount(() => {

@@ -105,7 +105,7 @@
 	}
 
 	function handleSelectJob(job: Job & { id: string }) {
-		goto(`/admin/job/${encodeURIComponent(job.id)}`);
+		goto(`/job/${encodeURIComponent(job.id)}`);
 	}
 
 	async function handleToggleApproval(value: boolean) {

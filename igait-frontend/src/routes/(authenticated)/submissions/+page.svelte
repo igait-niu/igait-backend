@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { getUser, subscribeToJobs, isJobsLoading, isJobsError, isJobsLoaded, type JobsState } from '$lib/hooks';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
@@ -10,12 +11,10 @@
 
 	import EmptyState from './EmptyState.svelte';
 	import SupportCard from './SupportCard.svelte';
-	import JobDetailsDialog from './JobDetailsDialog.svelte';
 
 	const user = getUser();
 
 	let jobsState: JobsState = $state({ status: 'loading' });
-	let selectedJob: (Job & { id: string }) | null = $state(null);
 
 	const unsubscribe = subscribeToJobs(user.uid, (state) => {
 		jobsState = state;
@@ -29,11 +28,7 @@
 	const statusFilter = $derived($page.url.searchParams.get('filter') || undefined);
 
 	function handleViewDetails(job: Job & { id: string }) {
-		selectedJob = job;
-	}
-
-	function handleCloseDetails() {
-		selectedJob = null;
+		goto(`/job/${encodeURIComponent(job.id)}`);
 	}
 </script>
 
@@ -92,10 +87,6 @@
 
 	<SupportCard userEmail={user.email} userId={user.uid} />
 </div>
-
-{#if selectedJob}
-	<JobDetailsDialog job={selectedJob} onClose={handleCloseDetails} />
-{/if}
 
 <style>
 	.submissions-page {

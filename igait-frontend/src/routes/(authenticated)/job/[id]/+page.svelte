@@ -20,12 +20,12 @@
 		CheckCircle2,
 		XCircle,
 		Clock,
-		ShieldCheck
+		ShieldCheck,
+		Loader2,
+		AlertCircle
 	} from '@lucide/svelte';
-	import AdminLoadingState from '../../AdminLoadingState.svelte';
-	import AdminErrorState from '../../AdminErrorState.svelte';
-	import type { Job } from '../../../../../types/Job';
-	import type { JobStatus } from '../../../../../types/JobStatus';
+	import type { Job } from '../../../../types/Job';
+	import type { JobStatus } from '../../../../types/JobStatus';
 
 	// ── Auth ──────────────────────────────────────────────
 	const user = getUser();
@@ -153,27 +153,37 @@
 		rerunLoading = true;
 		rerunError = null;
 
-		const result = await rerunJob(jobIndex, activeStageNumber);
+		try {
+			const result = await rerunJob(jobIndex, activeStageNumber);
 
-		if (result.isOk()) {
-			rerunSuccess = result.value.message;
-			showRerunDialog = false;
-		} else {
-			rerunError = result.error.rootCause;
+			if (result.isOk()) {
+				rerunSuccess = result.value.message;
+				showRerunDialog = false;
+			} else {
+				rerunError = result.error.rootCause;
+			}
+		} catch (err) {
+			rerunError = err instanceof Error ? err.message : 'An unexpected error occurred.';
+		} finally {
+			rerunLoading = false;
 		}
-
-		rerunLoading = false;
 	}
 </script>
 
 <svelte:head>
-	<title>Job {formatJobId(jobId)} - Admin - iGait</title>
+	<title>Job {formatJobId(jobId)} - iGait</title>
 </svelte:head>
 
 {#if jobState.status === 'loading'}
-	<AdminLoadingState message="Loading job details..." />
+	<div class="state-message">
+		<Loader2 class="spinner" />
+		<p>Loading job details...</p>
+	</div>
 {:else if jobState.status === 'error'}
-	<AdminErrorState message="Failed to load job: {jobState.error}" />
+	<div class="state-message">
+		<AlertCircle class="error-icon" />
+		<p>{jobState.error}</p>
+	</div>
 {:else if job}
 	<div class="job-detail-page">
 		<!-- Header -->
@@ -199,6 +209,7 @@
 						<Calendar class="section-icon" />
 						Submission
 					</h4>
+
 					<div class="detail-row">
 						<span class="detail-label">Email</span>
 						<span class="detail-value">{job.email}</span>
@@ -218,6 +229,9 @@
 						</Badge>
 					</div>
 				</div>
+
+				<Separator class="details-separator details-separator--vertical" orientation="vertical" />
+				<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
 
 				<!-- Patient Info -->
 				<div class="detail-section">
@@ -249,6 +263,8 @@
 
 				<!-- Results (if complete) -->
 				{#if job.status.code === 'Complete'}
+					<Separator class="details-separator details-separator--vertical" orientation="vertical" />
+					<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
 					<div class="detail-section">
 						<h4 class="section-title">
 							<CheckCircle2 class="section-icon" />
@@ -273,6 +289,8 @@
 
 				<!-- Error (if failed) -->
 				{#if job.status.code === 'Error'}
+					<Separator class="details-separator details-separator--vertical" orientation="vertical" />
+					<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
 					<div class="detail-section">
 						<h4 class="section-title section-title--error">
 							<XCircle class="section-icon" />
@@ -284,70 +302,69 @@
 			</div>
 		</div>
 
-		<!-- Stage Tabs -->
-		<div class="stage-tabs-container">
-			<div class="stage-tabs">
-				{#each stageInfo as stage}
-					<button
-						class="stage-tab"
-						class:active={activeStage === stage.key}
-						onclick={() => handleStageClick(stage.key)}
-					>
-						<span class="tab-name">{stage.name}</span>
-						<span class="tab-desc">{stage.description}</span>
-					</button>
-				{/each}
-			</div>
-		</div>
-
-		<!-- Main content card -->
-		<div class="main-content-card">
-			<!-- Sub-tabs + Re-Run row -->
-			<div class="sub-tab-row">
-				<div class="sub-tabs">
-					<button
-						class="sub-tab"
-						class:active={activeSubTab === 'input'}
-						onclick={() => handleSubTabClick('input')}
-					>
-						<FileInput class="sub-tab-icon" />
-						Input
-					</button>
-					<button
-						class="sub-tab"
-						class:active={activeSubTab === 'output'}
-						onclick={() => handleSubTabClick('output')}
-					>
-						<FileOutput class="sub-tab-icon" />
-						Output
-					</button>
-					<button
-						class="sub-tab"
-						class:active={activeSubTab === 'logs'}
-						onclick={() => handleSubTabClick('logs')}
-					>
-						<ScrollText class="sub-tab-icon" />
-						Logs
-					</button>
+		<!-- Stage Tabs (admin only) -->
+		{#if isAdmin}
+			<div class="stage-tabs-container">
+				<div class="stage-tabs">
+					{#each stageInfo as stage}
+						<button
+							class="stage-tab"
+							class:active={activeStage === stage.key}
+							onclick={() => handleStageClick(stage.key)}
+						>
+							<span class="tab-name">{stage.name}</span>
+							<span class="tab-desc">{stage.description}</span>
+						</button>
+					{/each}
 				</div>
+			</div>
 
-				{#if isAdmin}
+			<!-- Main content card -->
+			<div class="main-content-card">
+				<!-- Sub-tabs + Re-Run row -->
+				<div class="sub-tab-row">
+					<div class="sub-tabs">
+						<button
+							class="sub-tab"
+							class:active={activeSubTab === 'input'}
+							onclick={() => handleSubTabClick('input')}
+						>
+							<FileInput class="sub-tab-icon" />
+							Input
+						</button>
+						<button
+							class="sub-tab"
+							class:active={activeSubTab === 'output'}
+							onclick={() => handleSubTabClick('output')}
+						>
+							<FileOutput class="sub-tab-icon" />
+							Output
+						</button>
+						<button
+							class="sub-tab"
+							class:active={activeSubTab === 'logs'}
+							onclick={() => handleSubTabClick('logs')}
+						>
+							<ScrollText class="sub-tab-icon" />
+							Logs
+						</button>
+					</div>
+
 					<Button variant="destructive" size="sm" onclick={handleRerunClick}>
 						<RotateCcw class="h-4 w-4 mr-1" />
 						Re-Run
 					</Button>
-				{/if}
-			</div>
-
-			<!-- Success banner -->
-			{#if rerunSuccess}
-				<div class="success-banner">
-					{rerunSuccess}
 				</div>
-			{/if}
 
-			<!-- Tab Content -->
-			<div class="tab-content">
+				<!-- Success banner -->
+				{#if rerunSuccess}
+					<div class="success-banner">
+						{rerunSuccess}
+					</div>
+				{/if}
+
+				<!-- Tab Content -->
+				<div class="tab-content">
 				{#if activeSubTab === 'input'}
 					<div class="placeholder-content">
 						<p class="placeholder-label">Input for {activeStageInfo.name}: {activeStageInfo.description}</p>
@@ -370,8 +387,9 @@
 						{/if}
 					</div>
 				{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 
 	<!-- Re-Run Warning Dialog -->
@@ -431,6 +449,41 @@
 		gap: 1.25rem;
 	}
 
+	/* ── Loading / Error states ─────────────────────────── */
+
+	.state-message {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 2.5rem 1.5rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.state-message p {
+		font-size: 0.8125rem;
+		margin: 0;
+		text-align: center;
+	}
+
+	:global(.spinner) {
+		width: 1.5rem;
+		height: 1.5rem;
+		animation: spin 1s linear infinite;
+	}
+
+	:global(.error-icon) {
+		width: 1.5rem;
+		height: 1.5rem;
+		color: hsl(var(--destructive));
+	}
+
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+
 	/* ── Header ─────────────────────────────────────────── */
 
 	.detail-header {
@@ -471,9 +524,33 @@
 	}
 
 	.details-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		display: flex;
 		gap: 1.25rem;
+		flex-wrap: wrap;
+	}
+
+	.details-grid > .detail-section {
+		flex: 1 1 220px;
+		min-width: 220px;
+	}
+
+	:global(.details-separator--vertical) {
+		display: block;
+		align-self: stretch;
+	}
+
+	:global(.details-separator--horizontal) {
+		display: none;
+	}
+
+	@media (max-width: 768px) {
+		:global(.details-separator--vertical) {
+			display: none;
+		}
+
+		:global(.details-separator--horizontal) {
+			display: block;
+		}
 	}
 
 	.detail-section {
@@ -797,7 +874,7 @@
 		}
 
 		.details-grid {
-			grid-template-columns: 1fr;
+			flex-direction: column;
 		}
 
 		.stage-tabs {
