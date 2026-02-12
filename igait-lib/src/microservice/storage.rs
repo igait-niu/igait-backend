@@ -7,6 +7,7 @@ use std::path::Path;
 #[cfg(feature = "microservice")]
 use aws_sdk_s3::{
     Client,
+    presigning::PresigningConfig,
     primitives::ByteStream,
 };
 
@@ -182,6 +183,48 @@ impl StorageClient {
     /// Returns an S3 URI for a key.
     pub fn s3_uri(&self, key: &str) -> String {
         format!("s3://{}/{}", self.bucket, key)
+    }
+
+    /// Generates a presigned GET URL for a storage key.
+    ///
+    /// The returned URL allows unauthenticated downloads for the
+    /// specified duration (no AWS credentials required by the caller).
+    pub async fn presign_download(
+        &self,
+        key: &str,
+        expires_in: std::time::Duration,
+    ) -> Result<String> {
+        let presigning_config = PresigningConfig::expires_in(expires_in)
+            .context("Invalid presigning duration")?;
+
+        let presigned = self.client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .presigned(presigning_config)
+            .await
+            .context(format!("Failed to presign download for key: {}", key))?;
+
+        Ok(presigned.uri().to_string())
+    }
+
+    /// Lists all objects under `prefix` and returns a presigned URL for each.
+    ///
+    /// Returns a vec of `(key, presigned_url)` pairs.
+    pub async fn list_and_presign(
+        &self,
+        prefix: &str,
+        expires_in: std::time::Duration,
+    ) -> Result<Vec<(String, String)>> {
+        let keys = self.list_by_prefix(prefix).await?;
+        let mut results = Vec::with_capacity(keys.len());
+
+        for key in keys {
+            let url = self.presign_download(&key, expires_in).await?;
+            results.push((key, url));
+        }
+
+        Ok(results)
     }
 }
 

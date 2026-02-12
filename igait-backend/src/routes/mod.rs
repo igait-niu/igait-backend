@@ -73,6 +73,12 @@ pub mod contribute;
 /// Cleans up S3 outputs from the target stage onward, then re-queues the job.
 pub mod rerun;
 
+/// Files endpoint for generating presigned S3 download URLs.
+///
+/// Returns all files for a job grouped by stage, with time-limited
+/// presigned URLs so the frontend can display/download them securely.
+pub mod files;
+
 /// Internal endpoints for microservice communication
 /// 
 /// These endpoints are NOT exposed publicly and should only be called

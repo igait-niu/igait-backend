@@ -7,7 +7,7 @@ mod routes;
 
 use anyhow::{ Context, Result };
 use axum::{
-    extract::DefaultBodyLimit, routing::{any, post}, Router
+    extract::DefaultBodyLimit, routing::{any, get, post}, Router
 };
 use helper::lib::{AppState, AppStatePtr};
 use std::sync::Arc;
@@ -51,6 +51,7 @@ async fn main() -> Result<()> {
         .route("/rerun", post(crate::routes::rerun::rerun_entrypoint))
         .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
         .route("/assistant_proxied", any(crate::routes::assistant::assistant_proxied_entrypoint))
+        .route("/files/{job_id}", get(crate::routes::files::files_entrypoint))
         .with_state(app_state_ptr.clone());
     
     // Build the internal API router (for microservice communication)
