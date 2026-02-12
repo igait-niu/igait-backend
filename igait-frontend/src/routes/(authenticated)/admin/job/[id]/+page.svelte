@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { subscribeToJob, type SingleJobState } from '$lib/hooks';
+	import { getUser, subscribeToJob, type SingleJobState } from '$lib/hooks';
 	import { rerunJob } from '$lib/api';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -14,17 +14,28 @@
 		AlertTriangle,
 		ScrollText,
 		FileInput,
-		FileOutput
+		FileOutput,
+		User as UserIcon,
+		Calendar,
+		CheckCircle2,
+		XCircle,
+		Clock,
+		ShieldCheck
 	} from '@lucide/svelte';
 	import AdminLoadingState from '../../AdminLoadingState.svelte';
 	import AdminErrorState from '../../AdminErrorState.svelte';
 	import type { Job } from '../../../../../types/Job';
+	import type { JobStatus } from '../../../../../types/JobStatus';
+
+	// ── Auth ──────────────────────────────────────────────
+	const user = getUser();
+	const isAdmin = $derived(user.administrator);
 
 	// ── Route param ────────────────────────────────────────
-	const jobId = $derived($page.params.id);
+	const jobId = $derived($page.params.id as string);
 
 	// ── State ──────────────────────────────────────────────
-	let jobState: SingleJobState = $state({ status: 'loading' });
+	let jobState = $state<SingleJobState>({ status: 'loading' });
 	let activeStage: string = $state('stage_1');
 	let activeSubTab: 'input' | 'output' | 'logs' = $state('logs');
 	let showRerunDialog = $state(false);
@@ -36,7 +47,6 @@
 	let unsubscribe: (() => void) | undefined;
 
 	$effect(() => {
-		// Clean up previous subscription
 		unsubscribe?.();
 
 		if (jobId) {
@@ -72,26 +82,52 @@
 		parseInt(activeStage.replace('stage_', ''), 10)
 	);
 
-	/** Logs for the currently selected stage */
 	const currentStageLogs = $derived.by(() => {
 		if (!job?.stage_logs) return null;
 		return job.stage_logs[activeStage] ?? null;
 	});
 
-	/** Parse the job index from the composite ID */
 	const jobIndex = $derived.by(() => {
 		const lastUnderscore = jobId.lastIndexOf('_');
 		if (lastUnderscore === -1) return 0;
 		return parseInt(jobId.slice(lastUnderscore + 1), 10);
 	});
 
-	/** Formatted job ID for display */
+	// ── Status helpers ─────────────────────────────────────
+	function getStatusLabel(status: JobStatus): string {
+		switch (status.code) {
+			case 'Complete': return status.asd ? 'ASD Detected' : 'No ASD';
+			case 'Error': return 'Error';
+			case 'Processing': return `Stage ${status.stage}/${status.num_stages}`;
+			case 'Submitted': return 'Submitted';
+		}
+	}
+
+	function getStatusVariant(status: JobStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+		switch (status.code) {
+			case 'Complete': return status.asd ? 'destructive' : 'default';
+			case 'Error': return 'destructive';
+			case 'Processing': return 'secondary';
+			case 'Submitted': return 'outline';
+		}
+	}
+
 	function formatJobId(id: string): string {
 		const lastUnderscore = id.lastIndexOf('_');
 		if (lastUnderscore === -1) return id;
 		const uid = id.slice(0, lastUnderscore);
 		const index = id.slice(lastUnderscore + 1);
 		return `${uid.slice(0, 8)}…#${index}`;
+	}
+
+	function formatDate(timestamp: number): string {
+		return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
 	}
 
 	// ── Handlers ───────────────────────────────────────────
@@ -148,92 +184,193 @@
 			</Button>
 			<div class="header-info">
 				<h2 class="header-title">
-					Job <span class="mono">{formatJobId(jobId)}</span>
+					Job <span class="mono">{jobId}</span>
 				</h2>
-				<Badge variant="secondary">{job.email}</Badge>
+				<Badge variant={getStatusVariant(job.status)}>{getStatusLabel(job.status)}</Badge>
 			</div>
 		</header>
 
-		<!-- Stage Tabs -->
-		<div class="stage-tabs">
-			{#each stageInfo as stage}
-				<button
-					class="stage-tab"
-					class:active={activeStage === stage.key}
-					onclick={() => handleStageClick(stage.key)}
-				>
-					<span class="tab-name">{stage.name}</span>
-					<span class="tab-desc">{stage.description}</span>
-				</button>
-			{/each}
-		</div>
-
-		<!-- Sub-tabs + Re-Run row -->
-		<div class="sub-tab-row">
-			<div class="sub-tabs">
-				<button
-					class="sub-tab"
-					class:active={activeSubTab === 'input'}
-					onclick={() => handleSubTabClick('input')}
-				>
-					<FileInput class="sub-tab-icon" />
-					Input
-				</button>
-				<button
-					class="sub-tab"
-					class:active={activeSubTab === 'output'}
-					onclick={() => handleSubTabClick('output')}
-				>
-					<FileOutput class="sub-tab-icon" />
-					Output
-				</button>
-				<button
-					class="sub-tab"
-					class:active={activeSubTab === 'logs'}
-					onclick={() => handleSubTabClick('logs')}
-				>
-					<ScrollText class="sub-tab-icon" />
-					Logs
-				</button>
-			</div>
-
-			<Button variant="destructive" size="sm" onclick={handleRerunClick}>
-				<RotateCcw class="h-4 w-4 mr-1" />
-				Re-Run
-			</Button>
-		</div>
-
-		<!-- Success banner -->
-		{#if rerunSuccess}
-			<div class="success-banner">
-				{rerunSuccess}
-			</div>
-		{/if}
-
-		<!-- Tab Content -->
-		<div class="tab-content">
-			{#if activeSubTab === 'input'}
-				<div class="placeholder-content">
-					<p class="placeholder-label">Input for {activeStageInfo.name}: {activeStageInfo.description}</p>
-					<p class="placeholder-face">:3</p>
+		<!-- Job Details Card -->
+		<div class="details-card">
+			<div class="details-grid">
+				<!-- Submission Info -->
+				<div class="detail-section">
+					<h4 class="section-title">
+						<Calendar class="section-icon" />
+						Submission
+					</h4>
+					<div class="detail-row">
+						<span class="detail-label">Email</span>
+						<span class="detail-value">{job.email}</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Submitted</span>
+						<span class="detail-value">{formatDate(job.timestamp)}</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Status</span>
+						<span class="detail-value">{job.status.value}</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Approval</span>
+						<Badge variant={job.approved ? 'default' : 'outline'} class="detail-badge">
+							{job.approved ? 'Approved' : job.requires_approval ? 'Pending' : 'Auto'}
+						</Badge>
+					</div>
 				</div>
-			{:else if activeSubTab === 'output'}
-				<div class="placeholder-content">
-					<p class="placeholder-label">Output for {activeStageInfo.name}: {activeStageInfo.description}</p>
-					<p class="placeholder-face">:3</p>
+
+				<!-- Patient Info -->
+				<div class="detail-section">
+					<h4 class="section-title">
+						<UserIcon class="section-icon" />
+						Patient
+					</h4>
+					<div class="detail-row">
+						<span class="detail-label">Age</span>
+						<span class="detail-value">{job.age} years</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Sex</span>
+						<span class="detail-value">{job.sex}</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Height</span>
+						<span class="detail-value">{job.height}</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Weight</span>
+						<span class="detail-value">{job.weight} lbs</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-label">Ethnicity</span>
+						<span class="detail-value">{job.ethnicity}</span>
+					</div>
 				</div>
-			{:else if activeSubTab === 'logs'}
-				<div class="logs-content">
-					{#if currentStageLogs}
-						<pre class="log-output">{currentStageLogs}</pre>
-					{:else}
-						<div class="empty-logs">
-							<ScrollText class="empty-icon" />
-							<p>No logs available for {activeStageInfo.name}.</p>
+
+				<!-- Results (if complete) -->
+				{#if job.status.code === 'Complete'}
+					<div class="detail-section">
+						<h4 class="section-title">
+							<CheckCircle2 class="section-icon" />
+							Results
+						</h4>
+						<div class="detail-row">
+							<span class="detail-label">ASD Detection</span>
+							<Badge variant={job.status.asd ? 'destructive' : 'default'} class="detail-badge">
+								{job.status.asd ? 'ASD Indicators Detected' : 'No ASD Indicators'}
+							</Badge>
 						</div>
-					{/if}
+						<div class="detail-row">
+							<span class="detail-label">Confidence</span>
+							<span class="detail-value">
+								{job.status.asd
+									? (job.status.prediction * 100).toFixed(1)
+									: ((1 - job.status.prediction) * 100).toFixed(1)}%
+							</span>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Error (if failed) -->
+				{#if job.status.code === 'Error'}
+					<div class="detail-section">
+						<h4 class="section-title section-title--error">
+							<XCircle class="section-icon" />
+							Error
+						</h4>
+						<pre class="error-preview">{job.status.logs}</pre>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Stage Tabs -->
+		<div class="stage-tabs-container">
+			<div class="stage-tabs">
+				{#each stageInfo as stage}
+					<button
+						class="stage-tab"
+						class:active={activeStage === stage.key}
+						onclick={() => handleStageClick(stage.key)}
+					>
+						<span class="tab-name">{stage.name}</span>
+						<span class="tab-desc">{stage.description}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Main content card -->
+		<div class="main-content-card">
+			<!-- Sub-tabs + Re-Run row -->
+			<div class="sub-tab-row">
+				<div class="sub-tabs">
+					<button
+						class="sub-tab"
+						class:active={activeSubTab === 'input'}
+						onclick={() => handleSubTabClick('input')}
+					>
+						<FileInput class="sub-tab-icon" />
+						Input
+					</button>
+					<button
+						class="sub-tab"
+						class:active={activeSubTab === 'output'}
+						onclick={() => handleSubTabClick('output')}
+					>
+						<FileOutput class="sub-tab-icon" />
+						Output
+					</button>
+					<button
+						class="sub-tab"
+						class:active={activeSubTab === 'logs'}
+						onclick={() => handleSubTabClick('logs')}
+					>
+						<ScrollText class="sub-tab-icon" />
+						Logs
+					</button>
+				</div>
+
+				{#if isAdmin}
+					<Button variant="destructive" size="sm" onclick={handleRerunClick}>
+						<RotateCcw class="h-4 w-4 mr-1" />
+						Re-Run
+					</Button>
+				{/if}
+			</div>
+
+			<!-- Success banner -->
+			{#if rerunSuccess}
+				<div class="success-banner">
+					{rerunSuccess}
 				</div>
 			{/if}
+
+			<!-- Tab Content -->
+			<div class="tab-content">
+				{#if activeSubTab === 'input'}
+					<div class="placeholder-content">
+						<p class="placeholder-label">Input for {activeStageInfo.name}: {activeStageInfo.description}</p>
+						<p class="placeholder-face">:3</p>
+					</div>
+				{:else if activeSubTab === 'output'}
+					<div class="placeholder-content">
+						<p class="placeholder-label">Output for {activeStageInfo.name}: {activeStageInfo.description}</p>
+						<p class="placeholder-face">:3</p>
+					</div>
+				{:else if activeSubTab === 'logs'}
+					<div class="logs-content">
+						{#if currentStageLogs}
+							<pre class="log-output">{currentStageLogs}</pre>
+						{:else}
+							<div class="empty-logs">
+								<ScrollText class="empty-icon" />
+								<p>No logs available for {activeStageInfo.name}.</p>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -291,7 +428,7 @@
 	.job-detail-page {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 1.25rem;
 	}
 
 	/* ── Header ─────────────────────────────────────────── */
@@ -324,42 +461,127 @@
 		font-size: 0.9375rem;
 	}
 
+	/* ── Details Card ──────────────────────────────────── */
+
+	.details-card {
+		background: hsl(var(--card));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius-md);
+		padding: 1rem 1.25rem;
+	}
+
+	.details-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		gap: 1.25rem;
+	}
+
+	.detail-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	.section-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: hsl(var(--muted-foreground));
+		margin: 0 0 0.25rem;
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.section-title--error {
+		color: hsl(var(--destructive));
+	}
+
+	:global(.section-icon) {
+		width: 0.8125rem;
+		height: 0.8125rem;
+	}
+
+	.detail-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.detail-label {
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.detail-value {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		text-align: right;
+	}
+
+	:global(.detail-badge) {
+		font-size: 0.6875rem;
+	}
+
+	.error-preview {
+		font-family: ui-monospace, monospace;
+		font-size: 0.6875rem;
+		line-height: 1.5;
+		white-space: pre-wrap;
+		word-break: break-word;
+		background: hsl(var(--destructive) / 0.06);
+		border: 1px solid hsl(var(--destructive) / 0.15);
+		padding: 0.5rem 0.625rem;
+		border-radius: var(--radius-sm);
+		max-height: 80px;
+		overflow-y: auto;
+		margin: 0;
+		color: hsl(var(--destructive));
+	}
+
 	/* ── Stage Tabs ─────────────────────────────────────── */
+
+	.stage-tabs-container {
+		background: hsl(var(--primary) / 0.04);
+		border: 1px solid hsl(var(--primary) / 0.15);
+		border-radius: var(--radius-md);
+		padding: 0.5rem;
+		overflow-x: auto;
+	}
 
 	.stage-tabs {
 		display: flex;
-		gap: 0.125rem;
-		overflow-x: auto;
-		overflow-y: clip;
-		border-bottom: 2px solid hsl(var(--border));
-		padding-bottom: 0;
+		gap: 0.25rem;
+		justify-content: center;
 	}
 
 	.stage-tab {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.0625rem;
-		padding: 0.625rem 0.875rem;
-		border: none;
+		gap: 0.125rem;
+		padding: 0.5rem 1rem;
+		border: 1px solid transparent;
 		background: none;
 		cursor: pointer;
 		color: hsl(var(--muted-foreground));
-		border-bottom: 2px solid transparent;
-		transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+		transition: all 0.15s ease;
 		white-space: nowrap;
-		margin-bottom: -2px;
-		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+		border-radius: var(--radius-sm);
 	}
 
 	.stage-tab:hover {
 		color: hsl(var(--foreground));
-		background-color: hsl(var(--muted) / 0.5);
+		background-color: hsl(var(--primary) / 0.06);
 	}
 
 	.stage-tab.active {
-		color: hsl(var(--foreground));
-		border-bottom-color: hsl(var(--primary));
+		color: hsl(var(--primary));
+		background-color: hsl(var(--background));
+		border-color: hsl(var(--primary) / 0.3);
+		box-shadow: 0 1px 3px hsl(var(--primary) / 0.1);
 	}
 
 	.tab-name {
@@ -367,10 +589,27 @@
 		font-weight: 600;
 	}
 
+	.stage-tab.active .tab-name {
+		color: hsl(var(--primary));
+	}
+
 	.tab-desc {
 		font-size: 0.6875rem;
 		font-weight: 400;
 		opacity: 0.7;
+	}
+
+	.stage-tab.active .tab-desc {
+		opacity: 1;
+	}
+
+	/* ── Main Content Card ────────────────────────────────── */
+
+	.main-content-card {
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius-md);
+		background: hsl(var(--card));
+		overflow: hidden;
 	}
 
 	/* ── Sub-tabs ───────────────────────────────────────── */
@@ -382,8 +621,7 @@
 		gap: 1rem;
 		padding: 0.5rem 0.75rem;
 		background: hsl(var(--muted) / 0.35);
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius-md);
+		border-bottom: 1px solid hsl(var(--border));
 	}
 
 	.sub-tabs {
@@ -426,9 +664,6 @@
 	/* ── Tab Content ────────────────────────────────────── */
 
 	.tab-content {
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius-md);
-		background: hsl(var(--card));
 		min-height: 300px;
 	}
 
@@ -540,9 +775,10 @@
 
 	.success-banner {
 		padding: 0.625rem 0.875rem;
+		margin: 0.5rem 0.75rem 0;
 		background: hsl(142 76% 36% / 0.1);
 		border: 1px solid hsl(142 76% 36% / 0.25);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-sm);
 		font-size: 0.8125rem;
 		color: hsl(142 76% 36%);
 		font-weight: 500;
@@ -558,6 +794,14 @@
 
 		.sub-tabs {
 			justify-content: center;
+		}
+
+		.details-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.stage-tabs {
+			justify-content: flex-start;
 		}
 	}
 </style>
