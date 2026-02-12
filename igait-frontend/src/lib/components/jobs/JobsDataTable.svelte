@@ -2,8 +2,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { ArrowUpDown, MoreHorizontal, Download, Eye } from '@lucide/svelte';
+	import { ArrowUpDown } from '@lucide/svelte';
 	import JobsDataTableToolbar from './JobsDataTableToolbar.svelte';
 	import type { Job } from '../../../types/Job';
 	import type { JobStatus } from '../../../types/JobStatus';
@@ -15,7 +14,6 @@
 		uid?: string;
 		showEmail?: boolean;
 		initialStatusFilter?: string;
-		onViewDetails?: (job: JobWithId) => void;
 		selectedId?: string | null;
 		onRowClick?: (job: JobWithId) => void;
 	}
@@ -25,7 +23,6 @@
 		uid = '', 
 		showEmail = false, 
 		initialStatusFilter = 'all',
-		onViewDetails,
 		selectedId = null,
 		onRowClick
 	}: Props = $props();
@@ -165,7 +162,7 @@
 	}
 
 	const hasActiveFilters = $derived(statusFilter !== 'all' || searchQuery !== '');
-	const colCount = $derived(showEmail ? 6 : 5);
+	const colCount = $derived(showEmail ? 5 : 4);
 </script>
 
 <div class="data-table-wrapper">
@@ -212,7 +209,6 @@
 							<ArrowUpDown class="sort-icon" />
 						</Button>
 					</Table.Head>
-					<Table.Head class="col-actions"></Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -241,24 +237,6 @@
 							</Table.Cell>
 							<Table.Cell>
 								<span class="date">{formatDate(job.timestamp)}</span>
-							</Table.Cell>
-							<Table.Cell>
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										<Button variant="ghost" size="sm" class="action-btn">
-											<span class="sr-only">Open menu</span>
-											<MoreHorizontal class="action-icon" />
-										</Button>
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Content align="end">
-										<DropdownMenu.Label>Actions</DropdownMenu.Label>
-										<DropdownMenu.Separator />
-										<DropdownMenu.Item onclick={() => onViewDetails?.(job)}>
-											<Eye class="menu-icon" />
-											View details
-										</DropdownMenu.Item>
-									</DropdownMenu.Content>
-								</DropdownMenu.Root>
 							</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -316,10 +294,6 @@
 		width: 100px;
 	}
 
-	:global(.col-actions) {
-		width: 50px;
-	}
-
 	:global(.sort-btn) {
 		margin-left: -0.75rem;
 		height: 2rem !important;
@@ -375,23 +349,6 @@
 		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
 		white-space: nowrap;
-	}
-
-	:global(.action-btn) {
-		width: 2rem !important;
-		height: 2rem !important;
-		padding: 0 !important;
-	}
-
-	:global(.action-icon) {
-		width: 1rem;
-		height: 1rem;
-	}
-
-	:global(.menu-icon) {
-		width: 0.875rem;
-		height: 0.875rem;
-		margin-right: 0.5rem;
 	}
 
 	:global(.empty-cell) {

@@ -1,33 +1,17 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { subscribeToAllJobs, type AllJobsState, type AdminJob } from '$lib/hooks';
+	import { goto } from '$app/navigation';
+	import { subscribeToAllJobs, type AllJobsState } from '$lib/hooks';
 	import { JobsDataTable } from '$lib/components/jobs';
 	import AdminLoadingState from '../AdminLoadingState.svelte';
 	import AdminErrorState from '../AdminErrorState.svelte';
-	import JobDetailsDialog from '../../submissions/JobDetailsDialog.svelte';
 	import type { Job } from '../../../../types/Job';
 
 	let jobsState: AllJobsState = $state({ loading: true, jobs: [] });
 	let unsubscribe: (() => void) | undefined;
-	let selectedJob: (Job & { id: string }) | null = $state(null);
-
-	// We need a "fake" uid for the data table since admin sees all users
-	// The jobs already have proper IDs set from the hook
-	const adminUid = $derived(jobsState.jobs[0]?.id.split('_')[0] ?? 'admin');
-
-	// Transform jobs to have id already set (they do from the hook)
-	const jobsForTable = $derived(jobsState.jobs.map(job => {
-		// Strip the id field for the table since it adds its own
-		const { id, ...rest } = job;
-		return { ...rest, _originalId: id } as Job & { _originalId: string };
-	}));
 
 	function handleViewDetails(job: Job & { id: string }) {
-		selectedJob = job;
-	}
-
-	function handleCloseDetails() {
-		selectedJob = null;
+		goto(`/admin/job/${encodeURIComponent(job.id)}`);
 	}
 
 	onMount(() => {
@@ -64,14 +48,10 @@
 			data={jobsState.jobs} 
 			uid=""
 			showEmail={true}
-			onViewDetails={handleViewDetails}
+			onRowClick={handleViewDetails}
 		/>
 	{/if}
 </div>
-
-{#if selectedJob}
-	<JobDetailsDialog job={selectedJob} onClose={handleCloseDetails} />
-{/if}
 
 <style>
 	.jobs-page {

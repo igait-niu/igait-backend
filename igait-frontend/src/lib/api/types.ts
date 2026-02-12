@@ -59,3 +59,12 @@ export interface ResearchContributionRequest {
  * Progress callback type
  */
 export type ProgressCallback = (progress: number) => void;
+
+/**
+ * Response from the rerun endpoint
+ */
+export interface RerunResponse {
+	readonly success: boolean;
+	readonly message: string;
+	readonly objects_deleted: number;
+}

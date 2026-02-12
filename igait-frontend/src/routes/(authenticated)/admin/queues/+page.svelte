@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { 
 		subscribeToQueues, 
 		subscribeToQueueConfigs,
@@ -8,7 +9,6 @@
 		isQueuesLoaded,
 		isQueueConfigLoaded,
 		setQueueRequiresApproval,
-		approveQueueItem,
 		queueItemToJob,
 		type QueuesState,
 		type QueuesData,
@@ -22,7 +22,6 @@
 	import { Inbox } from '@lucide/svelte';
 	import AdminLoadingState from '../AdminLoadingState.svelte';
 	import AdminErrorState from '../AdminErrorState.svelte';
-	import QueueJobDetailPanel from './QueueJobDetailPanel.svelte';
 	import type { Job } from '../../../../types/Job';
 
 	// ── State ──────────────────────────────────────────────
@@ -30,7 +29,6 @@
 	let queuesState: QueuesState = $state({ status: 'loading' });
 	let configState: QueueConfigState = $state({ status: 'loading' });
 	let activeStage: string = $state('stage_1');
-	let selectedJobId: string | null = $state(null);
 
 	// ── Subscriptions ──────────────────────────────────────
 
@@ -95,12 +93,6 @@
 		return configState.configs[activeStage]?.requires_approval ?? false;
 	});
 
-	/** The selected queue entry (item + rtdb key) */
-	const selectedEntry = $derived.by(() => {
-		if (!selectedJobId) return null;
-		return activeQueueEntries.find(e => e.item.job_id === selectedJobId) ?? null;
-	});
-
 	/** Active stage display info */
 	const activeStageInfo = $derived(
 		stageInfo.find(s => s.key === activeStage) ?? stageInfo[0]
@@ -110,20 +102,14 @@
 
 	function handleSelectStage(stageKey: string) {
 		activeStage = stageKey;
-		selectedJobId = null;
 	}
 
 	function handleSelectJob(job: Job & { id: string }) {
-		selectedJobId = selectedJobId === job.id ? null : job.id;
+		goto(`/admin/job/${encodeURIComponent(job.id)}`);
 	}
 
 	async function handleToggleApproval(value: boolean) {
 		await setQueueRequiresApproval(activeStage, value);
-	}
-
-	async function handleApproveJob() {
-		if (!selectedEntry) return;
-		await approveQueueItem(activeStage, selectedEntry.key, selectedEntry.item);
 	}
 </script>
 
@@ -176,37 +162,20 @@
 		</div>
 
 		<!-- Main Content -->
-		<div class="content-area" class:has-detail={selectedEntry !== null}>
-			<!-- Jobs Table -->
-			<div class="table-column">
-				{#if jobsForTable.length === 0}
-					<div class="empty-state">
-						<Inbox class="empty-icon" />
-						<p class="empty-title">No jobs in queue</p>
-						<p class="empty-description">{activeStageInfo.description} has no pending items right now.</p>
-					</div>
-				{:else}
-					<JobsDataTable 
-						data={jobsForTable}
-						uid=""
-						showEmail={true}
-						selectedId={selectedJobId}
-						onRowClick={handleSelectJob}
-						onViewDetails={handleSelectJob}
-					/>
-				{/if}
-			</div>
-
-			<!-- Detail Panel -->
-			{#if selectedEntry}
-				<div class="detail-column">
-					<QueueJobDetailPanel
-						item={selectedEntry.item}
-						queueRequiresApproval={activeRequiresApproval}
-						onApprove={handleApproveJob}
-						onClose={() => selectedJobId = null}
-					/>
+		<div class="content-area">
+			{#if jobsForTable.length === 0}
+				<div class="empty-state">
+					<Inbox class="empty-icon" />
+					<p class="empty-title">No jobs in queue</p>
+					<p class="empty-description">{activeStageInfo.description} has no pending items right now.</p>
 				</div>
+			{:else}
+				<JobsDataTable 
+					data={jobsForTable}
+					uid=""
+					showEmail={true}
+					onRowClick={handleSelectJob}
+				/>
 			{/if}
 		</div>
 	</div>
@@ -329,20 +298,6 @@
 		gap: 1rem;
 	}
 
-	.table-column {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.detail-column {
-		flex-shrink: 0;
-		width: 320px;
-	}
-
-	.content-area:not(.has-detail) .table-column {
-		flex: 1;
-	}
-
 	.empty-state {
 		display: flex;
 		flex-direction: column;
@@ -375,17 +330,5 @@
 		margin: 0;
 		max-width: 20rem;
 		line-height: 1.4;
-	}
-
-	/* ── Responsive ─────────────────────────────────────── */
-
-	@media (max-width: 900px) {
-		.content-area {
-			flex-direction: column;
-		}
-
-		.detail-column {
-			width: 100%;
-		}
 	}
 </style>

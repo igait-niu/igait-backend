@@ -7,7 +7,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.ig
 export const API_ENDPOINTS = {
 	contribute: `${API_BASE_URL}/contribute`,
 	upload: `${API_BASE_URL}/upload`,
-	assistant: `${API_BASE_URL.replace(/^http/, 'ws')}/assistant_proxied`
+	assistant: `${API_BASE_URL.replace(/^http/, 'ws')}/assistant_proxied`,
+	rerun: `${API_BASE_URL}/rerun`
 } as const;
 
 /**

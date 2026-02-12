@@ -84,7 +84,7 @@
 					data={jobsState.jobs} 
 					uid={user.uid} 
 					initialStatusFilter={statusFilter}
-					onViewDetails={handleViewDetails}
+					onRowClick={handleViewDetails}
 				/>
 			{/if}
 		</Card.Content>

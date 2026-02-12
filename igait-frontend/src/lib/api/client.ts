@@ -6,6 +6,7 @@
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 import { authStore } from '$lib/stores';
 import { API_ENDPOINTS, DEFAULT_TIMEOUT_MS } from './config';
+import type { RerunResponse } from './types';
 import type { ContributionRequest, ProgressCallback, ResearchContributionRequest } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
@@ -265,4 +266,19 @@ export async function authenticatedFetch<T>(
 		},
 		'API request failed'
 	);
+}
+
+/**
+ * Re-run a job from a specific stage.
+ * Calls the backend /rerun endpoint which cleans S3 outputs and re-queues.
+ */
+export async function rerunJob(
+	jobIndex: number,
+	stage: number
+): Promise<Result<RerunResponse, AppError>> {
+	return authenticatedFetch<RerunResponse>(API_ENDPOINTS.rerun, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ job_index: jobIndex, stage }),
+	});
 }

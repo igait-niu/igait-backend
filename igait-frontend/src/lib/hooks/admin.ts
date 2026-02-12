@@ -288,3 +288,57 @@ export function queueItemToJob(item: QueueItem | FinalizeQueueItem): Job & { id:
 export function isQueueConfigLoaded(state: QueueConfigState): state is { status: 'loaded'; configs: QueueConfigData } {
 	return state.status === 'loaded';
 }
+
+// ============================================================================
+// SINGLE JOB SUBSCRIPTION (ADMIN)
+// ============================================================================
+
+/**
+ * State of a single job loading
+ */
+export type SingleJobState =
+	| { readonly status: 'loading' }
+	| { readonly status: 'error'; readonly error: string }
+	| { readonly status: 'loaded'; readonly job: Job };
+
+/**
+ * Subscribe to a single job by user ID and job index (admin only).
+ * Parses a composite job ID of the form "userId_jobIndex".
+ */
+export function subscribeToJob(
+	jobId: string,
+	onUpdate: (state: SingleJobState) => void
+): Unsubscribe {
+	const db = getFirebaseDatabase();
+
+	// Parse "userId_jobIndex" — the last segment after '_' is the index
+	const lastUnderscore = jobId.lastIndexOf('_');
+	if (lastUnderscore === -1) {
+		onUpdate({ status: 'error', error: `Invalid job ID format: ${jobId}` });
+		return () => {};
+	}
+	const userId = jobId.slice(0, lastUnderscore);
+	const jobIndex = jobId.slice(lastUnderscore + 1);
+
+	const jobRef = ref(db, `users/${userId}/jobs/${jobIndex}`);
+
+	onUpdate({ status: 'loading' });
+
+	const unsubscribe = onValue(
+		jobRef,
+		(snapshot) => {
+			const data = snapshot.val();
+			if (!data) {
+				onUpdate({ status: 'error', error: 'Job not found' });
+				return;
+			}
+			onUpdate({ status: 'loaded', job: data as Job });
+		},
+		(error) => {
+			console.error('Error fetching job:', error);
+			onUpdate({ status: 'error', error: error.message });
+		}
+	);
+
+	return unsubscribe;
+}
