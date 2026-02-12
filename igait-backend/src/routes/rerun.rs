@@ -1,8 +1,10 @@
 //! Rerun endpoint for re-processing a job from a specific stage.
 //!
-//! This endpoint allows authenticated users to rerun their own jobs
-//! starting from a given stage. It cleans up S3 outputs from the
-//! target stage onward and re-inserts the job into the target stage's queue.
+//! This endpoint allows administrators to rerun any job starting from
+//! a given stage. It cleans up S3 outputs from the target stage onward
+//! and re-inserts the job into the target stage's queue.
+//!
+//! Only users with `administrator: true` in the database are authorised.
 
 use std::collections::HashMap;
 
@@ -21,6 +23,9 @@ use crate::helper::lib::{AppError, AppStatePtr, JobStatus, NUM_STAGES};
 /// Request body for the rerun endpoint.
 #[derive(Debug, Deserialize)]
 pub struct RerunRequest {
+    /// The UID of the user who owns the job.
+    /// Admins must specify this to indicate whose job to rerun.
+    pub user_id: String,
     /// The index of the job in the user's job list (0-indexed).
     pub job_index: usize,
     /// The stage number to restart from (1–7).
@@ -39,28 +44,46 @@ pub struct RerunResponse {
 }
 
 /// Authenticated endpoint to rerun a job from a specific stage.
+/// **Admin-only** — the caller must have `administrator: true`.
 ///
 /// # Workflow
-/// 1. Validate the stage number
-/// 2. Verify the authenticated user owns the job
-/// 3. Delete S3 outputs for stages `stage..=7`
-/// 4. Reconstruct a `QueueItem` with the correct input keys
-/// 5. Push the item into the target stage's queue in Firebase RTDB
-/// 6. Update the job status to "Processing" for the target stage
+/// 1. Verify the caller is an administrator
+/// 2. Validate the stage number
+/// 3. Fetch the target user's job
+/// 4. Delete S3 outputs for stages `stage..=7`
+/// 5. Reconstruct a `QueueItem` with the correct input keys
+/// 6. Push the item into the target stage's queue in Firebase RTDB
+/// 7. Update the job status to "Processing" for the target stage
 ///
 /// # Arguments
 /// * `current_user` – The Firebase-authenticated user (extracted from Bearer token).
 /// * `app` – The shared application state.
-/// * `request` – JSON body with `job_index` and `stage`.
+/// * `request` – JSON body with `user_id`, `job_index`, and `stage`.
 pub async fn rerun_entrypoint(
     current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
     Json(request): Json<RerunRequest>,
 ) -> Result<Json<RerunResponse>, AppError> {
     let app = app.state;
-    let uid = &current_user.user_id;
+    let caller_uid = &current_user.user_id;
+    let target_uid = &request.user_id;
     let stage = request.stage;
     let job_index = request.job_index;
+
+    // ── 0. Verify the caller is an administrator ────────────────────
+    let caller = app
+        .db
+        .lock()
+        .await
+        .get_user(caller_uid)
+        .await
+        .context("Failed to look up caller in the database")?;
+
+    if !caller.administrator {
+        return Err(AppError(anyhow!(
+            "Forbidden: only administrators may rerun jobs."
+        )));
+    }
 
     // ── 1. Validate stage number ────────────────────────────────────
     if stage < 1 || stage > NUM_STAGES {
@@ -74,17 +97,17 @@ pub async fn rerun_entrypoint(
     let target_stage = StageNumber::from_u8(stage)
         .ok_or_else(|| anyhow!("Failed to convert stage number {} to StageNumber", stage))?;
 
-    // ── 2. Fetch the job & verify ownership ─────────────────────────
+    // ── 2. Fetch the job ────────────────────────────────────────────
     let job = app
         .db
         .lock()
         .await
-        .get_job(uid, job_index)
+        .get_job(target_uid, job_index)
         .await
         .context("Failed to fetch the job — does it exist?")?;
 
-    let job_id = format!("{}_{}", uid, job_index);
-    println!("Rerun requested: job={}, stage={}", job_id, stage);
+    let job_id = format!("{}_{}", target_uid, job_index);
+    println!("Rerun requested by admin {}: job={}, stage={}", caller_uid, job_id, stage);
 
     // ── 3. Delete S3 outputs for stages `stage..=7` ─────────────────
     let mut total_deleted: usize = 0;
@@ -117,7 +140,7 @@ pub async fn rerun_entrypoint(
 
     let queue_item = QueueItem::new(
         job_id.clone(),
-        uid.to_string(),
+        target_uid.to_string(),
         input_keys,
         metadata,
         job.requires_approval,
@@ -139,7 +162,7 @@ pub async fn rerun_entrypoint(
     app.db
         .lock()
         .await
-        .update_status(uid, job_index, status)
+        .update_status(target_uid, job_index, status)
         .await
         .context("Failed to update job status")?;
 

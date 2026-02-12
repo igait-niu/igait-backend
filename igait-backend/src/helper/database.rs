@@ -83,6 +83,31 @@ impl Database {
         Ok(())
     }
 
+    /// Fetches a user record from the database.
+    ///
+    /// # Arguments
+    /// * `uid` - The user ID to look up.
+    ///
+    /// # Fails
+    /// * If the user doesn't exist and can't be created
+    /// * If the user record can't be read
+    ///
+    /// # Returns
+    /// * The `User` record
+    pub async fn get_user(
+        &self,
+        uid: &str,
+    ) -> Result<User> {
+        self.ensure_user(uid).await.context("Failed to ensure user!")?;
+
+        self._state
+            .at(uid)
+            .get::<User>()
+            .await
+            .map_err(|e| anyhow!("{e:?}"))
+            .context("Failed to get user!")
+    }
+
     /// Counts the number of jobs a user has.
     /// 
     /// # Arguments
