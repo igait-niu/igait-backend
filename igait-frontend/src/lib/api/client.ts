@@ -6,7 +6,7 @@
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 import { authStore } from '$lib/stores';
 import { API_ENDPOINTS, DEFAULT_TIMEOUT_MS } from './config';
-import type { RerunResponse } from './types';
+import type { RerunResponse, JobFilesResponse } from './types';
 import type { ContributionRequest, ProgressCallback, ResearchContributionRequest } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
@@ -285,4 +285,14 @@ export async function rerunJob(
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ user_id: userId, job_index: jobIndex, stage }),
 	});
+}
+
+/**
+ * Fetch presigned download URLs for all files belonging to a job.
+ * Returns files grouped by stage.
+ */
+export async function getJobFiles(
+	jobId: string
+): Promise<Result<JobFilesResponse, AppError>> {
+	return authenticatedFetch<JobFilesResponse>(API_ENDPOINTS.files(jobId));
 }

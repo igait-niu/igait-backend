@@ -68,3 +68,18 @@ export interface RerunResponse {
 	readonly message: string;
 	readonly objects_deleted: number;
 }
+
+/**
+ * A single file entry with name and presigned URL
+ */
+export interface FileEntry {
+	readonly name: string;
+	readonly url: string;
+}
+
+/**
+ * Response from the files endpoint - stages mapped to their files
+ */
+export interface JobFilesResponse {
+	readonly stages: Record<string, FileEntry[]>;
+}

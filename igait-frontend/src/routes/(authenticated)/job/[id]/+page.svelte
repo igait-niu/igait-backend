@@ -4,6 +4,9 @@
 	import { goto } from '$app/navigation';
 	import { getUser, subscribeToJob, type SingleJobState } from '$lib/hooks';
 	import { rerunJob } from '$lib/api';
+	import { getJobFiles } from '$lib/api';
+	import type { FileEntry, JobFilesResponse } from '$lib/api';
+	import { FileViewer } from '$lib/components';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -43,6 +46,11 @@
 	let rerunError: string | null = $state(null);
 	let rerunSuccess: string | null = $state(null);
 
+	// ── Files state ───────────────────────────────────────
+	let filesLoading = $state(false);
+	let filesError: string | null = $state(null);
+	let filesData: JobFilesResponse | null = $state(null);
+
 	// ── Subscription ───────────────────────────────────────
 	let unsubscribe: (() => void) | undefined;
 
@@ -58,6 +66,27 @@
 
 	onDestroy(() => {
 		unsubscribe?.();
+	});
+
+	// ── Fetch files ──────────────────────────────────────
+	async function loadFiles() {
+		if (!jobId) return;
+		filesLoading = true;
+		filesError = null;
+
+		const result = await getJobFiles(jobId);
+		if (result.isOk()) {
+			filesData = result.value;
+		} else {
+			filesError = result.error.rootCause;
+		}
+		filesLoading = false;
+	}
+
+	$effect(() => {
+		if (jobId) {
+			loadFiles();
+		}
 	});
 
 	// ── Stage info ─────────────────────────────────────────
@@ -91,6 +120,20 @@
 		const lastUnderscore = jobId.lastIndexOf('_');
 		if (lastUnderscore === -1) return 0;
 		return parseInt(jobId.slice(lastUnderscore + 1), 10);
+	});
+
+	// ── Files for active stage ──────────────────────────
+	const inputFiles = $derived.by((): FileEntry[] | undefined => {
+		if (!filesData) return undefined;
+		// Input = previous stage's output (stage N reads from stage N-1)
+		const inputStageKey = `stage_${activeStageNumber - 1}`;
+		return filesData.stages[inputStageKey] ?? [];
+	});
+
+	const outputFiles = $derived.by((): FileEntry[] | undefined => {
+		if (!filesData) return undefined;
+		const outputStageKey = `stage_${activeStageNumber}`;
+		return filesData.stages[outputStageKey] ?? [];
 	});
 
 	// ── Status helpers ─────────────────────────────────────
@@ -366,15 +409,19 @@
 				<!-- Tab Content -->
 				<div class="tab-content">
 				{#if activeSubTab === 'input'}
-					<div class="placeholder-content">
-						<p class="placeholder-label">Input for {activeStageInfo.name}: {activeStageInfo.description}</p>
-						<p class="placeholder-face">:3</p>
-					</div>
+					<FileViewer
+						files={inputFiles}
+						loading={filesLoading}
+						error={filesError}
+						label="No input files for {activeStageInfo.name}"
+					/>
 				{:else if activeSubTab === 'output'}
-					<div class="placeholder-content">
-						<p class="placeholder-label">Output for {activeStageInfo.name}: {activeStageInfo.description}</p>
-						<p class="placeholder-face">:3</p>
-					</div>
+					<FileViewer
+						files={outputFiles}
+						loading={filesLoading}
+						error={filesError}
+						label="No output files for {activeStageInfo.name}"
+					/>
 				{:else if activeSubTab === 'logs'}
 					<div class="logs-content">
 						{#if currentStageLogs}
@@ -742,28 +789,6 @@
 
 	.tab-content {
 		min-height: 300px;
-	}
-
-	.placeholder-content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 2rem;
-		text-align: center;
-		color: hsl(var(--muted-foreground));
-		gap: 0.5rem;
-	}
-
-	.placeholder-label {
-		font-size: 0.875rem;
-		margin: 0;
-	}
-
-	.placeholder-face {
-		font-size: 2rem;
-		margin: 0;
-		opacity: 0.6;
 	}
 
 	.logs-content {
