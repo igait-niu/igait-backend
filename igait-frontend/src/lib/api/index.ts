@@ -13,16 +13,7 @@ export {
 } from './config';
 
 // Types
-export type {
-	Job,
-	JobStatus,
-	ContributionRequest,
-	ResearchContributionRequest,
-	AssistantMessage,
-	AssistantMessageType,
-	ProgressCallback,
-	RerunResponse
-} from './types';
+export type { Job, JobStatus, ContributionRequest, ResearchContributionRequest, AssistantMessage, AssistantMessageType, ProgressCallback, RerunResponse, FileEntry, JobFilesResponse } from './types';
 
 // Validation
 export {
@@ -34,9 +25,4 @@ export {
 } from './validation';
 
 // Client
-export {
-	submitContribution,
-	submitResearchContribution,
-	authenticatedFetch,
-	rerunJob
-} from './client';
+export { submitContribution, submitResearchContribution, authenticatedFetch, rerunJob, getJobFiles } from './client';

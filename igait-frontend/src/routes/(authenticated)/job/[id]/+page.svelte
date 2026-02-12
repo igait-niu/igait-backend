@@ -3,6 +3,9 @@
 	import { page } from '$app/stores';
 	import { getUser, subscribeToJob, type SingleJobState } from '$lib/hooks';
 	import { rerunJob } from '$lib/api';
+	import { getJobFiles } from '$lib/api';
+	import type { FileEntry, JobFilesResponse } from '$lib/api';
+	import { FileViewer } from '$lib/components';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -12,7 +15,6 @@
 		RotateCcw,
 		AlertTriangle,
 		ScrollText,
-		FileInput,
 		FileOutput,
 		User as UserIcon,
 		Calendar,
@@ -36,11 +38,16 @@
 	// ── State ──────────────────────────────────────────────
 	let jobState = $state<SingleJobState>({ status: 'loading' });
 	let activeStage: string = $state('stage_1');
-	let activeSubTab: 'input' | 'output' | 'logs' = $state('logs');
+	let activeSubTab: 'output' | 'logs' = $state('output');
 	let showRerunDialog = $state(false);
 	let rerunLoading = $state(false);
 	let rerunError: string | null = $state(null);
 	let rerunSuccess: string | null = $state(null);
+
+	// ── Files state ───────────────────────────────────────
+	let filesLoading = $state(false);
+	let filesError: string | null = $state(null);
+	let filesData: JobFilesResponse | null = $state(null);
 
 	// ── Subscription ───────────────────────────────────────
 	let unsubscribe: (() => void) | undefined;
@@ -57,6 +64,27 @@
 
 	onDestroy(() => {
 		unsubscribe?.();
+	});
+
+	// ── Fetch files ──────────────────────────────────────
+	async function loadFiles() {
+		if (!jobId) return;
+		filesLoading = true;
+		filesError = null;
+
+		const result = await getJobFiles(jobId);
+		if (result.isOk()) {
+			filesData = result.value;
+		} else {
+			filesError = result.error.rootCause;
+		}
+		filesLoading = false;
+	}
+
+	$effect(() => {
+		if (jobId) {
+			loadFiles();
+		}
 	});
 
 	// ── Stage info ─────────────────────────────────────────
@@ -80,6 +108,26 @@
 	const currentStageLogs = $derived.by(() => {
 		if (!job?.stage_logs) return null;
 		return job.stage_logs[activeStage] ?? null;
+	});
+
+	const jobIndex = $derived.by(() => {
+		const lastUnderscore = jobId.lastIndexOf('_');
+		if (lastUnderscore === -1) return 0;
+		return parseInt(jobId.slice(lastUnderscore + 1), 10);
+	});
+
+	// ── Files for active stage ──────────────────────────
+	const outputFiles = $derived.by((): FileEntry[] | undefined => {
+		if (!filesData) return undefined;
+		const outputStageKey = `stage_${activeStageNumber}`;
+		return filesData.stages[outputStageKey] ?? [];
+	});
+
+	// ── Tab counts ──────────────────────────────────────
+	const outputFileCount = $derived(outputFiles?.length ?? 0);
+	const logLineCount = $derived.by(() => {
+		if (!currentStageLogs) return 0;
+		return currentStageLogs.split('\n').length;
 	});
 
 	// ── Status helpers ─────────────────────────────────────
@@ -138,7 +186,7 @@
 		activeStage = stageKey;
 	}
 
-	function handleSubTabClick(tab: 'input' | 'output' | 'logs') {
+	function handleSubTabClick(tab: 'output' | 'logs') {
 		activeSubTab = tab;
 	}
 
@@ -334,19 +382,14 @@
 					<div class="sub-tabs">
 						<button
 							class="sub-tab"
-							class:active={activeSubTab === 'input'}
-							onclick={() => handleSubTabClick('input')}
-						>
-							<FileInput class="sub-tab-icon" />
-							Input
-						</button>
-						<button
-							class="sub-tab"
 							class:active={activeSubTab === 'output'}
 							onclick={() => handleSubTabClick('output')}
 						>
 							<FileOutput class="sub-tab-icon" />
-							Output
+							Output Files
+							{#if !filesLoading}
+								<Badge variant="outline" class="sub-tab-badge {outputFileCount === 0 ? 'sub-tab-badge-zero' : ''}">{outputFileCount}</Badge>
+							{/if}
 						</button>
 						<button
 							class="sub-tab"
@@ -355,6 +398,7 @@
 						>
 							<ScrollText class="sub-tab-icon" />
 							Logs
+							<Badge variant="outline" class="sub-tab-badge {logLineCount === 0 ? 'sub-tab-badge-zero' : ''}">{logLineCount}</Badge>
 						</button>
 					</div>
 
@@ -373,32 +417,20 @@
 
 				<!-- Tab Content -->
 				<div class="tab-content">
-					{#if activeSubTab === 'input'}
-						<div class="placeholder-content">
-							<p class="placeholder-label">
-								Input for {activeStageInfo.name}: {activeStageInfo.description}
-							</p>
-							<p class="placeholder-face">:3</p>
-						</div>
-					{:else if activeSubTab === 'output'}
-						<div class="placeholder-content">
-							<p class="placeholder-label">
-								Output for {activeStageInfo.name}: {activeStageInfo.description}
-							</p>
-							<p class="placeholder-face">:3</p>
-						</div>
-					{:else if activeSubTab === 'logs'}
-						<div class="logs-content">
-							{#if currentStageLogs}
-								<pre class="log-output">{currentStageLogs}</pre>
-							{:else}
-								<div class="empty-logs">
-									<ScrollText class="empty-icon" />
-									<p>No logs available for {activeStageInfo.name}.</p>
-								</div>
-							{/if}
-						</div>
-					{/if}
+				{#if activeSubTab === 'output'}
+					<FileViewer
+						files={outputFiles}
+						loading={filesLoading}
+						error={filesError}
+						label=""
+					/>
+				{:else if activeSubTab === 'logs'}
+					<div class="logs-content">
+						{#if currentStageLogs}
+							<pre class="log-output">{currentStageLogs}</pre>
+						{/if}
+					</div>
+				{/if}
 				</div>
 			</div>
 		{/if}
@@ -752,32 +784,22 @@
 		height: 0.875rem;
 	}
 
+	:global(.sub-tab-badge) {
+		font-size: 0.625rem !important;
+		padding: 0 0.375rem !important;
+		height: 1.125rem !important;
+		min-width: 1.125rem !important;
+		scale: 0.9;
+	}
+	:global(.sub-tab-badge-zero) {
+		border-color: oklch(0.637 0.237 25.331) !important;
+		color: oklch(0.637 0.237 25.331) !important;
+	}
+
 	/* ── Tab Content ────────────────────────────────────── */
 
 	.tab-content {
 		min-height: 300px;
-	}
-
-	.placeholder-content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 2rem;
-		text-align: center;
-		color: hsl(var(--muted-foreground));
-		gap: 0.5rem;
-	}
-
-	.placeholder-label {
-		font-size: 0.875rem;
-		margin: 0;
-	}
-
-	.placeholder-face {
-		font-size: 2rem;
-		margin: 0;
-		opacity: 0.6;
 	}
 
 	.logs-content {
@@ -795,28 +817,6 @@
 		border-radius: var(--radius-sm);
 		max-height: 500px;
 		overflow-y: auto;
-		margin: 0;
-	}
-
-	.empty-logs {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 2rem;
-		text-align: center;
-		color: hsl(var(--muted-foreground));
-		gap: 0.5rem;
-	}
-
-	:global(.empty-icon) {
-		width: 2rem;
-		height: 2rem;
-		opacity: 0.4;
-	}
-
-	.empty-logs p {
-		font-size: 0.875rem;
 		margin: 0;
 	}
 

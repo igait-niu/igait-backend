@@ -3,7 +3,14 @@
  */
 
 export { getUser } from './user';
-export { subscribeToJobs, isJobsLoading, isJobsError, isJobsLoaded, type JobsState } from './jobs';
+export { 
+	subscribeToJobs, 
+	isJobsLoading, 
+	isJobsError, 
+	isJobsLoaded,
+	type JobsState,
+	type JobWithId
+} from './jobs';
 export {
 	subscribeToQueues,
 	subscribeToAllJobs,

@@ -6,7 +6,7 @@
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 import { authStore } from '$lib/stores';
 import { API_ENDPOINTS, DEFAULT_TIMEOUT_MS } from './config';
-import type { RerunResponse } from './types';
+import type { RerunResponse, JobFilesResponse } from './types';
 import type { ContributionRequest, ProgressCallback, ResearchContributionRequest } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
@@ -98,9 +98,16 @@ export async function submitContribution(
 	// Use XMLHttpRequest for real upload progress tracking
 	const result = await new Promise<Result<string, AppError>>((resolve) => {
 		const xhr = new XMLHttpRequest();
-		const timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+
+		// Inactivity timeout — resets whenever progress is made
+		let timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+		const resetTimeout = () => {
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
+		};
 
 		xhr.upload.addEventListener('progress', (e) => {
+			resetTimeout();
 			if (e.lengthComputable) {
 				// Map upload progress to 5–90% range
 				const uploadPercent = 5 + Math.round((e.loaded / e.total) * 85);
@@ -329,4 +336,14 @@ export async function rerunJob(
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ user_id: userId, job_index: jobIndex, stage })
 	});
+}
+
+/**
+ * Fetch presigned download URLs for all files belonging to a job.
+ * Returns files grouped by stage.
+ */
+export async function getJobFiles(
+	jobId: string
+): Promise<Result<JobFilesResponse, AppError>> {
+	return authenticatedFetch<JobFilesResponse>(API_ENDPOINTS.files(jobId));
 }

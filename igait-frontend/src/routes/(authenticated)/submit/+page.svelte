@@ -135,17 +135,24 @@
 			}
 		};
 
-		const result = await submitContribution(request, onProgress);
+		try {
+			const result = await submitContribution(request, onProgress);
 
-		if (result.isErr()) {
-			error = Some(result.error);
+			if (result.isErr()) {
+				error = Some(result.error);
+				isSubmitting = false;
+				progress = 0;
+				statusMessage = '';
+			} else {
+				statusMessage = 'Submission complete! Redirecting...';
+				toast.success(result.value);
+				setTimeout(() => goto('/dashboard'), 1500);
+			}
+		} catch (err) {
+			error = Some(new AppError(err instanceof Error ? err.message : 'An unexpected error occurred'));
 			isSubmitting = false;
 			progress = 0;
 			statusMessage = '';
-		} else {
-			statusMessage = 'Submission complete! Redirecting...';
-			toast.success(result.value);
-			setTimeout(() => goto('/dashboard'), 1500);
 		}
 	}
 </script>
@@ -317,23 +324,28 @@
 					</label>
 				</fieldset>
 
-				<div class="submit-button-container">
-					{#if isSubmitting}
-						<div class="button-progress-fill" style="width: {progress}%"></div>
-					{/if}
-					<Button
-						type="submit"
-						class="submit-button {isSubmitting ? 'is-uploading' : ''}"
-						disabled={isSubmitting || !isFormValid}
-					>
+				<div class="submit-button-area">
+					<div class="submit-button-container">
 						{#if isSubmitting}
-							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-							{statusMessage} ({progress}%)
-						{:else}
-							<Upload class="mr-2 h-4 w-4" />
-							Submit for Analysis
+							<div 
+								class="button-progress-fill"
+								style="width: {Math.min(progress, 100)}%"
+							></div>
 						{/if}
-					</Button>
+						<Button 
+							type="submit" 
+							class="submit-button {isSubmitting ? 'is-uploading' : ''}" 
+							disabled={isSubmitting || !isFormValid}
+						>
+							{#if isSubmitting}
+								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+								{statusMessage} ({Math.min(progress, 100)}%)
+							{:else}
+								<Upload class="mr-2 h-4 w-4" />
+								Submit for Analysis
+							{/if}
+						</Button>
+					</div>
 					{#if isSubmitting}
 						<p class="upload-hint">
 							Please don't close this page — large videos may take a moment to upload.
@@ -366,7 +378,7 @@
 	.page-description {
 		margin-top: 0.375rem;
 		font-size: 0.875rem;
-		color: hsl(var(--muted-foreground));
+		color: var(--muted-foreground);
 	}
 
 	:global(.compact-header) {
@@ -395,9 +407,9 @@
 	.form-section__title {
 		font-size: 0.9375rem;
 		font-weight: 600;
-		color: hsl(var(--foreground));
+		color: var(--foreground);
 		padding-bottom: 0.5rem;
-		border-bottom: 1px solid hsl(var(--border));
+		border-bottom: 1px solid var(--border);
 		margin: 0 0 0.75rem 0;
 	}
 
@@ -436,8 +448,8 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.875rem 1rem;
-		background: hsl(var(--muted) / 0.4);
-		border: 1px solid hsl(var(--border));
+		background: color-mix(in oklch, var(--muted) 40%, transparent);
+		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		cursor: pointer;
 	}
@@ -451,12 +463,12 @@
 	.approval-label {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: hsl(var(--foreground));
+		color: var(--foreground);
 	}
 
 	.approval-description {
 		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
+		color: var(--muted-foreground);
 		line-height: 1.4;
 	}
 
@@ -473,7 +485,7 @@
 	.error-details summary {
 		cursor: pointer;
 		font-size: 0.8125rem;
-		color: hsl(var(--destructive-foreground) / 0.8);
+		color: color-mix(in oklch, var(--destructive-foreground) 80%, transparent);
 	}
 
 	.error-details summary:hover {
@@ -486,15 +498,18 @@
 		font-family: ui-monospace, monospace;
 		word-break: break-word;
 		white-space: pre-wrap;
-		background-color: hsl(var(--destructive-foreground) / 0.1);
+		background-color: color-mix(in oklch, var(--destructive-foreground) 10%, transparent);
 		padding: 0.5rem;
 		border-radius: var(--radius-sm);
 	}
 
 	/* Submit button with integrated progress */
+	.submit-button-area {
+		margin-top: 0.5rem;
+	}
+
 	.submit-button-container {
 		position: relative;
-		margin-top: 0.5rem;
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}
@@ -504,7 +519,7 @@
 		top: 0;
 		left: 0;
 		height: 100%;
-		background-color: hsl(var(--primary) / 0.3);
+		background-color: color-mix(in oklch, var(--primary) 30%, transparent);
 		transition: width 0.3s ease-out;
 		pointer-events: none;
 		z-index: 0;
@@ -517,13 +532,13 @@
 	}
 
 	:global(.submit-button.is-uploading) {
-		background-color: hsl(var(--primary) / 0.8);
+		background-color: color-mix(in oklch, var(--primary) 80%, transparent);
 	}
 
 	.upload-hint {
 		text-align: center;
 		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
+		color: var(--muted-foreground);
 		margin-top: 0.5rem;
 	}
 

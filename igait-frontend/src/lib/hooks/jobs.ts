@@ -6,13 +6,15 @@ import { getFirebaseDatabase } from '$lib/firebase';
 import { ref, onValue, type Unsubscribe } from 'firebase/database';
 import type { Job } from '../../types/Job';
 
+export type JobWithId = Job & { id: string };
+
 /**
  * State of jobs loading
  */
 export type JobsState =
 	| { readonly status: 'loading' }
 	| { readonly status: 'error'; readonly error: string }
-	| { readonly status: 'loaded'; readonly jobs: Job[] };
+	| { readonly status: 'loaded'; readonly jobs: JobWithId[] };
 
 /**
  * Subscribe to a user's jobs in Firebase RTDB
@@ -42,16 +44,21 @@ export function subscribeToJobs(uid: string, onUpdate: (state: JobsState) => voi
 			}
 
 			// Data is stored as an array in RTDB
-			// Filter out any placeholder/null entries and sort by timestamp (newest first)
-			const jobs: Job[] = Array.isArray(data)
-				? data.filter(
-						(job): job is Job => job !== null && job.email !== 'placeholder@placeholder.com'
-					)
-				: Object.values(data).filter(
-						(job): job is Job =>
-							job !== null && (job as Job).email !== 'placeholder@placeholder.com'
-					);
-
+			// Filter out any placeholder/null entries and attach original index as ID
+			const jobs: JobWithId[] = Array.isArray(data) 
+				? data
+					.map((job, index): JobWithId | null => {
+						if (job === null || job.email === 'placeholder@placeholder.com') return null;
+						return { ...job, id: `${uid}_${index}` };
+					})
+					.filter((job): job is JobWithId => job !== null)
+				: Object.entries(data)
+					.map(([key, job]): JobWithId | null => {
+						if (job === null || (job as Job).email === 'placeholder@placeholder.com') return null;
+						return { ...(job as Job), id: `${uid}_${key}` };
+					})
+					.filter((job): job is JobWithId => job !== null);
+			
 			// Sort by timestamp (newest first)
 			jobs.sort((a, b) => b.timestamp - a.timestamp);
 
