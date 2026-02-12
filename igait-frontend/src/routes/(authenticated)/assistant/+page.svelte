@@ -11,14 +11,7 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
-	import {
-		SendHorizontal,
-		RefreshCw,
-		TriangleAlert,
-		Bot,
-		Loader2,
-		WifiOff
-	} from '@lucide/svelte';
+	import { SendHorizontal, RefreshCw, TriangleAlert, Bot, Loader2, WifiOff } from '@lucide/svelte';
 	import ChatMessage from './ChatMessage.svelte';
 
 	const user = getUser();
@@ -104,10 +97,7 @@
 						waitingStatus = '';
 						break;
 					case 'Error':
-						messages = [
-							...messages,
-							{ type: 'Error', content: parsed.content as string }
-						];
+						messages = [...messages, { type: 'Error', content: parsed.content as string }];
 						waitingStatus = '';
 						break;
 				}

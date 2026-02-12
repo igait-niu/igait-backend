@@ -13,7 +13,11 @@
 </script>
 
 <div class="empty-state">
-	<div class="empty-state__icon" class:empty-state__icon--error={variant === 'error'} class:empty-state__icon--loading={variant === 'loading'}>
+	<div
+		class="empty-state__icon"
+		class:empty-state__icon--error={variant === 'error'}
+		class:empty-state__icon--loading={variant === 'loading'}
+	>
 		<Icon class="icon" />
 	</div>
 	<h3 class="empty-state__title">{title}</h3>

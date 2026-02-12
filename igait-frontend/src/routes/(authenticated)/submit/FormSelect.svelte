@@ -17,11 +17,11 @@
 		error?: string;
 	}
 
-	let { 
-		label, 
-		id, 
-		value = $bindable(), 
-		options, 
+	let {
+		label,
+		id,
+		value = $bindable(),
+		options,
 		placeholder = 'Select an option',
 		required = false,
 		disabled = false,
@@ -74,7 +74,9 @@
 		font-weight: 500;
 		color: hsl(var(--foreground));
 		box-shadow: var(--shadow-xs);
-		transition: box-shadow 0.2s, border-color 0.2s;
+		transition:
+			box-shadow 0.2s,
+			border-color 0.2s;
 		outline: none;
 		cursor: pointer;
 		appearance: none;

@@ -41,9 +41,8 @@
 		const jobs = jobsState.jobs;
 		const totalSubmissions = jobs.length;
 		const completedJobs = jobs.filter((job: Job) => job.status.code === 'Complete').length;
-		const inProgressJobs = jobs.filter((job: Job) => 
-			job.status.code === 'Processing' || 
-			job.status.code === 'Submitted'
+		const inProgressJobs = jobs.filter(
+			(job: Job) => job.status.code === 'Processing' || job.status.code === 'Submitted'
 		).length;
 
 		return [
@@ -80,8 +79,8 @@
 				<Card.Root class="stat-card">
 					<Card.Header class="stat-header">
 						<Card.Title class="stat-label">{stat.label}</Card.Title>
-					{@const Icon = stat.icon}
-					<Icon class="h-4 w-4 text-muted-foreground" />
+						{@const Icon = stat.icon}
+						<Icon class="h-4 w-4 text-muted-foreground" />
 					</Card.Header>
 					<Card.Content>
 						<div class="stat-value">{stat.value}</div>

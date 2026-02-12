@@ -26,5 +26,12 @@ export const MAX_VIDEO_SIZE_MB = 500;
  * Supported video extensions
  */
 export const VALID_VIDEO_EXTENSIONS = [
-	'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv'
+	'.mp4',
+	'.mov',
+	'.avi',
+	'.mkv',
+	'.webm',
+	'.m4v',
+	'.wmv',
+	'.flv'
 ] as const;

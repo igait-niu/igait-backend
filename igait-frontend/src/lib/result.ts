@@ -29,9 +29,7 @@ export class AppError {
 	 * Get a short display message (first context or root cause)
 	 */
 	get displayMessage(): string {
-		return this.contextChain[0] !== undefined
-			? this.contextChain[0] 
-			: this.rootCause;
+		return this.contextChain[0] !== undefined ? this.contextChain[0] : this.rootCause;
 	}
 
 	/**
@@ -149,9 +147,7 @@ export class ErrResult<T, E = AppError> {
 	 * Add context to this error
 	 */
 	context(context: string): Result<T, AppError> {
-		const appError = this.error instanceof AppError 
-			? this.error 
-			: AppError.from(this.error);
+		const appError = this.error instanceof AppError ? this.error : AppError.from(this.error);
 		return new ErrResult(appError.withContext(context));
 	}
 
@@ -242,10 +238,7 @@ export async function tryAsync<T>(
 /**
  * Wrap a synchronous function that might throw into a Result
  */
-export function trySync<T>(
-	fn: () => T,
-	context?: string
-): Result<T, AppError> {
+export function trySync<T>(fn: () => T, context?: string): Result<T, AppError> {
 	try {
 		const value = fn();
 		return Ok(value);

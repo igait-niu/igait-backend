@@ -86,11 +86,12 @@ pub async fn rerun_entrypoint(
     }
 
     // ── 1. Validate stage number ────────────────────────────────────
-    if stage < 1 || stage > NUM_STAGES {
+    // Stage 7 is the finalize stage and uses FinalizeQueueItem, not QueueItem.
+    // We don't support rerunning from stage 7 since it would require a different payload.
+    if stage < 1 || stage > 6 {
         return Err(AppError(anyhow!(
-            "Invalid stage number {}. Must be between 1 and {}.",
-            stage,
-            NUM_STAGES
+            "Invalid stage number {}. Must be between 1 and 6 (stage 7 finalization is not supported for reruns).",
+            stage
         )));
     }
 
@@ -138,13 +139,16 @@ pub async fn rerun_entrypoint(
         extra: HashMap::new(),
     };
 
-    let queue_item = QueueItem::new(
+    let mut queue_item = QueueItem::new(
         job_id.clone(),
         target_uid.to_string(),
         input_keys,
         metadata,
         job.requires_approval,
     );
+
+    // Admin action: mark as approved immediately (no need for re-approval)
+    queue_item.approved = true;
 
     // ── 5. Push into the target stage's queue ───────────────────────
     let rtdb = FirebaseRtdb::from_env()
@@ -180,22 +184,70 @@ pub async fn rerun_entrypoint(
 
 /// Builds the `input_keys` map for the target stage.
 ///
-/// Each stage expects `front_video` and `side_video` keys pointing
-/// at the previous stage's outputs. For stage 1, inputs come from
-/// the original uploads in `stage_0`.
+/// The expected keys are **stage-specific**:
+/// - Stages 1–4: `front_video`, `side_video` (video-based processing)
+/// - Stage 5:    `front_landmarks`, `side_landmarks`, `front_video`, `side_video` (from pose estimation)
+/// - Stage 6:    `front_gait_analysis`, `side_gait_analysis` (from cycle detection)
+///
+/// All keys point at the previous stage's outputs for the given job.
 fn build_input_keys(job_id: &str, stage: u8) -> HashMap<String, String> {
     let prev = stage.saturating_sub(1);
     let mut keys = HashMap::new();
 
-    // Convention: previous stage outputs are `front.mp4` / `side.mp4`
-    keys.insert(
-        "front_video".to_string(),
-        StoragePaths::stage_front_video(job_id, prev, "mp4"),
-    );
-    keys.insert(
-        "side_video".to_string(),
-        StoragePaths::stage_side_video(job_id, prev, "mp4"),
-    );
+    match stage {
+        // Stages 1–4 consume video outputs from the previous stage.
+        1..=4 => {
+            keys.insert(
+                "front_video".to_string(),
+                StoragePaths::stage_front_video(job_id, prev, "mp4"),
+            );
+            keys.insert(
+                "side_video".to_string(),
+                StoragePaths::stage_side_video(job_id, prev, "mp4"),
+            );
+        }
+        // Stage 5 consumes pose landmarks AND videos from stage 4.
+        5 => {
+            keys.insert(
+                "front_video".to_string(),
+                StoragePaths::stage_front_video(job_id, prev, "mp4"),
+            );
+            keys.insert(
+                "side_video".to_string(),
+                StoragePaths::stage_side_video(job_id, prev, "mp4"),
+            );
+            keys.insert(
+                "front_landmarks".to_string(),
+                format!("jobs/{}/stage_{}/front_landmarks.json", job_id, prev),
+            );
+            keys.insert(
+                "side_landmarks".to_string(),
+                format!("jobs/{}/stage_{}/side_landmarks.json", job_id, prev),
+            );
+        }
+        // Stage 6 consumes gait analysis outputs from stage 5.
+        6 => {
+            keys.insert(
+                "front_gait_analysis".to_string(),
+                format!("jobs/{}/stage_{}/front_gait_analysis.json", job_id, prev),
+            );
+            keys.insert(
+                "side_gait_analysis".to_string(),
+                format!("jobs/{}/stage_{}/side_gait_analysis.json", job_id, prev),
+            );
+        }
+        // Fallback: default to the legacy video keys.
+        _ => {
+            keys.insert(
+                "front_video".to_string(),
+                StoragePaths::stage_front_video(job_id, prev, "mp4"),
+            );
+            keys.insert(
+                "side_video".to_string(),
+                StoragePaths::stage_side_video(job_id, prev, "mp4"),
+            );
+        }
+    }
 
     keys
 }

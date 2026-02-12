@@ -37,7 +37,14 @@ export interface ContributionRequest {
 /**
  * Assistant WebSocket message types
  */
-export type AssistantMessageType = 'Error' | 'Message' | 'Waiting' | 'You' | 'Typing' | 'Info' | 'Jobs';
+export type AssistantMessageType =
+	| 'Error'
+	| 'Message'
+	| 'Waiting'
+	| 'You'
+	| 'Typing'
+	| 'Info'
+	| 'Jobs';
 
 export interface AssistantMessage {
 	readonly type: AssistantMessageType;

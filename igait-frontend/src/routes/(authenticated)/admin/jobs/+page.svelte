@@ -44,12 +44,7 @@
 			<p>No jobs found in the system</p>
 		</div>
 	{:else}
-		<JobsDataTable 
-			data={jobsState.jobs} 
-			uid=""
-			showEmail={true}
-			onRowClick={handleViewDetails}
-		/>
+		<JobsDataTable data={jobsState.jobs} uid="" showEmail={true} onRowClick={handleViewDetails} />
 	{/if}
 </div>
 

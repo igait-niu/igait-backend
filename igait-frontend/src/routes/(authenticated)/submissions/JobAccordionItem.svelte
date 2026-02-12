@@ -2,7 +2,7 @@
 	import * as Accordion from '$lib/components/ui/accordion';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Separator } from '$lib/components/ui/separator';
-	import { 
+	import {
 		FileVideo,
 		CheckCircle2,
 		Clock,
@@ -32,16 +32,18 @@
 
 	function formatDate(timestamp: number): string {
 		const date = new Date(timestamp * 1000);
-		return date.toLocaleDateString('en-US', { 
-			year: 'numeric', 
-			month: 'short', 
+		return date.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'short',
 			day: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
 		});
 	}
 
-	function getStatusVariant(code: JobStatus['code']): 'default' | 'secondary' | 'destructive' | 'outline' {
+	function getStatusVariant(
+		code: JobStatus['code']
+	): 'default' | 'secondary' | 'destructive' | 'outline' {
 		switch (code) {
 			case 'Complete':
 				return 'default';
@@ -120,9 +122,9 @@
 					</h4>
 					<p class="job-section__value">{job.status.value}</p>
 				</div>
-				
+
 				<Separator />
-				
+
 				<!-- Patient Information -->
 				<div class="job-section">
 					<h4 class="job-section__title">
@@ -152,7 +154,9 @@
 						</div>
 						<div class="patient-field">
 							<p class="patient-field__label">Contact</p>
-							<p class="patient-field__value patient-field__value--truncate" title={job.email}>{job.email}</p>
+							<p class="patient-field__value patient-field__value--truncate" title={job.email}>
+								{job.email}
+							</p>
 						</div>
 					</div>
 				</div>
