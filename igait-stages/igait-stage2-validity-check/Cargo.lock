@@ -1434,6 +1434,8 @@ dependencies = [
  "anyhow",
  "async-trait",
  "igait-lib",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

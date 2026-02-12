@@ -1,3 +1,7 @@
+[submodule "igait-stages/igait-stage2-validity-check/igait-human-gait-detection"]
+	path = igait-stages/igait-stage2-validity-check/igait-human-gait-detection
+	url = https://github.com/igait-niu/igait-human-gait-detection
+	
 [submodule "igait-stages/igait-stage4-pose-estimation/igait-mediapipe"]
 	path = igait-stages/igait-stage4-pose-estimation/igait-mediapipe
 	url = https://github.com/igait-niu/igait-mediapipe
