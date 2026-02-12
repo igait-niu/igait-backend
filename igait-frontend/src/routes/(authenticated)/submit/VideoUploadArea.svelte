@@ -11,7 +11,7 @@
 	}
 
 	let { label, id, file = $bindable(), disabled, onchange }: Props = $props();
-	
+
 	let isDragging = $state(false);
 
 	function handleDragOver(e: DragEvent) {
@@ -55,24 +55,17 @@
 <div class="form-group">
 	<Label for={id}>{label}</Label>
 	<div class="upload-container">
-		<label 
-			for={id} 
-			class="upload-area" 
-			class:has-file={file} 
+		<label
+			for={id}
+			class="upload-area"
+			class:has-file={file}
 			class:disabled
 			class:dragging={isDragging}
 			ondragover={handleDragOver}
 			ondragleave={handleDragLeave}
 			ondrop={handleDrop}
 		>
-			<input
-				{id}
-				type="file"
-				accept="video/*"
-				class="hidden"
-				{onchange}
-				{disabled}
-			/>
+			<input {id} type="file" accept="video/*" class="hidden" {onchange} {disabled} />
 			{#if file}
 				<CheckCircle class="upload-icon-success" />
 				<span class="upload-filename">{file.name}</span>
@@ -142,7 +135,7 @@
 		color: hsl(var(--muted-foreground));
 		transition: transform 0.2s;
 	}
-	
+
 	.dragging :global(.upload-icon) {
 		transform: scale(1.1);
 		color: hsl(var(--primary));
@@ -172,7 +165,6 @@
 		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
 	}
-	
 
 	:global(.upload-icon-success) {
 		width: 3rem;

@@ -18,28 +18,30 @@
 		onRowClick?: (job: JobWithId) => void;
 	}
 
-	let { 
-		data, 
-		uid = '', 
-		showEmail = false, 
+	let {
+		data,
+		uid = '',
+		showEmail = false,
 		initialStatusFilter = 'all',
 		selectedId = null,
 		onRowClick
 	}: Props = $props();
 
 	// Create jobs with IDs - use existing id if present, otherwise generate from uid_index
-	const jobsWithIds = $derived(data.map((job, index) => {
-		if ('id' in job && job.id) {
-			return job as JobWithId;
-		}
-		return { ...job, id: `${uid}_${index}` } as JobWithId;
-	}));
+	const jobsWithIds = $derived(
+		data.map((job, index) => {
+			if ('id' in job && job.id) {
+				return job as JobWithId;
+			}
+			return { ...job, id: `${uid}_${index}` } as JobWithId;
+		})
+	);
 
 	let sortColumn: 'date' | 'status' | null = $state(null);
 	let sortDirection: 'asc' | 'desc' = $state('desc');
 	let searchQuery = $state('');
 	let statusFilter = $state('all');
-	
+
 	// Update status filter when prop changes
 	$effect(() => {
 		statusFilter = initialStatusFilter;
@@ -49,16 +51,16 @@
 	function getStatusInfo(status: JobStatus) {
 		switch (status.code) {
 			case 'Complete':
-				return { 
-					label: status.asd ? 'ASD Detected' : 'No ASD', 
-					variant: status.asd ? 'destructive' as const : 'default' as const 
+				return {
+					label: status.asd ? 'ASD Detected' : 'No ASD',
+					variant: status.asd ? ('destructive' as const) : ('default' as const)
 				};
 			case 'Error':
 				return { label: 'Error', variant: 'destructive' as const };
 			case 'Processing':
-				return { 
-					label: `Stage ${status.stage}/${status.num_stages}`, 
-					variant: 'secondary' as const 
+				return {
+					label: `Stage ${status.stage}/${status.num_stages}`,
+					variant: 'secondary' as const
 				};
 			case 'Submitted':
 			default:
@@ -85,12 +87,12 @@
 		if (searchQuery) {
 			const query = searchQuery.toLowerCase();
 			filtered = filtered.filter((job) => {
-				const matchesBasic = 
+				const matchesBasic =
 					job.id.toLowerCase().includes(query) ||
 					job.status.value.toLowerCase().includes(query) ||
 					getStatusInfo(job.status).label.toLowerCase().includes(query) ||
 					new Date(job.timestamp * 1000).toLocaleDateString().includes(query);
-				
+
 				if (showEmail) {
 					return matchesBasic || job.email.toLowerCase().includes(query);
 				}
@@ -108,7 +110,7 @@
 					bVal = b.timestamp;
 				} else {
 					// Sort order: Error > Processing > Submitted > Complete
-					const statusOrder = { 'Error': 0, 'Processing': 1, 'Submitted': 2, 'Complete': 3 };
+					const statusOrder = { Error: 0, Processing: 1, Submitted: 2, Complete: 3 };
 					aVal = statusOrder[a.status.code] ?? 2;
 					bVal = statusOrder[b.status.code] ?? 2;
 				}
@@ -177,7 +179,7 @@
 		{hasActiveFilters}
 		placeholder={showEmail ? 'Filter by ID, email, status...' : 'Filter submissions...'}
 	/>
-	
+
 	<div class="table-container">
 		<Table.Root class="compact-table">
 			<Table.Header>
@@ -188,23 +190,13 @@
 					{/if}
 					<Table.Head class="col-desc">Description</Table.Head>
 					<Table.Head class="col-status">
-						<Button
-							variant="ghost"
-							size="sm"
-							class="sort-btn"
-							onclick={() => toggleSort('status')}
-						>
+						<Button variant="ghost" size="sm" class="sort-btn" onclick={() => toggleSort('status')}>
 							Status
 							<ArrowUpDown class="sort-icon" />
 						</Button>
 					</Table.Head>
 					<Table.Head class="col-date">
-						<Button
-							variant="ghost"
-							size="sm"
-							class="sort-btn"
-							onclick={() => toggleSort('date')}
-						>
+						<Button variant="ghost" size="sm" class="sort-btn" onclick={() => toggleSort('date')}>
 							Date
 							<ArrowUpDown class="sort-icon" />
 						</Button>
@@ -215,8 +207,10 @@
 				{#if filteredData.length > 0}
 					{#each filteredData as job (job.id)}
 						{@const statusInfo = getStatusInfo(job.status)}
-						<Table.Row 
-							class="data-row {selectedId === job.id ? 'row-selected' : ''} {onRowClick ? 'row-clickable' : ''}"
+						<Table.Row
+							class="data-row {selectedId === job.id ? 'row-selected' : ''} {onRowClick
+								? 'row-clickable'
+								: ''}"
 							onclick={() => onRowClick?.(job)}
 						>
 							<Table.Cell>
@@ -242,9 +236,7 @@
 					{/each}
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={colCount} class="empty-cell">
-							No results found
-						</Table.Cell>
+						<Table.Cell colspan={colCount} class="empty-cell">No results found</Table.Cell>
 					</Table.Row>
 				{/if}
 			</Table.Body>

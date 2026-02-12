@@ -33,7 +33,9 @@ export type AuthState =
 /**
  * Helper to check if auth state is authenticated
  */
-export function isAuthenticated(state: AuthState): state is { status: 'authenticated'; user: User } {
+export function isAuthenticated(
+	state: AuthState
+): state is { status: 'authenticated'; user: User } {
 	return state.status === 'authenticated';
 }
 

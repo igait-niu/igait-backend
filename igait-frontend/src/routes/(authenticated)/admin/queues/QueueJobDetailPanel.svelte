@@ -2,13 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { 
-		User as UserIcon,
-		Clock,
-		CheckCircle2,
-		ShieldCheck,
-		X
-	} from '@lucide/svelte';
+	import { User as UserIcon, Clock, CheckCircle2, ShieldCheck, X } from '@lucide/svelte';
 	import type { QueueItem, FinalizeQueueItem } from '$lib/hooks';
 
 	interface Props {
@@ -47,7 +41,7 @@
 	 * - Neither the job-level nor the queue-level flag requires approval
 	 */
 	const isEffectivelyApproved = $derived(
-		item.approved || (!(item.requires_approval) && !queueRequiresApproval)
+		item.approved || (!item.requires_approval && !queueRequiresApproval)
 	);
 
 	const needsManualReview = $derived(
@@ -118,7 +112,9 @@
 				</div>
 				<div class="detail-cell">
 					<span class="detail-label">Weight</span>
-					<span class="detail-value">{item.metadata?.weight ? `${item.metadata.weight} lbs` : '—'}</span>
+					<span class="detail-value"
+						>{item.metadata?.weight ? `${item.metadata.weight} lbs` : '—'}</span
+					>
 				</div>
 				<div class="detail-cell full-width">
 					<span class="detail-label">Ethnicity</span>

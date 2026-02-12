@@ -11,17 +11,15 @@
 				<span class="text-primary"> Too Late</span>
 			</h1>
 			<p class="hero-description">
-				Children wait 27+ months for autism diagnosis after parents first notice signs. 
-				iGAIT screens in minutes, giving families answers when they need them most.
+				Children wait 27+ months for autism diagnosis after parents first notice signs. iGAIT
+				screens in minutes, giving families answers when they need them most.
 			</p>
 			<div class="hero-actions">
 				<Button size="lg" href="/signup">
 					Screen Your Child Today
 					<ArrowRight class="ml-2 h-4 w-4" />
 				</Button>
-				<Button size="lg" variant="outline" href="/about">
-					Learn More
-				</Button>
+				<Button size="lg" variant="outline" href="/about">Learn More</Button>
 			</div>
 		</div>
 	</div>

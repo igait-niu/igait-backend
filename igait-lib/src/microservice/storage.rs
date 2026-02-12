@@ -9,6 +9,7 @@ use aws_sdk_s3::{
     Client,
     presigning::PresigningConfig,
     primitives::ByteStream,
+    types::{Delete, ObjectIdentifier},
 };
 
 /// Configuration for storage access.
@@ -162,17 +163,61 @@ impl StorageClient {
 
     /// Deletes all objects whose keys begin with the given prefix.
     ///
+    /// Uses S3's batch DeleteObjects API (up to 1000 keys per request) for efficiency.
     /// Returns the number of objects deleted.
     pub async fn delete_by_prefix(&self, prefix: &str) -> Result<usize> {
         let keys = self.list_by_prefix(prefix).await?;
-        let count = keys.len();
+        let total_count = keys.len();
 
-        for key in &keys {
-            self.delete(key).await
-                .context(format!("Failed to delete object during prefix deletion: {}", key))?;
+        if total_count == 0 {
+            return Ok(0);
         }
 
-        Ok(count)
+        // Process keys in batches of 1000 (S3's maximum for DeleteObjects)
+        const BATCH_SIZE: usize = 1000;
+        let mut deleted_count = 0;
+
+        for chunk in keys.chunks(BATCH_SIZE) {
+            // Build object identifiers for this batch
+            let objects: Vec<ObjectIdentifier> = chunk
+                .iter()
+                .map(|key| ObjectIdentifier::builder().key(key).build())
+                .collect::<Result<Vec<_>, _>>()
+                .context("Failed to build object identifiers")?;
+
+            // Create the Delete request
+            let delete = Delete::builder()
+                .set_objects(Some(objects))
+                .build()
+                .context("Failed to build Delete request")?;
+
+            // Execute batch delete
+            let response = self.client
+                .delete_objects()
+                .bucket(&self.bucket)
+                .delete(delete)
+                .send()
+                .await
+                .context(format!("Failed to delete batch of objects with prefix: {}", prefix))?;
+
+            // Count successful deletions
+            deleted_count += response.deleted().len();
+
+            // Log any errors (but don't fail the entire operation)
+            let errors = response.errors();
+            if !errors.is_empty() {
+                for error in errors {
+                    eprintln!(
+                        "Warning: Failed to delete object {}: {} (code: {})",
+                        error.key().unwrap_or("unknown"),
+                        error.message().unwrap_or("unknown error"),
+                        error.code().unwrap_or("unknown")
+                    );
+                }
+            }
+        }
+
+        Ok(deleted_count)
     }
 
     /// Returns the bucket name.

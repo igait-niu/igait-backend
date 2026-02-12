@@ -63,19 +63,17 @@ export type QueuesState =
 /**
  * Subscribe to all queues in Firebase RTDB (admin only)
  */
-export function subscribeToQueues(
-	onUpdate: (state: QueuesState) => void
-): Unsubscribe {
+export function subscribeToQueues(onUpdate: (state: QueuesState) => void): Unsubscribe {
 	const db = getFirebaseDatabase();
 	const queuesRef = ref(db, 'queues');
-	
+
 	onUpdate({ status: 'loading' });
-	
+
 	const unsubscribe = onValue(
 		queuesRef,
 		(snapshot) => {
 			const data = snapshot.val();
-			
+
 			const queues: QueuesData = {
 				stage_1: data?.stage_1 ?? {},
 				stage_2: data?.stage_2 ?? {},
@@ -83,9 +81,9 @@ export function subscribeToQueues(
 				stage_4: data?.stage_4 ?? {},
 				stage_5: data?.stage_5 ?? {},
 				stage_6: data?.stage_6 ?? {},
-				finalize: data?.finalize ?? {},
+				finalize: data?.finalize ?? {}
 			};
-			
+
 			onUpdate({ status: 'loaded', queues });
 		},
 		(error) => {
@@ -93,14 +91,14 @@ export function subscribeToQueues(
 			onUpdate({ status: 'error', error: error.message });
 		}
 	);
-	
+
 	return unsubscribe;
 }
 
 /**
  * Job with user ID for admin view - extends Job with id field
  */
-export type AdminJob = Job & { 
+export type AdminJob = Job & {
 	id: string; // Full job ID: userId_jobIndex
 };
 
@@ -116,47 +114,45 @@ export interface AllJobsState {
 /**
  * Subscribe to all jobs across all users (admin only)
  */
-export function subscribeToAllJobs(
-	onUpdate: (state: AllJobsState) => void
-): Unsubscribe {
+export function subscribeToAllJobs(onUpdate: (state: AllJobsState) => void): Unsubscribe {
 	const db = getFirebaseDatabase();
 	const usersRef = ref(db, 'users');
-	
+
 	onUpdate({ loading: true, jobs: [] });
-	
+
 	const unsubscribe = onValue(
 		usersRef,
 		(snapshot) => {
 			const data = snapshot.val();
-			
+
 			if (!data) {
 				onUpdate({ loading: false, jobs: [] });
 				return;
 			}
-			
+
 			const allJobs: AdminJob[] = [];
-			
+
 			// Iterate through all users
 			for (const [userId, userData] of Object.entries(data)) {
 				const user = userData as { jobs?: Job[]; administrator?: boolean };
 				if (!user.jobs) continue;
-				
+
 				// Handle both array and object formats
 				const jobs: Job[] = Array.isArray(user.jobs) ? user.jobs : Object.values(user.jobs);
-				
+
 				jobs.forEach((job, index) => {
 					if (!job || !job.email) return;
-					
+
 					allJobs.push({
 						...job,
-						id: `${userId}_${index}`,
+						id: `${userId}_${index}`
 					});
 				});
 			}
-			
+
 			// Sort by timestamp (newest first)
 			allJobs.sort((a, b) => b.timestamp - a.timestamp);
-			
+
 			onUpdate({ loading: false, jobs: allJobs });
 		},
 		(error) => {
@@ -164,7 +160,7 @@ export function subscribeToAllJobs(
 			onUpdate({ loading: false, jobs: [], error: error.message });
 		}
 	);
-	
+
 	return unsubscribe;
 }
 
@@ -177,7 +173,9 @@ export function isQueuesError(state: QueuesState): state is { status: 'error'; e
 	return state.status === 'error';
 }
 
-export function isQueuesLoaded(state: QueuesState): state is { status: 'loaded'; queues: QueuesData } {
+export function isQueuesLoaded(
+	state: QueuesState
+): state is { status: 'loaded'; queues: QueuesData } {
 	return state.status === 'loaded';
 }
 
@@ -210,9 +208,7 @@ export type QueueConfigState =
 /**
  * Subscribe to queue configuration in Firebase RTDB
  */
-export function subscribeToQueueConfigs(
-	onUpdate: (state: QueueConfigState) => void
-): Unsubscribe {
+export function subscribeToQueueConfigs(onUpdate: (state: QueueConfigState) => void): Unsubscribe {
 	const db = getFirebaseDatabase();
 	const configRef = ref(db, 'queue_config');
 
@@ -281,12 +277,14 @@ export function queueItemToJob(item: QueueItem | FinalizeQueueItem): Job & { id:
 			: { code: 'Submitted' as const, value: 'Waiting in queue' },
 		requires_approval: item.requires_approval ?? false,
 		approved: item.approved ?? false,
-		stage_logs: {},
+		stage_logs: {}
 	};
 }
 
 // Helper type guards for queue config
-export function isQueueConfigLoaded(state: QueueConfigState): state is { status: 'loaded'; configs: QueueConfigData } {
+export function isQueueConfigLoaded(
+	state: QueueConfigState
+): state is { status: 'loaded'; configs: QueueConfigData } {
 	return state.status === 'loaded';
 }
 

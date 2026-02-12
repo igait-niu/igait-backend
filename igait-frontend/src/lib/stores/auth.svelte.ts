@@ -3,15 +3,15 @@
  * Uses Svelte 5 runes for reactivity
  */
 
-import { 
-	getAuth, 
-	onAuthStateChanged, 
+import {
+	getAuth,
+	onAuthStateChanged,
 	signInWithEmailAndPassword,
 	createUserWithEmailAndPassword,
 	signInWithPopup,
 	GoogleAuthProvider,
 	signOut as firebaseSignOut,
-	type User as FirebaseUser 
+	type User as FirebaseUser
 } from 'firebase/auth';
 import { ref, get } from 'firebase/database';
 import { getFirebaseDatabase } from '$lib/firebase';
@@ -95,14 +95,11 @@ class AuthStore {
 	 */
 	async signInWithEmail(email: string, password: string): Promise<Result<User, AppError>> {
 		const auth = getAuth();
-		
-		const result = await tryAsync(
-			async () => {
-				const credential = await signInWithEmailAndPassword(auth, email, password);
-				return await toUser(credential.user);
-			},
-			'Failed to sign in'
-		);
+
+		const result = await tryAsync(async () => {
+			const credential = await signInWithEmailAndPassword(auth, email, password);
+			return await toUser(credential.user);
+		}, 'Failed to sign in');
 
 		return result;
 	}
@@ -112,14 +109,11 @@ class AuthStore {
 	 */
 	async signUpWithEmail(email: string, password: string): Promise<Result<User, AppError>> {
 		const auth = getAuth();
-		
-		const result = await tryAsync(
-			async () => {
-				const credential = await createUserWithEmailAndPassword(auth, email, password);
-				return await toUser(credential.user);
-			},
-			'Failed to create account'
-		);
+
+		const result = await tryAsync(async () => {
+			const credential = await createUserWithEmailAndPassword(auth, email, password);
+			return await toUser(credential.user);
+		}, 'Failed to create account');
 
 		return result;
 	}
@@ -130,14 +124,11 @@ class AuthStore {
 	async signInWithGoogle(): Promise<Result<User, AppError>> {
 		const auth = getAuth();
 		const provider = new GoogleAuthProvider();
-		
-		const result = await tryAsync(
-			async () => {
-				const credential = await signInWithPopup(auth, provider);
-				return await toUser(credential.user);
-			},
-			'Failed to sign in with Google'
-		);
+
+		const result = await tryAsync(async () => {
+			const credential = await signInWithPopup(auth, provider);
+			return await toUser(credential.user);
+		}, 'Failed to sign in with Google');
 
 		return result;
 	}
@@ -147,11 +138,8 @@ class AuthStore {
 	 */
 	async signOut(): Promise<Result<void, AppError>> {
 		const auth = getAuth();
-		
-		return tryAsync(
-			() => firebaseSignOut(auth),
-			'Failed to sign out'
-		);
+
+		return tryAsync(() => firebaseSignOut(auth), 'Failed to sign out');
 	}
 
 	/**
@@ -165,10 +153,7 @@ class AuthStore {
 			return Err(new AppError('No authenticated user'));
 		}
 
-		return tryAsync(
-			() => user.getIdToken(),
-			'Failed to get authentication token'
-		);
+		return tryAsync(() => user.getIdToken(), 'Failed to get authentication token');
 	}
 }
 

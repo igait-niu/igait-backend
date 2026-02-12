@@ -14,9 +14,7 @@
 <div class="settings-page stack-lg">
 	<section>
 		<h1 class="page-title">Settings</h1>
-		<p class="page-description">
-			Manage your account preferences
-		</p>
+		<p class="page-description">Manage your account preferences</p>
 	</section>
 
 	<!-- Coming Soon Placeholder -->
@@ -30,9 +28,7 @@
 				<p class="account-detail">{user.displayName}</p>
 			</div>
 
-			<Button variant="outline" href="/dashboard" class="back-button">
-				Back to Dashboard
-			</Button>
+			<Button variant="outline" href="/dashboard" class="back-button">Back to Dashboard</Button>
 		</Card.Content>
 	</Card.Root>
 </div>
@@ -61,7 +57,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {

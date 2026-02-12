@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import { getUser, subscribeToJob, type SingleJobState } from '$lib/hooks';
 	import { rerunJob } from '$lib/api';
 	import { getJobFiles } from '$lib/api';
@@ -96,19 +95,15 @@
 		{ key: 'stage_4', name: 'Stage 4', description: 'Pose Estimation' },
 		{ key: 'stage_5', name: 'Stage 5', description: 'Cycle Detection' },
 		{ key: 'stage_6', name: 'Stage 6', description: 'ML Prediction' },
-		{ key: 'stage_7', name: 'Stage 7', description: 'Finalize' },
+		{ key: 'stage_7', name: 'Stage 7', description: 'Finalize' }
 	] as const;
 
 	// ── Derived ────────────────────────────────────────────
 	const job = $derived(jobState.status === 'loaded' ? jobState.job : null);
 
-	const activeStageInfo = $derived(
-		stageInfo.find(s => s.key === activeStage) ?? stageInfo[0]
-	);
+	const activeStageInfo = $derived(stageInfo.find((s) => s.key === activeStage) ?? stageInfo[0]);
 
-	const activeStageNumber = $derived(
-		parseInt(activeStage.replace('stage_', ''), 10)
-	);
+	const activeStageNumber = $derived(parseInt(activeStage.replace('stage_', ''), 10));
 
 	const currentStageLogs = $derived.by(() => {
 		if (!job?.stage_logs) return null;
@@ -138,19 +133,29 @@
 	// ── Status helpers ─────────────────────────────────────
 	function getStatusLabel(status: JobStatus): string {
 		switch (status.code) {
-			case 'Complete': return status.asd ? 'ASD Detected' : 'No ASD';
-			case 'Error': return 'Error';
-			case 'Processing': return `Stage ${status.stage}/${status.num_stages}`;
-			case 'Submitted': return 'Submitted';
+			case 'Complete':
+				return status.asd ? 'ASD Detected' : 'No ASD';
+			case 'Error':
+				return 'Error';
+			case 'Processing':
+				return `Stage ${status.stage}/${status.num_stages}`;
+			case 'Submitted':
+				return 'Submitted';
 		}
 	}
 
-	function getStatusVariant(status: JobStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+	function getStatusVariant(
+		status: JobStatus
+	): 'default' | 'secondary' | 'destructive' | 'outline' {
 		switch (status.code) {
-			case 'Complete': return status.asd ? 'destructive' : 'default';
-			case 'Error': return 'destructive';
-			case 'Processing': return 'secondary';
-			case 'Submitted': return 'outline';
+			case 'Complete':
+				return status.asd ? 'destructive' : 'default';
+			case 'Error':
+				return 'destructive';
+			case 'Processing':
+				return 'secondary';
+			case 'Submitted':
+				return 'outline';
 		}
 	}
 
@@ -273,7 +278,10 @@
 				</div>
 
 				<Separator class="details-separator details-separator--vertical" orientation="vertical" />
-				<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
+				<Separator
+					class="details-separator details-separator--horizontal"
+					orientation="horizontal"
+				/>
 
 				<!-- Patient Info -->
 				<div class="detail-section">
@@ -306,7 +314,10 @@
 				<!-- Results (if complete) -->
 				{#if job.status.code === 'Complete'}
 					<Separator class="details-separator details-separator--vertical" orientation="vertical" />
-					<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
+					<Separator
+						class="details-separator details-separator--horizontal"
+						orientation="horizontal"
+					/>
 					<div class="detail-section">
 						<h4 class="section-title">
 							<CheckCircle2 class="section-icon" />
@@ -332,7 +343,10 @@
 				<!-- Error (if failed) -->
 				{#if job.status.code === 'Error'}
 					<Separator class="details-separator details-separator--vertical" orientation="vertical" />
-					<Separator class="details-separator details-separator--horizontal" orientation="horizontal" />
+					<Separator
+						class="details-separator details-separator--horizontal"
+						orientation="horizontal"
+					/>
 					<div class="detail-section">
 						<h4 class="section-title section-title--error">
 							<XCircle class="section-icon" />
@@ -389,7 +403,7 @@
 					</div>
 
 					<Button variant="destructive" size="sm" onclick={handleRerunClick}>
-						<RotateCcw class="h-4 w-4 mr-1" />
+						<RotateCcw class="mr-1 h-4 w-4" />
 						Re-Run
 					</Button>
 				</div>
@@ -430,15 +444,13 @@
 					<AlertTriangle class="h-5 w-5" />
 					Confirm Re-Run
 				</Dialog.Title>
-				<Dialog.Description>
-					This action cannot be undone.
-				</Dialog.Description>
+				<Dialog.Description>This action cannot be undone.</Dialog.Description>
 			</Dialog.Header>
 
 			<div class="rerun-warning-body">
 				<p>
-					You are about to re-run <strong>{formatJobId(jobId)}</strong> starting
-					from <strong>{activeStageInfo.name} ({activeStageInfo.description})</strong>.
+					You are about to re-run <strong>{formatJobId(jobId)}</strong> starting from
+					<strong>{activeStageInfo.name} ({activeStageInfo.description})</strong>.
 				</p>
 				<div class="warning-callout">
 					<AlertTriangle class="callout-icon" />
@@ -456,14 +468,14 @@
 			</div>
 
 			<Dialog.Footer>
-				<Button variant="outline" onclick={() => showRerunDialog = false} disabled={rerunLoading}>
+				<Button variant="outline" onclick={() => (showRerunDialog = false)} disabled={rerunLoading}>
 					Cancel
 				</Button>
 				<Button variant="destructive" onclick={handleRerunConfirm} disabled={rerunLoading}>
 					{#if rerunLoading}
 						Re-Running…
 					{:else}
-						<RotateCcw class="h-4 w-4 mr-1" />
+						<RotateCcw class="mr-1 h-4 w-4" />
 						Re-Run from Stage {activeStageNumber}
 					{/if}
 				</Button>
@@ -510,8 +522,12 @@
 	}
 
 	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* ── Header ─────────────────────────────────────────── */
