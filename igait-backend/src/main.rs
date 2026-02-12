@@ -48,6 +48,7 @@ async fn main() -> Result<()> {
     let api_v1 = Router::new()
         .route("/upload", post(crate::routes::upload::upload_entrypoint) )
         .route("/contribute", post(crate::routes::contribute::contribute_entrypoint))
+        .route("/rerun", post(crate::routes::rerun::rerun_entrypoint))
         .route("/assistant", any(crate::routes::assistant::assistant_entrypoint))
         .route("/assistant_proxied", any(crate::routes::assistant::assistant_proxied_entrypoint))
         .with_state(app_state_ptr.clone());

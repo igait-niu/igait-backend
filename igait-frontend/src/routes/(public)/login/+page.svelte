@@ -36,7 +36,7 @@
 		isLoading = true;
 
 		const result = await authStore.signInWithEmail(email, password);
-		
+
 		if (result.isErr()) {
 			error = Some(result.error);
 			isLoading = false;
@@ -51,7 +51,7 @@
 		isLoading = true;
 
 		const result = await authStore.signInWithGoogle();
-		
+
 		if (result.isErr()) {
 			error = Some(result.error);
 			isLoading = false;
@@ -69,9 +69,7 @@
 	<Card.Root class="auth-card">
 		<Card.Header class="auth-header">
 			<Card.Title class="auth-title">Welcome Back</Card.Title>
-			<Card.Description>
-				Sign in to your account to continue
-			</Card.Description>
+			<Card.Description>Sign in to your account to continue</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<!-- Error Alert -->
@@ -162,9 +160,7 @@
 		<Card.Footer class="auth-footer">
 			<p class="footer-text">
 				Don't have an account?
-				<a href="/signup" class="footer-link">
-					Sign up
-				</a>
+				<a href="/signup" class="footer-link"> Sign up </a>
 			</p>
 		</Card.Footer>
 	</Card.Root>

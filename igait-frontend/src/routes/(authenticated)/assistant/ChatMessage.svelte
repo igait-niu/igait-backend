@@ -9,7 +9,7 @@
 	let { message }: { message: AssistantMessage } = $props();
 
 	/**
-	 * Format a Jobs-type message as a Markdown table 
+	 * Format a Jobs-type message as a Markdown table
 	 * matching the old PoC format exactly.
 	 */
 	function formatJobsTable(jobs: Job[]): string {
@@ -47,7 +47,7 @@
 		</div>
 	</div>
 
-<!-- Error messages -->
+	<!-- Error messages -->
 {:else if isError}
 	<div class="info-row">
 		<div class="error-bubble">
@@ -56,7 +56,7 @@
 		</div>
 	</div>
 
-<!-- User messages — right-aligned -->
+	<!-- User messages — right-aligned -->
 {:else if isUser}
 	<div class="message-row user-row">
 		<div class="user-bubble">
@@ -69,7 +69,7 @@
 		</Avatar.Root>
 	</div>
 
-<!-- Bot messages (Message / Typing / Jobs) — left-aligned -->
+	<!-- Bot messages (Message / Typing / Jobs) — left-aligned -->
 {:else}
 	<div class="message-row bot-row">
 		<Avatar.Root class="avatar avatar-bot">
@@ -288,7 +288,9 @@
 	}
 
 	@keyframes bounce {
-		0%, 80%, 100% {
+		0%,
+		80%,
+		100% {
 			transform: scale(0.5);
 			opacity: 0.35;
 		}

@@ -22,7 +22,7 @@
 			const date = new Date(job.timestamp * 1000);
 			const isCompleted = job.status.code === 'Complete';
 			const isError = job.status.code.includes('Error') || job.status.code.includes('Failed');
-			
+
 			return {
 				id: index,
 				type: 'submission',
@@ -42,24 +42,20 @@
 			<ArrowRight class="ml-2 h-4 w-4" />
 		</Button>
 	</div>
-	
+
 	<Card.Root>
 		<Card.Content class="p-0">
 			{#if isJobsLoading(jobsState)}
 				<div class="empty-state">
 					<Loader2 class="empty-icon animate-spin" />
 					<h3 class="empty-title">Loading activity...</h3>
-					<p class="empty-description">
-						Fetching your recent submissions
-					</p>
+					<p class="empty-description">Fetching your recent submissions</p>
 				</div>
 			{:else if recentActivity.length === 0}
 				<div class="empty-state">
 					<Activity class="empty-icon" />
 					<h3 class="empty-title">No activity yet</h3>
-					<p class="empty-description">
-						Submit your first walking video to get started!
-					</p>
+					<p class="empty-description">Submit your first walking video to get started!</p>
 					<Button class="empty-button" href="/submit">
 						<Upload class="mr-2 h-4 w-4" />
 						New Submission
@@ -78,10 +74,18 @@
 									<p class="activity-date">{activity.date}</p>
 								</div>
 							</div>
-							<Badge 
-								variant={activity.status === 'completed' ? 'default' : activity.status === 'error' ? 'destructive' : 'secondary'}
+							<Badge
+								variant={activity.status === 'completed'
+									? 'default'
+									: activity.status === 'error'
+										? 'destructive'
+										: 'secondary'}
 							>
-								{activity.status === 'completed' ? 'Complete' : activity.status === 'error' ? 'Error' : 'Processing'}
+								{activity.status === 'completed'
+									? 'Complete'
+									: activity.status === 'error'
+										? 'Error'
+										: 'Processing'}
 							</Badge>
 						</div>
 					{/each}

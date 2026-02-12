@@ -2,12 +2,12 @@ use std::{sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
 use anyhow::{ Result, Context, anyhow };
+use firebase_auth::FirebaseUser;
 
 use crate::helper::{email::send_contribution_email, lib::{AppError, AppState, AppStatePtr}};
 
 /// A request to upload a video for the contribute endpoint.
 pub struct ContributeRequestArguments {
-    uid: String,
     name: String,
     email: String,
     front_file: ContributeRequestFile,
@@ -33,7 +33,6 @@ async fn unpack_contribute_arguments(
     multipart:   &mut Multipart
 ) -> Result<ContributeRequestArguments> {
     // Initialize all of the fields as options
-    let mut uid_option:       Option<String> = None;
     let mut name_option:      Option<String> = None;
     let mut email_option:     Option<String> = None;
 
@@ -82,11 +81,9 @@ async fn unpack_contribute_arguments(
                         .to_string());
             }
             Some("uid") => {
-                uid_option = Some(
-                    field
-                        .text().await
-                        .context("Field 'uid' wasn't readable as text!")?
-                        .to_string());
+                // uid is now derived from the authenticated FirebaseUser token;
+                // ignore any user-supplied value.
+                let _ = field.text().await;
             }
             _ => {
                 println!("Which had an unknown/no field name...");
@@ -95,7 +92,6 @@ async fn unpack_contribute_arguments(
     }
 
     // Make sure all of the fields are present
-    let uid:   String = uid_option.ok_or(   anyhow!( "Missing 'uid' in request"   ))?;
     let name:  String = name_option.ok_or( anyhow!( "Missing 'name' in request" ))?;
     let email: String = email_option.ok_or( anyhow!( "Missing 'email' in request" ))?;
 
@@ -106,7 +102,6 @@ async fn unpack_contribute_arguments(
     let side_file_bytes:  Bytes  = side_file_bytes_option.ok_or(  anyhow!( "Missing 'fileuploadside' in request!"  ))?;
 
     Ok(ContributeRequestArguments {
-        uid,
         name,
         email, 
         front_file: ContributeRequestFile {
@@ -134,10 +129,12 @@ async fn unpack_contribute_arguments(
 /// * `multipart` - The `Multipart` object to unpack.
 
 pub async fn contribute_entrypoint(
+    current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
     mut multipart: Multipart
 ) -> Result<(), AppError> {
     let app = app.state;
+    let uid = current_user.user_id;
 
     println!("Unpacking arguments...");
     // Unpack the arguments
@@ -152,7 +149,7 @@ pub async fn contribute_entrypoint(
             app.clone(),
             arguments.front_file,
             arguments.side_file,
-            &arguments.uid,
+            &uid,
             &arguments.email,
             &arguments.name
         ).await 

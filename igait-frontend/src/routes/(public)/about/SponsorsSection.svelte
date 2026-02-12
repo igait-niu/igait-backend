@@ -28,9 +28,7 @@
 		</div>
 		<h2 class="section-title">Sponsors</h2>
 	</div>
-	<p class="section-intro">
-		We are grateful to the following sponsors for their funding support:
-	</p>
+	<p class="section-intro">We are grateful to the following sponsors for their funding support:</p>
 
 	<div class="sponsors-grid">
 		{#each sponsors as sponsor}
@@ -50,9 +48,7 @@
 		</div>
 		<h2 class="section-title">Special Thanks</h2>
 	</div>
-	<p class="section-intro">
-		We appreciate the continued support by the following partners:
-	</p>
+	<p class="section-intro">We appreciate the continued support by the following partners:</p>
 
 	<div class="partners-grid">
 		{#each partners as partner}

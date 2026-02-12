@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { getUser, subscribeToJobs, isJobsLoading, isJobsError, isJobsLoaded, type JobsState } from '$lib/hooks';
+	import { goto } from '$app/navigation';
+	import {
+		getUser,
+		subscribeToJobs,
+		isJobsLoading,
+		isJobsError,
+		isJobsLoaded,
+		type JobsState
+	} from '$lib/hooks';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { FileVideo, Loader2, AlertCircle } from '@lucide/svelte';
@@ -10,12 +18,10 @@
 
 	import EmptyState from './EmptyState.svelte';
 	import SupportCard from './SupportCard.svelte';
-	import JobDetailsDialog from './JobDetailsDialog.svelte';
 
 	const user = getUser();
 
 	let jobsState: JobsState = $state({ status: 'loading' });
-	let selectedJob: (Job & { id: string }) | null = $state(null);
 
 	const unsubscribe = subscribeToJobs(user.uid, (state) => {
 		jobsState = state;
@@ -29,11 +35,7 @@
 	const statusFilter = $derived($page.url.searchParams.get('filter') || undefined);
 
 	function handleViewDetails(job: Job & { id: string }) {
-		selectedJob = job;
-	}
-
-	function handleCloseDetails() {
-		selectedJob = null;
+		goto(`/job/${encodeURIComponent(job.id)}`);
 	}
 </script>
 
@@ -44,17 +46,13 @@
 <div class="submissions-page">
 	<section class="page-header">
 		<h1 class="page-header__title">Submissions</h1>
-		<p class="page-header__description">
-			View and manage your gait analysis submissions
-		</p>
+		<p class="page-header__description">View and manage your gait analysis submissions</p>
 	</section>
 
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Your Submissions</Card.Title>
-			<Card.Description>
-				Real-time view of all your gait analysis submissions
-			</Card.Description>
+			<Card.Description>Real-time view of all your gait analysis submissions</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			{#if isJobsLoading(jobsState)}
@@ -80,11 +78,11 @@
 					<Button href="/submit">Make Your First Submission</Button>
 				</EmptyState>
 			{:else if isJobsLoaded(jobsState)}
-				<JobsDataTable 
-					data={jobsState.jobs} 
-					uid={user.uid} 
+				<JobsDataTable
+					data={jobsState.jobs}
+					uid={user.uid}
 					initialStatusFilter={statusFilter}
-					onViewDetails={handleViewDetails}
+					onRowClick={handleViewDetails}
 				/>
 			{/if}
 		</Card.Content>
@@ -92,10 +90,6 @@
 
 	<SupportCard userEmail={user.email} userId={user.uid} />
 </div>
-
-{#if selectedJob}
-	<JobDetailsDialog job={selectedJob} onClose={handleCloseDetails} />
-{/if}
 
 <style>
 	.submissions-page {

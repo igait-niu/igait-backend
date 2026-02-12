@@ -14,10 +14,10 @@
 		const subject = encodeURIComponent('Request for Historical Submissions');
 		const body = encodeURIComponent(
 			`Hello iGAIT Support Team,\n\n` +
-			`I would like to request my historical submissions from the iGAIT system.\n\n` +
-			`User Email: ${userEmail}\n` +
-			`User ID: ${userId}\n\n` +
-			`Thank you!`
+				`I would like to request my historical submissions from the iGAIT system.\n\n` +
+				`User Email: ${userEmail}\n` +
+				`User ID: ${userId}\n\n` +
+				`Thank you!`
 		);
 		window.location.href = `mailto:gaitstudy@niu.edu?subject=${subject}&body=${body}`;
 	}
@@ -30,9 +30,7 @@
 				<Mail class="icon" />
 				<span>Need More Help?</span>
 			</div>
-			<p class="support-description">
-				Request detailed reports or assistance via email
-			</p>
+			<p class="support-description">Request detailed reports or assistance via email</p>
 		</div>
 		<Button onclick={handleEmailRequest}>
 			<Send class="button-icon" />

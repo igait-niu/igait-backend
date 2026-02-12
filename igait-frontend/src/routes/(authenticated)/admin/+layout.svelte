@@ -20,7 +20,7 @@
 	// Navigation items for admin panel
 	const adminNavItems = [
 		{ href: '/admin/queues', label: 'Queue Overview', icon: Layers },
-		{ href: '/admin/jobs', label: 'Job Overview', icon: Users },
+		{ href: '/admin/jobs', label: 'Job Overview', icon: Users }
 	];
 
 	const currentPath = $derived($page.url.pathname);
@@ -34,18 +34,12 @@
 				<h1>Admin Panel</h1>
 				<Badge variant="outline" class="admin-badge">Administrator</Badge>
 			</div>
-			<p class="admin-description">
-				Monitor system queues and manage all user submissions
-			</p>
+			<p class="admin-description">Monitor system queues and manage all user submissions</p>
 		</div>
 
 		<nav class="admin-nav">
 			{#each adminNavItems as item}
-				<a
-					href={item.href}
-					class="admin-nav-item"
-					class:active={currentPath === item.href}
-				>
+				<a href={item.href} class="admin-nav-item" class:active={currentPath === item.href}>
 					<item.icon class="h-4 w-4" />
 					{item.label}
 				</a>

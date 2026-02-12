@@ -23,8 +23,8 @@
 	{@const appError = error.value}
 	<div
 		class={cn(
-			'fixed top-0 left-0 right-0 z-50',
-			'bg-destructive text-destructive-foreground',
+			'fixed top-0 right-0 left-0 z-50',
+			'text-destructive-foreground bg-destructive',
 			'shadow-lg transition-all duration-300 ease-in-out',
 			'animate-in slide-in-from-top-full'
 		)}
@@ -34,15 +34,15 @@
 		<div class="mx-auto max-w-7xl px-4 py-3">
 			<div class="flex items-center justify-between gap-4">
 				<!-- Error Icon and Message -->
-				<div class="flex items-center gap-3 min-w-0 flex-1">
+				<div class="flex min-w-0 flex-1 items-center gap-3">
 					<AlertCircle class="h-5 w-5 flex-shrink-0" />
-					<p class="font-medium truncate">
+					<p class="truncate font-medium">
 						{appError.displayMessage}
 					</p>
 				</div>
 
 				<!-- Actions -->
-				<div class="flex items-center gap-2 flex-shrink-0">
+				<div class="flex flex-shrink-0 items-center gap-2">
 					{#if appError.hasContext}
 						<Button
 							variant="ghost"
@@ -74,14 +74,14 @@
 			{#if showDetails && appError.hasContext}
 				<div
 					class={cn(
-						'mt-3 pt-3 border-t border-destructive-foreground/20',
+						'border-destructive-foreground/20 mt-3 border-t pt-3',
 						'animate-in slide-in-from-top-2'
 					)}
 				>
-					<p class="text-sm font-medium mb-2">Error Chain:</p>
+					<p class="mb-2 text-sm font-medium">Error Chain:</p>
 					<div class="flex flex-wrap items-center gap-2 text-sm">
 						{#each appError.contextChain as context, i}
-							<span class="bg-destructive-foreground/10 px-2 py-1 rounded">
+							<span class="bg-destructive-foreground/10 rounded px-2 py-1">
 								{context}
 							</span>
 							{#if i < appError.contextChain.length - 1}
@@ -89,7 +89,7 @@
 							{/if}
 						{/each}
 						<span class="text-destructive-foreground/60">→</span>
-						<span class="bg-destructive-foreground/20 px-2 py-1 rounded font-mono text-xs">
+						<span class="bg-destructive-foreground/20 rounded px-2 py-1 font-mono text-xs">
 							{appError.rootCause}
 						</span>
 					</div>

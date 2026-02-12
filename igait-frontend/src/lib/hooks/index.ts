@@ -3,17 +3,12 @@
  */
 
 export { getUser } from './user';
-export { 
-	subscribeToJobs, 
-	isJobsLoading, 
-	isJobsError, 
-	isJobsLoaded,
-	type JobsState 
-} from './jobs';
+export { subscribeToJobs, isJobsLoading, isJobsError, isJobsLoaded, type JobsState } from './jobs';
 export {
 	subscribeToQueues,
 	subscribeToAllJobs,
 	subscribeToQueueConfigs,
+	subscribeToJob,
 	isQueuesLoading,
 	isQueuesError,
 	isQueuesLoaded,
@@ -29,5 +24,6 @@ export {
 	type AllJobsState,
 	type QueueConfigItem,
 	type QueueConfigData,
-	type QueueConfigState
+	type QueueConfigState,
+	type SingleJobState
 } from './admin';

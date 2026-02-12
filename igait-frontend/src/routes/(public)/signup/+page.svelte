@@ -43,7 +43,7 @@
 		isLoading = true;
 
 		const result = await authStore.signUpWithEmail(email, password);
-		
+
 		if (result.isErr()) {
 			error = Some(result.error);
 			isLoading = false;
@@ -58,7 +58,7 @@
 		isLoading = true;
 
 		const result = await authStore.signInWithGoogle();
-		
+
 		if (result.isErr()) {
 			error = Some(result.error);
 			isLoading = false;
@@ -76,9 +76,7 @@
 	<Card.Root class="auth-card">
 		<Card.Header class="auth-header">
 			<Card.Title class="auth-title">Create an Account</Card.Title>
-			<Card.Description>
-				Get started with iGait gait analysis
-			</Card.Description>
+			<Card.Description>Get started with iGait gait analysis</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<!-- Error Alert -->
@@ -156,9 +154,7 @@
 						disabled={isLoading}
 						required
 					/>
-					<p class="text-xs text-muted-foreground">
-						Must be at least 6 characters
-					</p>
+					<p class="text-xs text-muted-foreground">Must be at least 6 characters</p>
 				</div>
 
 				<div class="form-field">
@@ -183,7 +179,8 @@
 
 			<p class="auth-terms">
 				By signing up, you agree to our
-				<a href="/terms" class="underline underline-offset-4 hover:text-primary">Terms of Service</a>
+				<a href="/terms" class="underline underline-offset-4 hover:text-primary">Terms of Service</a
+				>
 				and
 				<a href="/policy" class="underline underline-offset-4 hover:text-primary">Privacy Policy</a>
 			</p>
@@ -191,9 +188,7 @@
 		<Card.Footer class="auth-footer">
 			<p class="footer-text">
 				Already have an account?
-				<a href="/login" class="footer-link">
-					Sign in
-				</a>
+				<a href="/login" class="footer-link"> Sign in </a>
 			</p>
 		</Card.Footer>
 	</Card.Root>

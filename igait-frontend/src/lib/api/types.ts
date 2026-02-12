@@ -21,7 +21,6 @@ import type { Job } from '../../types/Job';
  * required by the backend for gait analysis.
  */
 export interface ContributionRequest {
-	readonly uid: string;
 	readonly email: string;
 	readonly age: number;
 	readonly sex: Sex;
@@ -38,7 +37,14 @@ export interface ContributionRequest {
 /**
  * Assistant WebSocket message types
  */
-export type AssistantMessageType = 'Error' | 'Message' | 'Waiting' | 'You' | 'Typing' | 'Info' | 'Jobs';
+export type AssistantMessageType =
+	| 'Error'
+	| 'Message'
+	| 'Waiting'
+	| 'You'
+	| 'Typing'
+	| 'Info'
+	| 'Jobs';
 
 export interface AssistantMessage {
 	readonly type: AssistantMessageType;
@@ -50,7 +56,6 @@ export interface AssistantMessage {
  * walking videos to help improve iGait's models.
  */
 export interface ResearchContributionRequest {
-	readonly uid: string;
 	readonly name: string;
 	readonly email: string;
 	readonly frontVideo: File;
@@ -61,3 +66,12 @@ export interface ResearchContributionRequest {
  * Progress callback type
  */
 export type ProgressCallback = (progress: number) => void;
+
+/**
+ * Response from the rerun endpoint
+ */
+export interface RerunResponse {
+	readonly success: boolean;
+	readonly message: string;
+	readonly objects_deleted: number;
+}

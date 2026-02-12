@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { getUser } from '$lib/hooks';
-	import { submitResearchContribution, type ResearchContributionRequest, type ProgressCallback } from '$lib/api';
+	import {
+		submitResearchContribution,
+		type ResearchContributionRequest,
+		type ProgressCallback
+	} from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
@@ -33,10 +37,7 @@
 		}
 	}
 
-	const isFormValid = $derived(
-		frontVideo !== undefined &&
-		sideVideo !== undefined
-	);
+	const isFormValid = $derived(frontVideo !== undefined && sideVideo !== undefined);
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -51,7 +52,6 @@
 		progress = 0;
 
 		const request: ResearchContributionRequest = {
-			uid: user.uid,
 			name: user.displayName,
 			email: user.email,
 			frontVideo,
@@ -96,10 +96,10 @@
 			<div class="info-text">
 				<h3 class="info-title">How your contribution helps</h3>
 				<p class="info-description">
-					Your walking videos are used to train and improve our gait analysis models.
-					Contributed videos are stored securely and used solely for research purposes. 
-					No demographic or personal health data is collected — just your videos, name, and email 
-					so we can thank you for your contribution!
+					Your walking videos are used to train and improve our gait analysis models. Contributed
+					videos are stored securely and used solely for research purposes. No demographic or
+					personal health data is collected — just your videos, name, and email so we can thank you
+					for your contribution!
 				</p>
 			</div>
 		</Card.Content>
@@ -153,10 +153,7 @@
 
 				<div class="submit-button-container">
 					{#if isSubmitting}
-						<div
-							class="button-progress-fill"
-							style="width: {progress}%"
-						></div>
+						<div class="button-progress-fill" style="width: {progress}%"></div>
 					{/if}
 					<Button
 						type="submit"

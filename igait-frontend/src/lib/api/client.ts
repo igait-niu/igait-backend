@@ -6,6 +6,7 @@
 import { type Result, Ok, Err, AppError, tryAsync } from '$lib/result';
 import { authStore } from '$lib/stores';
 import { API_ENDPOINTS, DEFAULT_TIMEOUT_MS } from './config';
+import type { RerunResponse } from './types';
 import type { ContributionRequest, ProgressCallback, ResearchContributionRequest } from './types';
 import { validateVideoFile, validateRequired, validateEmail } from './validation';
 
@@ -26,15 +27,21 @@ function validateSubmission(request: ContributionRequest): Result<void, AppError
 
 	// Validate weight
 	if (request.weight < 1 || request.weight > 500) {
-		return Err(new AppError('Weight must be between 1 and 500 lbs').withContext('Invalid submission'));
+		return Err(
+			new AppError('Weight must be between 1 and 500 lbs').withContext('Invalid submission')
+		);
 	}
 
 	// Validate height
 	if (request.heightFeet < 1 || request.heightFeet > 8) {
-		return Err(new AppError('Height (feet) must be between 1 and 8').withContext('Invalid submission'));
+		return Err(
+			new AppError('Height (feet) must be between 1 and 8').withContext('Invalid submission')
+		);
 	}
 	if (request.heightInches < 0 || request.heightInches > 11) {
-		return Err(new AppError('Height (inches) must be between 0 and 11').withContext('Invalid submission'));
+		return Err(
+			new AppError('Height (inches) must be between 0 and 11').withContext('Invalid submission')
+		);
 	}
 
 	// Validate videos
@@ -64,11 +71,16 @@ export async function submitContribution(
 		return validationResult as unknown as Result<string, AppError>;
 	}
 
+	// Get auth token for Bearer authentication
+	const tokenResult = await authStore.getIdToken();
+	if (tokenResult.isErr()) {
+		return Err(tokenResult.error.withContext('Authentication required for submission'));
+	}
+
 	onProgress?.(5);
 
 	// Build form data matching backend UploadRequestArguments
 	const formData = new FormData();
-	formData.append('uid', request.uid);
 	formData.append('age', request.age.toString());
 	formData.append('ethnicity', request.ethnicity);
 	formData.append('sex', request.sex);
@@ -100,24 +112,47 @@ export async function submitContribution(
 			clearTimeout(timeoutId);
 			if (xhr.status >= 200 && xhr.status < 300) {
 				onProgress?.(100);
-				resolve(Ok('Your submission has been received! You will receive an email with your results shortly.'));
+				resolve(
+					Ok(
+						'Your submission has been received! You will receive an email with your results shortly.'
+					)
+				);
 			} else {
 				const errorText = xhr.responseText || 'Unknown error';
-				resolve(Err(new AppError(`Server error (${xhr.status}): ${errorText}`).withContext('Submission failed')));
+				resolve(
+					Err(
+						new AppError(`Server error (${xhr.status}): ${errorText}`).withContext(
+							'Submission failed'
+						)
+					)
+				);
 			}
 		});
 
 		xhr.addEventListener('error', () => {
 			clearTimeout(timeoutId);
-			resolve(Err(new AppError('Network error. Please check your internet connection.').withContext('Submission failed')));
+			resolve(
+				Err(
+					new AppError('Network error. Please check your internet connection.').withContext(
+						'Submission failed'
+					)
+				)
+			);
 		});
 
 		xhr.addEventListener('abort', () => {
 			clearTimeout(timeoutId);
-			resolve(Err(new AppError('Request timed out. Your files might be too large or your connection is slow.').withContext('Submission failed')));
+			resolve(
+				Err(
+					new AppError(
+						'Request timed out. Your files might be too large or your connection is slow.'
+					).withContext('Submission failed')
+				)
+			);
 		});
 
 		xhr.open('POST', API_ENDPOINTS.upload);
+		xhr.setRequestHeader('Authorization', `Bearer ${tokenResult.value}`);
 		xhr.send(formData);
 	});
 
@@ -127,7 +162,9 @@ export async function submitContribution(
 /**
  * Validate research contribution fields
  */
-function validateResearchContribution(request: ResearchContributionRequest): Result<void, AppError> {
+function validateResearchContribution(
+	request: ResearchContributionRequest
+): Result<void, AppError> {
 	const nameResult = validateRequired(request.name, 'Name');
 	if (nameResult.isErr()) {
 		return Err(nameResult.error.withContext('Invalid contribution'));
@@ -163,10 +200,15 @@ export async function submitResearchContribution(
 		return validationResult as unknown as Result<string, AppError>;
 	}
 
+	// Get auth token for Bearer authentication
+	const tokenResult = await authStore.getIdToken();
+	if (tokenResult.isErr()) {
+		return Err(tokenResult.error.withContext('Authentication required for contribution'));
+	}
+
 	onProgress?.(5);
 
 	const formData = new FormData();
-	formData.append('uid', request.uid);
 	formData.append('name', request.name);
 	formData.append('email', request.email);
 	formData.append('fileuploadfront', request.frontVideo);
@@ -177,26 +219,26 @@ export async function submitResearchContribution(
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
-	const result = await tryAsync(
-		async () => {
-			const response = await fetch(API_ENDPOINTS.contribute, {
-				method: 'POST',
-				body: formData,
-				signal: controller.signal
-			});
-
-			onProgress?.(80);
-
-			if (!response.ok) {
-				const errorText = await response.text().catch(() => 'Unknown error');
-				throw new Error(`Server error (${response.status}): ${errorText}`);
+	const result = await tryAsync(async () => {
+		const response = await fetch(API_ENDPOINTS.contribute, {
+			method: 'POST',
+			body: formData,
+			signal: controller.signal,
+			headers: {
+				Authorization: `Bearer ${tokenResult.value}`
 			}
+		});
 
-			onProgress?.(100);
-			return 'Thank you for your contribution! Your videos have been submitted for research.';
-		},
-		'Failed to submit research contribution'
-	);
+		onProgress?.(80);
+
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => 'Unknown error');
+			throw new Error(`Server error (${response.status}): ${errorText}`);
+		}
+
+		onProgress?.(100);
+		return 'Thank you for your contribution! Your videos have been submitted for research.';
+	}, 'Failed to submit research contribution');
 
 	clearTimeout(timeoutId);
 
@@ -204,15 +246,19 @@ export async function submitResearchContribution(
 		const error = result.error;
 
 		if (error.rootCause.includes('aborted') || error.rootCause.includes('abort')) {
-			return Err(new AppError(
-				'Request timed out. Your files might be too large or your connection is slow.'
-			).withContext('Contribution failed'));
+			return Err(
+				new AppError(
+					'Request timed out. Your files might be too large or your connection is slow.'
+				).withContext('Contribution failed')
+			);
 		}
 
 		if (error.rootCause.includes('NetworkError') || error.rootCause.includes('fetch')) {
-			return Err(new AppError(
-				'Network error. Please check your internet connection.'
-			).withContext('Contribution failed'));
+			return Err(
+				new AppError('Network error. Please check your internet connection.').withContext(
+					'Contribution failed'
+				)
+			);
 		}
 	}
 
@@ -235,20 +281,52 @@ export async function authenticatedFetch<T>(
 	const headers = new Headers(options.headers);
 	headers.set('Authorization', `Bearer ${tokenResult.value}`);
 
-	return tryAsync(
-		async () => {
-			const response = await fetch(url, {
-				...options,
-				headers
-			});
+	return tryAsync(async () => {
+		const response = await fetch(url, {
+			...options,
+			headers
+		});
 
-			if (!response.ok) {
-				const errorText = await response.text().catch(() => 'Unknown error');
-				throw new Error(`API error (${response.status}): ${errorText}`);
-			}
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => 'Unknown error');
+			throw new Error(`API error (${response.status}): ${errorText}`);
+		}
 
-			return response.json() as Promise<T>;
-		},
-		'API request failed'
-	);
+		return response.json() as Promise<T>;
+	}, 'API request failed');
+}
+
+/**
+ * Re-run a job from a specific stage.
+ * Calls the backend /rerun endpoint which cleans S3 outputs and re-queues.
+ */
+export async function rerunJob(
+	userIdJobIndex: string,
+	stage: number
+): Promise<Result<RerunResponse, AppError>> {
+	const lastUnderscore = userIdJobIndex.lastIndexOf('_');
+
+	if (lastUnderscore === -1) {
+		return Err(
+			new AppError('Invalid job identifier format. Expected format: userId_jobIndex').withContext(
+				'Failed to rerun job'
+			)
+		);
+	}
+
+	const userId = userIdJobIndex.slice(0, lastUnderscore);
+	const jobIndexStr = userIdJobIndex.slice(lastUnderscore + 1);
+	const jobIndex = parseInt(jobIndexStr, 10);
+
+	if (Number.isNaN(jobIndex) || jobIndex < 0) {
+		return Err(
+			new AppError('Invalid job index in job identifier').withContext('Failed to rerun job')
+		);
+	}
+
+	return authenticatedFetch<RerunResponse>(API_ENDPOINTS.rerun, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ user_id: userId, job_index: jobIndex, stage })
+	});
 }

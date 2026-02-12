@@ -7,6 +7,7 @@ use std::{collections::HashMap, sync::Arc, time::SystemTime};
 
 use axum::{body::Bytes, extract::{Multipart, State}};
 use anyhow::{Result, Context, anyhow};
+use firebase_auth::FirebaseUser;
 
 use igait_lib::microservice::{StoragePaths, JobMetadata, QueueItem, StageNumber, FirebaseRtdb, queue_item_path};
 
@@ -17,7 +18,6 @@ use crate::helper::{
 
 /// The required arguments for the upload request.
 struct UploadRequestArguments {
-    uid:        String,
     age:        i16,
     ethnicity:  Ethnicity,
     sex:        Sex,
@@ -45,7 +45,6 @@ struct UploadRequestFile {
 /// * `multipart` - The `Multipart` object to unpack.
 async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequestArguments> {
     // Initialize all of the fields as options
-    let mut uid_option:       Option<String>    = None;
     let mut age_option:       Option<i16>       = None;
     let mut ethnicity_option: Option<Ethnicity> = None;
     let mut sex_option:       Option<Sex>       = None;
@@ -90,12 +89,9 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
                 );
             }
             Some("uid") => {
-                uid_option = Some(
-                    field
-                        .text()
-                        .await
-                        .context("Field 'uid' wasn't readable as text!")?,
-                );
+                // uid is now derived from the authenticated FirebaseUser token;
+                // ignore any user-supplied value.
+                let _ = field.text().await;
             }
             Some("age") => {
                 age_option = Some(
@@ -167,7 +163,6 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
     }
 
     // Make sure all of the fields are present
-    let uid       = uid_option.ok_or(anyhow!("Missing 'uid' in request!"))?;
     let age       = age_option.ok_or(anyhow!("Missing 'age' in request"))?;
     let ethnicity = ethnicity_option.ok_or(anyhow!("Missing 'ethnicity' in request"))?;
     let sex       = sex_option.ok_or(anyhow!("Missing 'sex' in request"))?;
@@ -182,7 +177,6 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
     let side_file_bytes  = side_file_bytes_option.ok_or(anyhow!("Missing 'fileuploadside' bytes!"))?;
 
     Ok(UploadRequestArguments {
-        uid,
         age,
         ethnicity,
         sex,
@@ -216,10 +210,12 @@ async fn unpack_upload_arguments(multipart: &mut Multipart) -> Result<UploadRequ
 /// * If the job fails to save to the database
 /// * If the welcome email fails to send
 pub async fn upload_entrypoint(
+    current_user: FirebaseUser,
     State(app): State<AppStatePtr>,
     mut multipart: Multipart,
 ) -> Result<(), AppError> {
     let app = app.state;
+    let uid = current_user.user_id;
 
     println!("Unpacking upload arguments...");
     let arguments = unpack_upload_arguments(&mut multipart)
@@ -234,12 +230,12 @@ pub async fn upload_entrypoint(
         .db
         .lock()
         .await
-        .count_jobs(&arguments.uid)
+        .count_jobs(&uid)
         .await
         .context("Failed to count the number of jobs!")?;
 
     // Build job ID string (format: "{user_id}_{job_index}")
-    let job_id = format!("{}_{}", arguments.uid, job_index);
+    let job_id = format!("{}_{}", uid, job_index);
     println!("Created job ID: {}", job_id);
 
     // Build the new job object
@@ -263,7 +259,7 @@ pub async fn upload_entrypoint(
     app.db
         .lock()
         .await
-        .new_job(&arguments.uid, job.clone())
+        .new_job(&uid, job.clone())
         .await
         .context("Failed to add the new job to the database!")?;
 
@@ -271,7 +267,7 @@ pub async fn upload_entrypoint(
     if let Err(err) = upload_and_dispatch(
         app.clone(),
         &job_id,
-        &arguments.uid,
+        &uid,
         arguments.front_file,
         arguments.side_file,
         &job,
@@ -285,7 +281,7 @@ pub async fn upload_entrypoint(
         app.db
             .lock()
             .await
-            .update_status(&arguments.uid, job_index, status)
+            .update_status(&uid, job_index, status)
             .await
             .context("Failed to update the status of the job!")?;
 
@@ -296,7 +292,7 @@ pub async fn upload_entrypoint(
     status = JobStatus::submitted();
 
     // Send the welcome email
-    send_welcome_email(app.clone(), &job, &arguments.uid, job_index)
+    send_welcome_email(app.clone(), &job, &uid, job_index)
         .await
         .context("Failed to send welcome email!")?;
 
@@ -304,7 +300,7 @@ pub async fn upload_entrypoint(
     app.db
         .lock()
         .await
-        .update_status(&arguments.uid, job_index, status)
+        .update_status(&uid, job_index, status)
         .await
         .context("Failed to update the status of the job!")?;
 

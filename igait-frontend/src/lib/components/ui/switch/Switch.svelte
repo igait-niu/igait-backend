@@ -39,7 +39,9 @@
 		border: 1px solid var(--border);
 		padding: 0.125rem;
 		cursor: pointer;
-		transition: background-color 0.2s ease, border-color 0.2s ease;
+		transition:
+			background-color 0.2s ease,
+			border-color 0.2s ease;
 		background-color: var(--muted);
 		flex-shrink: 0;
 	}
@@ -60,7 +62,9 @@
 		height: 1.25rem;
 		border-radius: 9999px;
 		background-color: var(--background);
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
 		transform: translateX(0);
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 	}

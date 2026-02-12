@@ -66,6 +66,14 @@ pub mod assistant;
 /// See each individual function for potential reasons for failure.
 pub mod contribute;
 
+/// This module contains the rerun endpoint for the API,
+/// which allows admin users to re-process a job from a specific stage.
+///
+/// Accepts a JSON body with `user_id`, `job_index` (0-indexed), and `stage` (1–6).
+/// Note: Stage 7 (finalize) cannot be rerun as it uses a different queue item type.
+/// Cleans up S3 outputs from the target stage onward, then re-queues the job.
+pub mod rerun;
+
 /// Internal endpoints for microservice communication
 /// 
 /// These endpoints are NOT exposed publicly and should only be called
