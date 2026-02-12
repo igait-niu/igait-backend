@@ -16,7 +16,6 @@
 		RotateCcw,
 		AlertTriangle,
 		ScrollText,
-		FileInput,
 		FileOutput,
 		User as UserIcon,
 		Calendar,
@@ -40,7 +39,7 @@
 	// ── State ──────────────────────────────────────────────
 	let jobState = $state<SingleJobState>({ status: 'loading' });
 	let activeStage: string = $state('stage_1');
-	let activeSubTab: 'input' | 'output' | 'logs' = $state('logs');
+	let activeSubTab: 'output' | 'logs' = $state('output');
 	let showRerunDialog = $state(false);
 	let rerunLoading = $state(false);
 	let rerunError: string | null = $state(null);
@@ -123,13 +122,6 @@
 	});
 
 	// ── Files for active stage ──────────────────────────
-	const inputFiles = $derived.by((): FileEntry[] | undefined => {
-		if (!filesData) return undefined;
-		// Input = previous stage's output (stage N reads from stage N-1)
-		const inputStageKey = `stage_${activeStageNumber - 1}`;
-		return filesData.stages[inputStageKey] ?? [];
-	});
-
 	const outputFiles = $derived.by((): FileEntry[] | undefined => {
 		if (!filesData) return undefined;
 		const outputStageKey = `stage_${activeStageNumber}`;
@@ -137,7 +129,6 @@
 	});
 
 	// ── Tab counts ──────────────────────────────────────
-	const inputFileCount = $derived(inputFiles?.length ?? 0);
 	const outputFileCount = $derived(outputFiles?.length ?? 0);
 	const logLineCount = $derived.by(() => {
 		if (!currentStageLogs) return 0;
@@ -190,7 +181,7 @@
 		activeStage = stageKey;
 	}
 
-	function handleSubTabClick(tab: 'input' | 'output' | 'logs') {
+	function handleSubTabClick(tab: 'output' | 'logs') {
 		activeSubTab = tab;
 	}
 
@@ -377,17 +368,6 @@
 					<div class="sub-tabs">
 						<button
 							class="sub-tab"
-							class:active={activeSubTab === 'input'}
-							onclick={() => handleSubTabClick('input')}
-						>
-							<FileInput class="sub-tab-icon" />
-							Input Files
-							{#if !filesLoading}
-								<Badge variant="outline" class="sub-tab-badge {inputFileCount === 0 ? 'sub-tab-badge-zero' : ''}">{inputFileCount}</Badge>
-							{/if}
-						</button>
-						<button
-							class="sub-tab"
 							class:active={activeSubTab === 'output'}
 							onclick={() => handleSubTabClick('output')}
 						>
@@ -423,14 +403,7 @@
 
 				<!-- Tab Content -->
 				<div class="tab-content">
-				{#if activeSubTab === 'input'}
-					<FileViewer
-						files={inputFiles}
-						loading={filesLoading}
-						error={filesError}
-						label="No input files for {activeStageInfo.name}"
-					/>
-				{:else if activeSubTab === 'output'}
+				{#if activeSubTab === 'output'}
 					<FileViewer
 						files={outputFiles}
 						loading={filesLoading}
