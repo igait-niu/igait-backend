@@ -136,6 +136,14 @@
 		return filesData.stages[outputStageKey] ?? [];
 	});
 
+	// ── Tab counts ──────────────────────────────────────
+	const inputFileCount = $derived(inputFiles?.length ?? 0);
+	const outputFileCount = $derived(outputFiles?.length ?? 0);
+	const logLineCount = $derived.by(() => {
+		if (!currentStageLogs) return 0;
+		return currentStageLogs.split('\n').length;
+	});
+
 	// ── Status helpers ─────────────────────────────────────
 	function getStatusLabel(status: JobStatus): string {
 		switch (status.code) {
@@ -373,7 +381,10 @@
 							onclick={() => handleSubTabClick('input')}
 						>
 							<FileInput class="sub-tab-icon" />
-							Input
+							Input Files
+							{#if !filesLoading}
+								<Badge variant="outline" class="sub-tab-badge {inputFileCount === 0 ? 'sub-tab-badge-zero' : ''}">{inputFileCount}</Badge>
+							{/if}
 						</button>
 						<button
 							class="sub-tab"
@@ -381,7 +392,10 @@
 							onclick={() => handleSubTabClick('output')}
 						>
 							<FileOutput class="sub-tab-icon" />
-							Output
+							Output Files
+							{#if !filesLoading}
+								<Badge variant="outline" class="sub-tab-badge {outputFileCount === 0 ? 'sub-tab-badge-zero' : ''}">{outputFileCount}</Badge>
+							{/if}
 						</button>
 						<button
 							class="sub-tab"
@@ -390,6 +404,7 @@
 						>
 							<ScrollText class="sub-tab-icon" />
 							Logs
+							<Badge variant="outline" class="sub-tab-badge {logLineCount === 0 ? 'sub-tab-badge-zero' : ''}">{logLineCount}</Badge>
 						</button>
 					</div>
 
@@ -783,6 +798,18 @@
 	:global(.sub-tab-icon) {
 		width: 0.875rem;
 		height: 0.875rem;
+	}
+
+	:global(.sub-tab-badge) {
+		font-size: 0.625rem !important;
+		padding: 0 0.375rem !important;
+		height: 1.125rem !important;
+		min-width: 1.125rem !important;
+		scale: 0.9;
+	}
+	:global(.sub-tab-badge-zero) {
+		border-color: oklch(0.637 0.237 25.331) !important;
+		color: oklch(0.637 0.237 25.331) !important;
 	}
 
 	/* ── Tab Content ────────────────────────────────────── */
