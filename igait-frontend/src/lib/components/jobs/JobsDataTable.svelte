@@ -257,12 +257,6 @@
 											<Eye class="menu-icon" />
 											View details
 										</DropdownMenu.Item>
-										{#if job.status.code === 'Complete'}
-											<DropdownMenu.Item>
-												<Download class="menu-icon" />
-												Download results
-											</DropdownMenu.Item>
-										{/if}
 									</DropdownMenu.Content>
 								</DropdownMenu.Root>
 							</Table.Cell>

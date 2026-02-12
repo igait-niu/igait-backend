@@ -25,11 +25,6 @@
 				<Eye class="mr-2 h-4 w-4" />
 				View Details
 			</DropdownMenu.Item>
-			{#if job.status.code === 'Complete'}
-				<DropdownMenu.Item>
-					Download Results
-				</DropdownMenu.Item>
-			{/if}
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
