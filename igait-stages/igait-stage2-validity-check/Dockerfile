@@ -45,14 +45,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch and ML dependencies
+# Install CPU-only PyTorch (pinned for pytorchvideo compatibility —
+# functional_tensor was removed in torchvision 0.18)
 RUN pip3 install --no-cache-dir --break-system-packages \
-    torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    "torch>=2.0,<2.3" "torchvision>=0.15,<0.18" --index-url https://download.pytorch.org/whl/cpu
+
+# Shim: pytorchvideo imports torchvision.transforms.functional_tensor
+# but torchvision 0.17 renamed it to _functional_tensor
+RUN python3 -c "\
+import torchvision.transforms, pathlib, os; \
+d = pathlib.Path(torchvision.transforms.__file__).parent; \
+src = d / '_functional_tensor.py'; \
+dst = d / 'functional_tensor.py'; \
+dst.exists() or dst.symlink_to(src); \
+print(f'Shimmed {dst} -> {src}')"
 
 RUN pip3 install --no-cache-dir --break-system-packages \
     pytorchvideo \
     scipy \
-    numpy \
+    "numpy<2" \
     "opencv-python>=4.1.1" \
     "pillow>=10.3.0" \
     "PyYAML>=5.3.1" \
@@ -60,7 +71,9 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     "matplotlib>=3.3" \
     seaborn \
     pandas \
-    ultralytics
+    ultralytics \
+    "gitpython>=3.1.30" \
+    "setuptools>=70.0.0"
 
 # Copy the detection pipeline
 COPY igait-stages/igait-stage2-validity-check/igait-human-gait-detection /app/igait-human-gait-detection
@@ -69,12 +82,19 @@ COPY igait-stages/igait-stage2-validity-check/igait-human-gait-detection /app/ig
 COPY igait-stages/igait-stage2-validity-check/igait-human-gait-detection/deepsort_parameters/ckpt.t7 \
      /app/igait-human-gait-detection/deep_sort/deep_sort/deep/checkpoint/ckpt.t7
 
+# Set torch cache dir so weights are always found
+ENV TORCH_HOME=/root/.cache/torch
+
 # Pre-cache YOLOv5 model (downloads repo + weights into torch hub cache)
 RUN cd /app/igait-human-gait-detection && \
     python3 -c "\
 import torch; \
 model = torch.hub.load('ultralytics/yolov5', 'yolov5l6', device='cpu'); \
 print('YOLOv5 model cached successfully')"
+
+# Symlink cached YOLOv5 weights into the detection script's working directory
+# (YOLOv5 also looks for weights in CWD)
+RUN ln -sf /root/.cache/torch/hub/checkpoints/yolov5l6.pt /app/igait-human-gait-detection/yolov5l6.pt
 
 # Pre-cache SlowFast model weights
 RUN python3 -c "\
