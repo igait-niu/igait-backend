@@ -124,6 +124,56 @@ impl StorageClient {
         Ok(())
     }
 
+    /// Lists all object keys that begin with the given prefix.
+    pub async fn list_by_prefix(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut keys = Vec::new();
+        let mut continuation_token: Option<String> = None;
+
+        loop {
+            let mut request = self.client
+                .list_objects_v2()
+                .bucket(&self.bucket)
+                .prefix(prefix);
+
+            if let Some(token) = &continuation_token {
+                request = request.continuation_token(token);
+            }
+
+            let response = request
+                .send()
+                .await
+                .context(format!("Failed to list objects with prefix: {}", prefix))?;
+
+            for object in response.contents() {
+                if let Some(key) = object.key() {
+                    keys.push(key.to_string());
+                }
+            }
+
+            match response.next_continuation_token() {
+                Some(token) => continuation_token = Some(token.to_string()),
+                None => break,
+            }
+        }
+
+        Ok(keys)
+    }
+
+    /// Deletes all objects whose keys begin with the given prefix.
+    ///
+    /// Returns the number of objects deleted.
+    pub async fn delete_by_prefix(&self, prefix: &str) -> Result<usize> {
+        let keys = self.list_by_prefix(prefix).await?;
+        let count = keys.len();
+
+        for key in &keys {
+            self.delete(key).await
+                .context(format!("Failed to delete object during prefix deletion: {}", key))?;
+        }
+
+        Ok(count)
+    }
+
     /// Returns the bucket name.
     pub fn bucket(&self) -> &str {
         &self.bucket
