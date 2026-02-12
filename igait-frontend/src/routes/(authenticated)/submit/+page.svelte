@@ -37,6 +37,7 @@
 	// Form state
 	let isSubmitting = $state(false);
 	let progress = $state(0);
+	let statusMessage = $state('');
 	let error: Option<AppError> = $state(None());
 
 	// Select options
@@ -105,6 +106,7 @@
 
 		isSubmitting = true;
 		progress = 0;
+		statusMessage = 'Preparing upload...';
 
 		const request: ContributionRequest = {
 			uid: user.uid,
@@ -123,6 +125,15 @@
 
 		const onProgress: ProgressCallback = (p) => {
 			progress = p;
+			if (p < 10) {
+				statusMessage = 'Preparing upload...';
+			} else if (p < 90) {
+				statusMessage = 'Uploading videos...';
+			} else if (p < 100) {
+				statusMessage = 'Processing on server...';
+			} else {
+				statusMessage = 'Submission complete!';
+			}
 		};
 
 		const result = await submitContribution(request, onProgress);
@@ -131,7 +142,9 @@
 			error = Some(result.error);
 			isSubmitting = false;
 			progress = 0;
+			statusMessage = '';
 		} else {
+			statusMessage = 'Submission complete! Redirecting...';
 			toast.success(result.value);
 			setTimeout(() => goto('/dashboard'), 1500);
 		}
@@ -318,12 +331,15 @@
 					>
 						{#if isSubmitting}
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-							Uploading... {progress}%
+							{statusMessage} ({progress}%)
 						{:else}
 							<Upload class="mr-2 h-4 w-4" />
 							Submit for Analysis
 						{/if}
 					</Button>
+					{#if isSubmitting}
+						<p class="upload-hint">Please don't close this page — large videos may take a moment to upload.</p>
+					{/if}
 				</div>
 			</form>
 		</Card.Content>
@@ -503,6 +519,13 @@
 
 	:global(.submit-button.is-uploading) {
 		background-color: hsl(var(--primary) / 0.8);
+	}
+
+	.upload-hint {
+		text-align: center;
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		margin-top: 0.5rem;
 	}
 
 	@media (max-width: 768px) {

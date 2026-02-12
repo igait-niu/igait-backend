@@ -81,51 +81,45 @@ export async function submitContribution(
 	formData.append('fileuploadfront', request.frontVideo);
 	formData.append('fileuploadside', request.sideVideo);
 
-	onProgress?.(15);
+	onProgress?.(5);
 
-	// Create abort controller for timeout
-	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+	// Use XMLHttpRequest for real upload progress tracking
+	const result = await new Promise<Result<string, AppError>>((resolve) => {
+		const xhr = new XMLHttpRequest();
+		const timeoutId = setTimeout(() => xhr.abort(), DEFAULT_TIMEOUT_MS);
 
-	const result = await tryAsync(
-		async () => {
-			const response = await fetch(API_ENDPOINTS.upload, {
-				method: 'POST',
-				body: formData,
-				signal: controller.signal
-			});
-
-			onProgress?.(80);
-
-			if (!response.ok) {
-				const errorText = await response.text().catch(() => 'Unknown error');
-				throw new Error(`Server error (${response.status}): ${errorText}`);
+		xhr.upload.addEventListener('progress', (e) => {
+			if (e.lengthComputable) {
+				// Map upload progress to 5–90% range
+				const uploadPercent = 5 + Math.round((e.loaded / e.total) * 85);
+				onProgress?.(uploadPercent);
 			}
+		});
 
-			onProgress?.(100);
-			return 'Your submission has been received! You will receive an email with your results shortly.';
-		},
-		'Failed to submit contribution'
-	);
+		xhr.addEventListener('load', () => {
+			clearTimeout(timeoutId);
+			if (xhr.status >= 200 && xhr.status < 300) {
+				onProgress?.(100);
+				resolve(Ok('Your submission has been received! You will receive an email with your results shortly.'));
+			} else {
+				const errorText = xhr.responseText || 'Unknown error';
+				resolve(Err(new AppError(`Server error (${xhr.status}): ${errorText}`).withContext('Submission failed')));
+			}
+		});
 
-	clearTimeout(timeoutId);
+		xhr.addEventListener('error', () => {
+			clearTimeout(timeoutId);
+			resolve(Err(new AppError('Network error. Please check your internet connection.').withContext('Submission failed')));
+		});
 
-	// Handle specific error cases
-	if (result.isErr()) {
-		const error = result.error;
-		
-		if (error.rootCause.includes('aborted') || error.rootCause.includes('abort')) {
-			return Err(new AppError(
-				'Request timed out. Your files might be too large or your connection is slow.'
-			).withContext('Submission failed'));
-		}
+		xhr.addEventListener('abort', () => {
+			clearTimeout(timeoutId);
+			resolve(Err(new AppError('Request timed out. Your files might be too large or your connection is slow.').withContext('Submission failed')));
+		});
 
-		if (error.rootCause.includes('NetworkError') || error.rootCause.includes('fetch')) {
-			return Err(new AppError(
-				'Network error. Please check your internet connection.'
-			).withContext('Submission failed'));
-		}
-	}
+		xhr.open('POST', API_ENDPOINTS.upload);
+		xhr.send(formData);
+	});
 
 	return result;
 }
